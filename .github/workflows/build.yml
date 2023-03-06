@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [
+          ubuntu-latest,
+#          windows-latest,
+          macOS-latest
+        ]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
+
+      - name: Create build directory
+        run: cmake -E make_directory ${{github.workspace}}/build
+
+      - name: Configure CMake
+        run: cmake ${{github.workspace}} -B ${{github.workspace}}/build
+
+      - name: Build
+        run: cmake --build ${{github.workspace}}/build --config Release
+
+      - name: Run tests (optional)
+        run: ctest --test-dir ${{github.workspace}}/build
