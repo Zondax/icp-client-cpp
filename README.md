@@ -1,11 +1,11 @@
 # poc-icp-client
 
+## Run project and generate bindings
+    cargo build
+## General Description
 This is just a proof of concept.
 
 The objective of this project is to provide a C/C++ wrapper for the Rust Agent Crate
-
-
-## General Description
 
 Reference: https://internetcomputer.org/docs/current/developer-docs/agents/
 
