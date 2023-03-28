@@ -8,8 +8,6 @@ crate-type = ["staticlib"]
 
 [dependencies]
 # dfinity
-candid = "=0.7.14"
-ic-types = "0.3"
 ic-agent = "0.16"
 ic-utils = "0.16"
 # async runtime
@@ -33,6 +31,7 @@ chrono = { version = "0.4.*", features = ["serde"] }
 garcon = { version = "0.2.3", features = ["async"] }
 # ffi
 libc = "0.2"
+candid = "0.8.4"
 
 [build-dependencies]
 cbindgen = "0.20.0"

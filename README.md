@@ -1,7 +1,31 @@
 # poc-icp-client
 
-## Run project and generate bindings
+## Project
+#### ic-agent-ffi
+Contains rust code to expose ic-agent lib to C.
+Generates binding from the modules when runing:
+
     cargo build
+
+#### rust-agent-hw
+Standalone rust actor/agent app to interact with local canister.
+
+    cargo build
+    cargo run
+
+#### Deploy Hello world canister
+To create a template project with a hello world canister example run:
+
+    dfx new --type=rust rust_hello
+
+Start the local execution environment:
+
+    dfx start --background
+
+Deploy the Canister:
+
+    dfx deploy
+
 ## General Description
 This is just a proof of concept.
 
