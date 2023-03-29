@@ -5,12 +5,8 @@ use anyhow::Error as AnyErr;
 
 mod request_id;
 mod principal;
-//mod identity;
+mod identity;
 //mod hash_tree;
-
-/************************************************************************/
-/*UTILS : Based on AGENT_UNITY*/
-/************************************************************************/
 
 /// Return for FFI functions
 #[repr(i32)]
@@ -24,17 +20,17 @@ pub enum ResultCode {
 /// A callback used to give the unsized value to caller.
 type PtrCallBack<T> = extern "C" fn(*const T, c_int);
 
-fn ret_unsized_ptr<T>(unsized_cb: PtrCallBack<T>, s: impl AsRef<[T]>) {
+fn return_unsized_ptr<T>(fn_callback: PtrCallBack<T>, s: impl AsRef<[T]>) {
     let arr = s.as_ref();
     let len = arr.len() as c_int;
 
-    unsized_cb(arr.as_ptr(), len);
+    fn_callback(arr.as_ptr(), len);
 }
 
 // Get pointer to result and error
-fn return_combined_result<T, E, A>(
-    ret_cb: PtrCallBack<A>,
-    err_cb: PtrCallBack<u8>,
+fn return_result<T, E, A>(
+    return_callback: PtrCallBack<A>,
+    error_callback: PtrCallBack<u8>,
     r: Result<T, E>,
 ) -> ResultCode
 where
@@ -43,12 +39,12 @@ where
 {
     match r {
         Ok(v) => {
-            ret_unsized_ptr(ret_cb, v);
+            return_unsized_ptr(return_callback, v);
 
             ResultCode::Ok
         }
         Err(e) => {
-            ret_unsized_ptr(err_cb, e.to_string() + "\0");
+            return_unsized_ptr(error_callback, e.to_string() + "\0");
 
             ResultCode::Err
         }
