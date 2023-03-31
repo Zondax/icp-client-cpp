@@ -3,7 +3,7 @@ use anyhow::Error as AnyErr;
 
 mod request_id;
 mod principal;
-//mod identity;
+mod identity;
 //mod agent;
 
 /// Ptr creation with size and len

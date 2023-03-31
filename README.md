@@ -1,11 +1,18 @@
 # poc-icp-client
 
 ## Project
-#### ic-agent-ffi
+#### ic-agent-wrapper
 Contains rust code to expose ic-agent lib to C.
 Generates binding from the modules when runing:
 
     cargo build
+#### lib-agent-c
+Librabry emulation folder. Where we use the wrapper exposed functions
+to create C friendly fucntions to be used.
+The following comand will update the bindings.h, compile lib files and ran the test.c code
+
+    sh test_lib.sh
+
 
 #### rust-agent-hw
 Standalone rust actor/agent app to interact with local canister.

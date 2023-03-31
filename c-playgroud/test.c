@@ -4,19 +4,23 @@
 #include <string.h>
 
 #define PRINCIPAL_ANSWER_SIZE 29
+
 uint8_t *out;
-RetPtr_u8 principal(const uint8_t *p, int len) {
+
+RetPtr_u8 returnPtr(const uint8_t *p, int len) {
     printf("len:%d\n", len);
     out = malloc(len);
     memcpy(out,p,len);
+
+    return 0;
 }
 
 int main(void) {
-    principal_anonymous(principal);
+    principal_anonymous(*(RetPtr_u8)returnPtr);
 
     printf("anonym: %d\n", out[0]);
 
-    principal_management_canister(principal);
+    principal_management_canister(*(RetPtr_u8)returnPtr);
 
     printf("manage: %d\n", out[0]);
 
@@ -26,11 +30,19 @@ int main(void) {
         0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 
         0x11, 0x11, 0xaa, 0x11, 0xaa};
 
-    principal_self_authenticating(pk,32,principal);
+    principal_self_authenticating(pk,32,*(RetPtr_u8)returnPtr);
 
     for (int i = 0; i< PRINCIPAL_ANSWER_SIZE; i++) {
         printf("0x%x, ", out[i]);
     }
+
+    uint8_t hash [32] = {
+        0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41,
+        0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03,
+        0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff,
+        0x61, 0xf2, 0x00, 0x15, 0xad};
+
+    request_id_new(hash,32,*(RetPtr_u8)returnPtr);
 
     return 0;
 }

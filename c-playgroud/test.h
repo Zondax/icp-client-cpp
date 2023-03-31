@@ -31,12 +31,7 @@ typedef void (*RetPtr_u8)(const uint8_t*, int);
 /**
  * Creates a new RequestId from a SHA-256 hash.
  */
-struct RequestId *request_id_new(const uint8_t (*hash)[32]);
-
-/**
- * Free created RequestId
- */
-void request_id_free(struct RequestId *client);
+void request_id_new(const uint8_t *bytes, int bytes_len, RetPtr_u8 request_id);
 
 /**
  * Returns the SHA-256 hash this ID is based on.

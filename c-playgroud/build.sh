@@ -4,3 +4,5 @@ gcc -o test \
     -L ../ic-agent-wrapper/target/release/ -lic_agent_wrapper\
     -I - \
     test.c 
+
+./test

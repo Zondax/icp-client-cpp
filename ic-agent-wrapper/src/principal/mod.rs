@@ -156,6 +156,7 @@ pub extern "C" fn principal_to_text(
 
 // TODO : TESTING
 mod tests{
+    #[allow(unused)]
     use super::*;
 
     #[test]
