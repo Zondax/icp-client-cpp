@@ -18,6 +18,8 @@ serde = "1.0.*"
 serde_json = "1.0.*"
 serde_derive = "1.0.*"
 # encrypt
+getrandom = { version = "0.2.8" }
+untrusted = { version = "0.9" }
 ring = "0.16.*"
 k256 = "0.10.*"
 base64 = "0.13.0"
@@ -34,6 +36,7 @@ libc = "0.2"
 candid = "0.8.4"
 cty = "0.2.2"
 safer-ffi = { version = "0.1.0-rc1", features = ["proc_macros"] }
+crypto_api_osrandom = "0.2.0"
 
 [build-dependencies]
 cbindgen = "0.20.0"

@@ -3,6 +3,21 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+typedef enum IdentityType {
+  /**
+   * anonym
+   */
+  Anonym = 0,
+  /**
+   * basic
+   */
+  Basic = 1,
+  /**
+   * secp256k1
+   */
+  Secp256k1 = 2,
+} IdentityType;
+
 /**
  * Return for FFI functions
  */
@@ -19,11 +34,6 @@ enum ResultCode {
 typedef int32_t ResultCode;
 
 /**
- * A Request ID.
- */
-typedef struct RequestId RequestId;
-
-/**
  * Ptr creation with size and len
  */
 typedef void (*RetPtr_u8)(const uint8_t*, int);
@@ -32,11 +42,6 @@ typedef void (*RetPtr_u8)(const uint8_t*, int);
  * Creates a new RequestId from a SHA-256 hash.
  */
 void request_id_new(const uint8_t *bytes, int bytes_len, RetPtr_u8 request_id);
-
-/**
- * Returns the SHA-256 hash this ID is based on.
- */
-const uint8_t *request_id_as_slice(struct RequestId *ptr);
 
 /**
  * Construct a Principal of the IC management canister
@@ -80,3 +85,35 @@ ResultCode principal_to_text(const uint8_t *bytes,
                              int bytes_len,
                              RetPtr_u8 principal_ret,
                              RetPtr_u8 error_ret);
+
+/**
+ * Dummy
+ */
+enum IdentityType identity_type(enum IdentityType id_type);
+
+/**
+ * The anonymous identity.
+ */
+void identity_anonymous(const void **identity_ret);
+
+/**
+ * Create a BasicIdentity from reading a PEM Content
+ */
+ResultCode identity_basic_from_pem(const char *pem_data,
+                                   const void **identity_ret,
+                                   RetPtr_u8 error_ret);
+
+/**
+ * Create a BasicIdentity from a KeyPair from the ring crate.
+ * Creates an identity from a PEM certificate.
+ */
+ResultCode identity_secp256k1_from_pem(const char *pem_data,
+                                       const void **identity_ret,
+                                       RetPtr_u8 error_ret);
+
+/**
+ * Creates an identity from a private key.
+ */
+void identity_secp256k1_from_private_key(const char *private_key,
+                                         uintptr_t pk_len,
+                                         const void **identity_ret);

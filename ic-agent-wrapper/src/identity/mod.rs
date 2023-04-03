@@ -1,63 +1,48 @@
-use std::{ffi::{c_char, CStr, CString}};
-use ic_agent::{identity::{AnonymousIdentity, BasicIdentity, Secp256k1Identity}};
+#![allow(non_snake_case)]
+
+use std::{ffi::{c_char, CStr}};
+use cty::{c_void, c_int};
+use ic_agent::{identity::{AnonymousIdentity, BasicIdentity, Secp256k1Identity}, Identity, Signature};
 use k256::SecretKey;
-use crate::{AnyErr};
+use ring::signature::Ed25519KeyPair;
+use crate::{AnyErr, ResultCode, RetPtr};
 
-/// AnonymousId wrapper structure
+
+#[allow(dead_code)]
 #[repr(C)]
-pub struct AnonymousIdentityWrapper {
-    identity: *mut AnonymousIdentity,
+#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
+pub enum IdentityType {
+    /// anonym
+    Anonym = 0,
+    /// basic
+    Basic = 1,
+    /// secp256k1
+    Secp256k1 = 2,
 }
 
-/// BasicId wrapper structure
-#[repr(C)]
-pub struct BasicIdentityWrapper {
-    identity: *mut BasicIdentity,
+/// Dummy
+#[no_mangle]
+pub extern "C" fn identity_type(id_type: IdentityType) -> IdentityType{
+    id_type
 }
 
-#[repr(C)]
-pub struct BasicIdentityResult {
-    identity: *mut BasicIdentityWrapper,
-    error: *mut c_char,
-}
-
-impl BasicIdentityResult {
-    fn new(identity: *mut BasicIdentityWrapper, error: *mut c_char) -> Self {
-        Self { identity, error }
-    }
-}
-
-/// Secp256k1 wrapper structure
-#[repr(C)]
-pub struct Secp256k1IdentityWrapper {
-    identity: *mut Secp256k1Identity,
-}
-
-#[repr(C)]
-pub struct Secp256k1IdentityResult {
-    identity: *mut Secp256k1IdentityWrapper,
-    error: *mut c_char,
-}
-
-impl Secp256k1IdentityResult {
-    fn new(identity: *mut Secp256k1IdentityWrapper, error: *mut c_char) -> Self {
-        Self { identity, error }
-    }
-}
 
 /// The anonymous identity.
 #[no_mangle]
-pub extern "C" fn identity_anonymous() -> *mut AnonymousIdentityWrapper {
-    let wrapper = Box::new(AnonymousIdentityWrapper {
-        identity: Box::into_raw(Box::new(AnonymousIdentity {})),
-    });
-
-    Box::into_raw(wrapper)
+pub extern "C" fn identity_anonymous(identity_ret: *mut *const c_void){
+    let anonymous_id = Box::new(AnonymousIdentity {});
+    let identity: *const c_void = Box::into_raw(anonymous_id) as *const c_void;
+    unsafe {
+        *identity_ret = identity;
+    }
 }
 
 /// Create a BasicIdentity from reading a PEM Content
 #[no_mangle]
-pub extern "C" fn identity_basic_from_pem(pem_data: *const c_char) -> BasicIdentityResult {
+pub extern "C" fn identity_basic_from_pem(
+    pem_data: *const c_char, 
+    identity_ret: *mut *const c_void, 
+    error_ret: RetPtr<u8>) -> ResultCode {
     
     let pem_cstr = unsafe {
         assert!(!pem_data.is_null());
@@ -67,55 +52,61 @@ pub extern "C" fn identity_basic_from_pem(pem_data: *const c_char) -> BasicIdent
     let basic_id =
         pem_str.and_then(|pem_str| BasicIdentity::from_pem(pem_str.as_bytes()).map_err(AnyErr::from));
 
-
     match basic_id {
         Ok(identity) => {
-            let identity_wrapper = BasicIdentityWrapper {
-                identity: Box::into_raw(Box::new(identity))};
-            BasicIdentityResult::new(Box::into_raw(Box::new(identity_wrapper)), std::ptr::null_mut())
+            let identity_tmp: *const c_void = Box::into_raw(Box::new(identity)) as *const c_void;
+            unsafe {
+                *identity_ret = identity_tmp;
+            }
+            ResultCode::Ok
         }
         Err(e) => {
-            let error = CString::new(e.to_string() + "\0" ).unwrap();
-            BasicIdentityResult::new(std::ptr::null_mut(), error.into_raw())
+            let err_str = e.to_string() + "\0";
+            let arr = err_str.as_bytes();
+            let len = arr.len() as c_int;
+            error_ret(arr.as_ptr(), len);
+            ResultCode::Err
         }
     }
 }
 
-/// Create a BasicIdentity from a KeyPair from the ring crate.
-// #[no_mangle]
-// pub extern "C" fn identity_basic_from_key_pair(
-//     public_key: *const u8,
-//     private_key_seed: *const u8,) -> BasicIdentityResult {
 
-//     let public_key_slice =  unsafe {std::slice::from_raw_parts(public_key as *const u8, 32)};
-//     let private_key_seed_slice =  unsafe {std::slice::from_raw_parts(private_key_seed as *const u8, 32)};
+#[no_mangle]
+pub extern "C" fn identity_basic_from_key_pair(
+    public_key: *const u8,
+    private_key_seed: *const u8,
+    identity_ret: *mut *const c_void, 
+    error_ret: RetPtr<u8>) -> ResultCode {
 
-//     let ed25519_key_pair = match Ed25519KeyPair::from_seed_and_public_key(private_key_seed_slice, public_key_slice) {
-//         Ok(key_pair) => key_pair,
-//         Err(e) => {
-//             let error = CString::new(e.to_string() + "\0" ).unwrap();
-//                 BasicIdentityResult::new(std::ptr::null_mut(), error.into_raw())
-//         }
-//     };
+    let public_key_slice =  unsafe {std::slice::from_raw_parts(public_key as *const u8, 32)};
+    let private_key_seed_slice =  unsafe {std::slice::from_raw_parts(private_key_seed as *const u8, 32)};
 
-//     let basic_id = BasicIdentity::from_key_pair(ed25519_key_pair);
-
-//     match basic_id {
-//         Ok(identity) => {
-//             let identity_wrapper = BasicIdentityWrapper {
-//                 identity: Box::into_raw(Box::new(identity))};
-//             BasicIdentityResult::new(Box::into_raw(Box::new(identity_wrapper)), std::ptr::null_mut())
-//         }
-//         Err(e) => {
-//             let error = CString::new(e.to_string()).unwrap();
-//             BasicIdentityResult::new(std::ptr::null_mut(), error.into_raw())
-//         }
-//     }
-// }
+    match Ed25519KeyPair::from_seed_and_public_key(private_key_seed_slice, public_key_slice) {
+        Ok(key_pair) => {
+            let basic_id = BasicIdentity::from_key_pair(key_pair);
+            let identity_tmp: *const c_void = Box::into_raw(Box::new(basic_id)) as *const c_void;
+            unsafe {
+                *identity_ret = identity_tmp;
+            }
+            ResultCode::Ok
+        }
+        Err(e) => {
+            let err_str = e.to_string() + "\0";
+            let arr = err_str.as_bytes();
+            let len = arr.len() as c_int;
+            error_ret(arr.as_ptr(), len);
+            ResultCode::Err
+        }
+    };
+    ResultCode::Ok
+}
 
 /// Creates an identity from a PEM certificate.
 #[no_mangle]
-pub extern "C" fn identity_secp256k1_from_pem(pem_data: *const c_char) -> Secp256k1IdentityResult {
+pub extern "C" fn identity_secp256k1_from_pem(
+    pem_data: *const c_char,
+    identity_ret: *mut *const c_void, 
+    error_ret: RetPtr<u8>) -> ResultCode {
     
     let pem_cstr = unsafe {
         assert!(!pem_data.is_null());
@@ -127,33 +118,261 @@ pub extern "C" fn identity_secp256k1_from_pem(pem_data: *const c_char) -> Secp25
 
     match basic_id {
         Ok(identity) => {
-            let identity_wrapper = Secp256k1IdentityWrapper {
-                identity: Box::into_raw(Box::new(identity))};
-            Secp256k1IdentityResult::new(Box::into_raw(Box::new(identity_wrapper)), std::ptr::null_mut())
+            let identity_tmp: *const c_void = Box::into_raw(Box::new(identity)) as *const c_void;
+            unsafe {
+                *identity_ret = identity_tmp;
+            }
+            ResultCode::Ok
         }
         Err(e) => {
-            let error = CString::new(e.to_string() + "\0").unwrap();
-            Secp256k1IdentityResult::new(std::ptr::null_mut(), error.into_raw())
+            let err_str = e.to_string() + "\0";
+            let arr = err_str.as_bytes();
+            let len = arr.len() as c_int;
+            error_ret(arr.as_ptr(), len);
+            ResultCode::Err
         }
     }
 }
 
 /// Creates an identity from a private key.
 #[no_mangle]
-pub extern "C" fn identity_secp256k1_from_private_key(private_key: *const c_char, pk_len: usize,) -> *mut Secp256k1IdentityWrapper {
+pub extern "C" fn identity_secp256k1_from_private_key(
+    private_key: *const c_char,
+    pk_len: usize,
+    identity_ret: *mut *const c_void){
     
     let pk = unsafe { std::slice::from_raw_parts(private_key as *const u8, pk_len) };
     let pk = SecretKey::from_be_bytes(pk).unwrap();
 
-    let wrapper = Box::new(Secp256k1IdentityWrapper {
-        identity: Box::into_raw(Box::new(Secp256k1Identity::from_private_key(pk))),
-    });
-
-    Box::into_raw(wrapper)
+    let anonymous_id = Box::new(Secp256k1Identity::from_private_key(pk));
+    let identity: *const c_void = Box::into_raw(anonymous_id) as *const c_void;
+    unsafe {
+        *identity_ret = identity;
+    }
 }
 
-// Trait implementation has sender and sign for all identities 
-// shoudl we define this functions all returning an generic Identity 
-// see agent unity
-// TODO identity_basic_from_key_pair
-// TODO TESTING
+#[no_mangle]
+pub extern "C" fn identity_sender(
+    id_ptr: *mut *const c_void,
+    idType: IdentityType,
+    principal_ret: RetPtr<u8>,
+    error_ret: RetPtr<u8>,
+) -> ResultCode {
+
+    unsafe {
+        match idType {
+            IdentityType::Anonym => {
+                let boxed = Box::from_raw(id_ptr as *mut AnonymousIdentity);
+                let principal = boxed.sender();
+                    match principal {
+                        Ok(principal) => {
+                            let arr = principal.as_ref();
+                            let len = arr.len() as c_int;
+                            principal_ret(arr.as_ptr(), len);
+                            ResultCode::Ok
+                        }
+
+                        Err(e) => {
+                            let err_str = e.to_string() + "\0";
+                            let arr = err_str.as_bytes();
+                            let len = arr.len() as c_int;
+                            error_ret(arr.as_ptr(), len);
+                            ResultCode::Err
+                        }
+                    }
+            }
+            IdentityType::Basic => {
+                let boxed = Box::from_raw(id_ptr as *mut BasicIdentity);
+                let principal = boxed.sender();
+                    match principal {
+                        Ok(principal) => {
+                            let arr = principal.as_ref();
+                            let len = arr.len() as c_int;
+                            principal_ret(arr.as_ptr(), len);
+                            ResultCode::Ok
+                        }
+
+                        Err(e) => {
+                            let err_str = e.to_string() + "\0";
+                            let arr = err_str.as_bytes();
+                            let len = arr.len() as c_int;
+                            error_ret(arr.as_ptr(), len);
+                            ResultCode::Err
+                        }
+                    }
+            }
+            IdentityType::Secp256k1 => {
+                let boxed = Box::from_raw(id_ptr as *mut Secp256k1Identity);
+                let principal = boxed.sender();
+                    match principal {
+                        Ok(principal) => {
+                            let arr = principal.as_ref();
+                            let len = arr.len() as c_int;
+                            principal_ret(arr.as_ptr(), len);
+                            ResultCode::Ok
+                        }
+
+                        Err(e) => {
+                            let err_str = e.to_string() + "\0";
+                            let arr = err_str.as_bytes();
+                            let len = arr.len() as c_int;
+                            error_ret(arr.as_ptr(), len);
+                            ResultCode::Err
+                        }
+                    }
+            }
+        }
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn identity_sign(
+    bytes: *const u8,
+    bytes_len: c_int,
+    id_ptr: *mut *const c_void,
+    idType: IdentityType,
+    pubkey_ret: RetPtr<u8>,
+    sig_ret: RetPtr<u8>,
+    error_ret: RetPtr<u8>,
+) -> ResultCode {
+
+    unsafe {
+        match idType {
+            IdentityType::Anonym => {
+                let boxed = Box::from_raw(id_ptr as *mut AnonymousIdentity);
+                let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
+                let signature = boxed.sign(blob);
+
+                match signature {
+                    Ok(Signature {
+                        public_key,
+                        signature,
+                    }) => {
+                        let public_key = public_key.unwrap_or_default();
+                        let signature = signature.unwrap_or_default();
+
+                        let arr = public_key.as_slice();
+                        let len = arr.len() as c_int;
+                        pubkey_ret(arr.as_ptr(), len);
+
+                        let arr = signature.as_slice();
+                        let len = arr.len() as c_int;
+                        sig_ret(arr.as_ptr(), len);
+                        ResultCode:: Ok
+                    }
+                    Err(err) => {
+                        let err_str = err.to_string() + "\0";
+                        let arr = err_str.as_bytes();
+                        let len = arr.len() as c_int;
+                        error_ret(arr.as_ptr(), len);
+                        ResultCode::Err
+                    }
+                }
+            }
+            IdentityType::Basic => {
+                let boxed = Box::from_raw(id_ptr as *mut BasicIdentity);
+                let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
+                let signature = boxed.sign(blob);
+
+                match signature {
+                    Ok(Signature {
+                        public_key,
+                        signature,
+                    }) => {
+                        let public_key = public_key.unwrap_or_default();
+                        let signature = signature.unwrap_or_default();
+
+                        let arr = public_key.as_slice();
+                        let len = arr.len() as c_int;
+                        pubkey_ret(arr.as_ptr(), len);
+
+                        let arr = signature.as_slice();
+                        let len = arr.len() as c_int;
+                        sig_ret(arr.as_ptr(), len);
+                        ResultCode:: Ok
+                    }
+                    Err(err) => {
+                        let err_str = err.to_string() + "\0";
+                        let arr = err_str.as_bytes();
+                        let len = arr.len() as c_int;
+                        error_ret(arr.as_ptr(), len);
+                        ResultCode::Err
+                    }
+                }
+            }
+            IdentityType::Secp256k1 => {
+                let boxed = Box::from_raw(id_ptr as *mut Secp256k1Identity);
+                let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
+                let signature = boxed.sign(blob);
+
+                match signature {
+                    Ok(Signature {
+                        public_key,
+                        signature,
+                    }) => {
+                        let public_key = public_key.unwrap_or_default();
+                        let signature = signature.unwrap_or_default();
+
+                        let arr = public_key.as_slice();
+                        let len = arr.len() as c_int;
+                        pubkey_ret(arr.as_ptr(), len);
+
+                        let arr = signature.as_slice();
+                        let len = arr.len() as c_int;
+                        sig_ret(arr.as_ptr(), len);
+                        ResultCode:: Ok
+                    }
+                    Err(err) => {
+                        let err_str = err.to_string() + "\0";
+                        let arr = err_str.as_bytes();
+                        let len = arr.len() as c_int;
+                        error_ret(arr.as_ptr(), len);
+                        ResultCode::Err
+                    }
+                } 
+            }
+        }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use ic_agent::{Identity, ic_types::Principal};
+
+    #[allow(unused)]
+    use super::*;
+
+    #[test]
+    fn test_identity_anonymous() {
+        let mut identity: *const c_void = std::ptr::null();
+
+        identity_anonymous(&mut identity);
+        assert!(!identity.is_null());
+
+        unsafe {
+             let boxed = Box::from_raw(identity as *mut AnonymousIdentity);
+             assert_eq!(boxed.sender(), Ok(Principal::anonymous()));
+        }
+    }
+
+    #[test]
+    fn test_identity_sender() {
+        const ANONYM_ID: [u8; 1] = [4u8];
+
+        let mut identity: *const c_void = std::ptr::null();
+
+        identity_anonymous(&mut identity);
+
+        extern "C" fn principal_ret(data: *const u8, len: c_int) {
+            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
+
+            assert_eq!(slice, ANONYM_ID);
+        }
+
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+
+
+        assert_eq!(identity_sender(&mut identity, IdentityType::Anonym, principal_ret, error_ret), ResultCode::Ok);
+    }
+}
