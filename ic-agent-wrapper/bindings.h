@@ -33,6 +33,8 @@ enum ResultCode {
 };
 typedef int32_t ResultCode;
 
+typedef struct FFIAgent FFIAgent;
+
 /**
  * Ptr creation with size and len
  */
@@ -134,3 +136,30 @@ ResultCode identity_sign(const uint8_t *bytes,
                          RetPtr_u8 pubkey_ret,
                          RetPtr_u8 sig_ret,
                          RetPtr_u8 error_ret);
+
+/**
+ * Creates a FFIAgent instance to be used on the remaining agent functions
+ */
+ResultCode agent_create(const char *path,
+                        const void *identity,
+                        enum IdentityType id_type,
+                        const uint8_t *canister_id_content,
+                        int canister_id_len,
+                        const char *did_content,
+                        const struct FFIAgent **agent_ptr,
+                        RetPtr_u8 error_ret);
+
+/**
+ * Calls and returns the information returned by the status endpoint of a replica.
+ */
+ResultCode agent_status(const struct FFIAgent *agent_ptr,
+                        RetPtr_u8 status_ret,
+                        RetPtr_u8 error_ret);
+
+ResultCode agent_query(const struct FFIAgent *agent_ptr,
+                       const char *method,
+                       const char *method_args,
+                       const void **ret,
+                       RetPtr_u8 error_ret);
+
+void idl_args_to_text(const void *idl_args, RetPtr_u8 ret_cb);

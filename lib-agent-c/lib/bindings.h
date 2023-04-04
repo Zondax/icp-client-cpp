@@ -33,6 +33,8 @@ enum ResultCode {
 };
 typedef int32_t ResultCode;
 
+typedef struct FFIAgent FFIAgent;
+
 /**
  * Ptr creation with size and len
  */
@@ -103,8 +105,12 @@ ResultCode identity_basic_from_pem(const char *pem_data,
                                    const void **identity_ret,
                                    RetPtr_u8 error_ret);
 
+ResultCode identity_basic_from_key_pair(const uint8_t *public_key,
+                                        const uint8_t *private_key_seed,
+                                        const void **identity_ret,
+                                        RetPtr_u8 error_ret);
+
 /**
- * Create a BasicIdentity from a KeyPair from the ring crate.
  * Creates an identity from a PEM certificate.
  */
 ResultCode identity_secp256k1_from_pem(const char *pem_data,
@@ -117,3 +123,43 @@ ResultCode identity_secp256k1_from_pem(const char *pem_data,
 void identity_secp256k1_from_private_key(const char *private_key,
                                          uintptr_t pk_len,
                                          const void **identity_ret);
+
+ResultCode identity_sender(const void **id_ptr,
+                           enum IdentityType idType,
+                           RetPtr_u8 principal_ret,
+                           RetPtr_u8 error_ret);
+
+ResultCode identity_sign(const uint8_t *bytes,
+                         int bytes_len,
+                         const void **id_ptr,
+                         enum IdentityType idType,
+                         RetPtr_u8 pubkey_ret,
+                         RetPtr_u8 sig_ret,
+                         RetPtr_u8 error_ret);
+
+/**
+ * Creates a FFIAgent instance to be used on the remaining agent functions
+ */
+ResultCode agent_create(const char *path,
+                        const void *identity,
+                        enum IdentityType id_type,
+                        const uint8_t *canister_id_content,
+                        int canister_id_len,
+                        const char *did_content,
+                        const struct FFIAgent **agent_ptr,
+                        RetPtr_u8 error_ret);
+
+/**
+ * Calls and returns the information returned by the status endpoint of a replica.
+ */
+ResultCode agent_status(const struct FFIAgent *agent_ptr,
+                        RetPtr_u8 status_ret,
+                        RetPtr_u8 error_ret);
+
+ResultCode agent_query(const struct FFIAgent *agent_ptr,
+                       const char *method,
+                       const char *method_args,
+                       const void **ret,
+                       RetPtr_u8 error_ret);
+
+void idl_args_to_text(const void *idl_args, RetPtr_u8 ret_cb);
