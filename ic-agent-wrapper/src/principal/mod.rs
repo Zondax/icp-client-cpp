@@ -154,7 +154,6 @@ pub extern "C" fn principal_to_text(
 
 }
 
-// TODO : TESTING
 mod tests{
     #[allow(unused)]
     use super::*;
@@ -226,6 +225,29 @@ mod tests{
 
         assert_eq!(
             principal_try_from_slice(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
+            ResultCode::Ok
+        );
+    }
+    #[test]
+    fn test_principal_to_text() {
+        const TEXT: &[u8; 9] = b"aaaaa-aa\0";
+
+        extern "C" fn principal_ret(data: *const u8, len: c_int) {
+            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
+
+            assert_eq!(slice, TEXT);
+            assert_eq!(len as usize, TEXT.len());
+        }
+
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+
+        assert_eq!(
+            principal_to_text(
+                [0u8; 0].as_ptr(),
+                0,
+                principal_ret,
+                error_ret,
+            ),
             ResultCode::Ok
         );
     }

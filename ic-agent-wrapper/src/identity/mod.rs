@@ -342,6 +342,19 @@ mod tests {
 
     #[allow(unused)]
     use super::*;
+    const BASIC_ID_FILE: &'static str = "-----BEGIN PRIVATE KEY-----
+MFMCAQEwBQYDK2VwBCIEIL9r4XBKsg4pquYBHY6rgfzuBsvCy89tgqDfDpofXRBP
+oSMDIQBCkE1NL4X43clXS1LFauiceiiKW9NhjVTEpU6LpH9Qcw==
+-----END PRIVATE KEY-----\0";
+
+    const SECP256K1_ID_FILE: &str = "-----BEGIN EC PARAMETERS-----
+BgUrgQQACg==
+-----END EC PARAMETERS-----
+-----BEGIN EC PRIVATE KEY-----
+MHQCAQEEIAgy7nZEcVHkQ4Z1Kdqby8SwyAiyKDQmtbEHTIM+WNeBoAcGBSuBBAAK
+oUQDQgAEgO87rJ1ozzdMvJyZQ+GABDqUxGLvgnAnTlcInV3NuhuPv4O3VGzMGzeB
+N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
+-----END EC PRIVATE KEY-----\0";
 
     #[test]
     fn test_identity_anonymous() {
@@ -374,5 +387,49 @@ mod tests {
 
 
         assert_eq!(identity_sender(&mut identity, IdentityType::Anonym, principal_ret, error_ret), ResultCode::Ok);
+    }
+
+    #[test]
+    fn test_identity_basic_from_pem() {
+        let mut identity: *const c_void = std::ptr::null();
+        
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+        
+        assert_eq!(
+            identity_basic_from_pem(
+                BASIC_ID_FILE.as_ptr() as *const c_char,
+                &mut identity,
+                error_ret
+            ),
+            ResultCode::Ok,
+        );
+
+        unsafe {
+            let boxed = Box::from_raw(identity as *mut BasicIdentity);
+            let basic = BasicIdentity::from_pem(BASIC_ID_FILE.as_bytes()).unwrap();
+            assert_eq!(boxed.sender(), basic.sender());
+        }
+    }
+
+        #[test]
+    fn test_identity_secp256k1_from_pem() {
+        let mut identity: *const c_void = std::ptr::null();
+        
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+        
+        assert_eq!(
+            identity_secp256k1_from_pem(
+                SECP256K1_ID_FILE.as_ptr() as *const c_char,
+                &mut identity,
+                error_ret
+            ),
+            ResultCode::Ok,
+        );
+
+        unsafe {
+            let boxed = Box::from_raw(identity as *mut Secp256k1Identity);
+            let secp = Secp256k1Identity::from_pem(SECP256K1_ID_FILE.as_bytes()).unwrap();
+            assert_eq!(boxed.sender(), secp.sender());
+        }
     }
 }
