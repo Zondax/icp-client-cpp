@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "principal.h"
+#include "lib/principal.h"
 
 int main(void) {
     struct Principal principal;

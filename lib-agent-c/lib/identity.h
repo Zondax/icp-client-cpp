@@ -2,6 +2,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include "bindings.h"
 
 struct Identity {
     const void **identity;

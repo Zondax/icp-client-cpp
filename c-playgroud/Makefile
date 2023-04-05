@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Werror -std=c11 -O2
-LDFLAGS = -L../ic-agent-wrapper/target/release -lic_agent_wrapper -lSystem -lm -lc
+CFLAGS = -Wall -Wextra -std=c11 -O2
+LDFLAGS = -L../ic-agent-wrapper/target/release -lic_agent_wrapper -lSystem -lm -lc -framework Security  -framework CoreFoundation
 
 SRCDIR = .
 BINDIR = .

@@ -3,7 +3,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "identity.h"
-#include "bindings.h"
 #include <string.h>
 
 
