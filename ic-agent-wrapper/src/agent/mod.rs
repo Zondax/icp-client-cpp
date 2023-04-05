@@ -1,8 +1,8 @@
 use std::{ffi::{CStr, CString}, sync::Arc};
 use anyhow::{anyhow, bail};
-use candid::{IDLArgs, TypeEnv, IDLProg, check_prog, types::{Type, Function}};
+use candid::{IDLArgs, TypeEnv, IDLProg, check_prog, types::{Type, Function}, Principal};
 use cty::{c_char, c_void, c_int};
-use ic_agent::{ic_types::Principal, identity::{AnonymousIdentity, Secp256k1Identity}, Identity, agent::{http_transport::ReqwestHttpReplicaV2Transport, status::Status}, Agent};
+use ic_agent::{identity::{AnonymousIdentity, Secp256k1Identity}, Identity, agent::{http_transport::ReqwestHttpReplicaV2Transport, status::Status}, Agent};
 use tokio::runtime;
 use crate::{identity::IdentityType, RetPtr, ResultCode, AnyErr, AnyResult};
 

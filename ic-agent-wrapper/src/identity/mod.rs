@@ -338,7 +338,8 @@ pub extern "C" fn identity_sign(
 
 #[cfg(test)]
 mod tests {
-    use ic_agent::{Identity, ic_types::Principal};
+    use candid::Principal;
+    use ic_agent::{Identity};
 
     #[allow(unused)]
     use super::*;
