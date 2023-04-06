@@ -37,6 +37,7 @@ candid = "0.8.4"
 cty = "0.2.2"
 safer-ffi = { version = "0.1.0-rc1", features = ["proc_macros"] }
 crypto_api_osrandom = "0.2.0"
+const-str = "0.5.2"
 
 [build-dependencies]
 cbindgen = "0.20.0"

@@ -211,6 +211,25 @@ mod tests{
     }
 
     #[test]
+    fn test_principal_from_text() {
+        const TEXT: &[u8; 28] = b"rrkah-fqaaa-aaaaa-aaaaq-cai\0";
+        const BYTES: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 1, 1, 1];
+        extern "C" fn principal_ret(data: *const u8, len: c_int) {
+            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
+
+            assert_eq!(slice, BYTES);
+            assert_eq!(len as usize, BYTES.len());
+        }
+
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+
+        assert_eq!(
+            principal_from_text(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
+            ResultCode::Ok
+        );
+    }
+
+    #[test]
     fn test_principal_try_from_slice() {
         const SLICE_BYTES: [u8; 3] = [0x01, 0x23, 0x45];
 
