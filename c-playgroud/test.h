@@ -162,4 +162,10 @@ ResultCode agent_query(const struct FFIAgent *agent_ptr,
                        const void **ret,
                        RetPtr_u8 error_ret);
 
+ResultCode agent_update(const struct FFIAgent *agent_ptr,
+                        const char *method,
+                        const char *method_args,
+                        const void **ret,
+                        RetPtr_u8 error_ret);
+
 void idl_args_to_text(const void *idl_args, RetPtr_u8 ret_cb);

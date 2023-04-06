@@ -6,43 +6,91 @@
 #define PRINCIPAL_ANSWER_SIZE 29
 
 uint8_t *out;
-
+uint8_t *principal;
+int principal_len;
+uint8_t *error;
+uint8_t *str;
+int str_len;
+int error_len;
 RetPtr_u8 returnPtr(const uint8_t *p, int len) {
-    printf("len:%d\n", len);
     out = malloc(len);
+    printf("len:%d",len);
     memcpy(out,p,len);
+     return 0;
+}
 
+RetPtr_u8 principalPtr(const uint8_t *p, int len) {
+    principal = malloc(len);
+    memcpy(principal,p,len);
+    principal_len = len;
+     return 0;
+}
+
+RetPtr_u8 errorPtr(const uint8_t *p, int len) {
+    error = malloc(len);
+    memcpy(error,p,len);
+    error_len=len;
     return 0;
 }
 
+RetPtr_u8 strPtr(const uint8_t *p, int len) {
+    str = malloc(len);
+    memcpy(str,p,len);
+    str_len = len;
+     return 0;
+}
+
+struct FFIAgent {
+    char* ptr;
+};
+
 int main(void) {
-    principal_anonymous(*(RetPtr_u8)returnPtr);
+    FILE *fileptr;
+    char *didContent;
+    long filelen;
 
-    printf("anonym: %d\n", out[0]);
+    fileptr = fopen("rust_hello_backend.did", "rb");
+    fseek(fileptr, 0, SEEK_END);
+    filelen = ftell(fileptr);
+    rewind(fileptr);
 
-    principal_management_canister(*(RetPtr_u8)returnPtr);
+    didContent = (char *)malloc(filelen * sizeof(char));
+    fread(didContent, filelen, 1, fileptr);
+    fclose(fileptr);
 
-    printf("manage: %d\n", out[0]);
+    const char *text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
+    principal_from_text(text, *(RetPtr_u8)principalPtr,*(RetPtr_u8)errorPtr);
 
-    uint8_t pk[32] = {
-        0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 
-        0xaa, 0x11, 0xaa, 0x11, 0xaa, 0xaa, 0x11, 0xaa, 0x11, 
-        0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 
-        0x11, 0x11, 0xaa, 0x11, 0xaa};
+    const char *path = "http://127.0.0.1:4943\0";
 
-    principal_self_authenticating(pk,32,*(RetPtr_u8)returnPtr);
+    const void *identity = (const void*)0x4;
+    const struct FFIAgent* agent_ptr = malloc(1000);
+    agent_create(path, identity, Anonym, principal, principal_len, didContent, &agent_ptr,*(RetPtr_u8)errorPtr);
 
-    for (int i = 0; i< PRINCIPAL_ANSWER_SIZE; i++) {
-        printf("0x%x, ", out[i]);
+    const void **ret=malloc(30);
+    ResultCode test;
+    test=agent_update(agent_ptr, "greet\0", "(\"Zondax\")\0", ret,*(RetPtr_u8)errorPtr);
+
+    idl_args_to_text(*ret,*(RetPtr_u8)strPtr);
+
+    printf("ResultCode %d\n",test);
+    if(test < 0) {
+        for(int i=0; i<error_len;i++) {
+            printf("%c",error[i]);
+        }
+    } 
+    printf("\n");
+
+    for(int i=0; i<str_len;i++) {
+        printf("%c",str[i]);
     }
+    printf("\n");
 
-    uint8_t hash [32] = {
-        0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41,
-        0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23, 0xb0, 0x03,
-        0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff,
-        0x61, 0xf2, 0x00, 0x15, 0xad};
-
-    request_id_new(hash,32,*(RetPtr_u8)returnPtr);
-
+    free(ret);
+    free(didContent);
+    free(principal);
+    free(out);
+    free(str);
+    free(error);
     return 0;
 }
