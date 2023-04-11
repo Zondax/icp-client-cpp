@@ -18,19 +18,19 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-struct RequestId {
+
+struct Status {
   const uint8_t *ptr;
   int len;
 };
 
-/**
- * @brief Get the Requested Id from sha256 hash
- *
- * @param hash Sha256 hash
- * @param hash_len Hash size
- * @param id Return pointer to requested id
- * @return Return 0 in case of success
- */
-int get_requested_id(const uint8_t *hash, int hash_len, struct RequestId *id);
-
-void request_id_free(void);
+int agent_create(const char *url, struct Identity *id,
+                 struct Principal *canister, const char *did_content,
+                 const struct FFIAgent **agent, struct Error *e);
+int agent_status(const struct FFIAgent *agent, struct Status *s,
+                 struct Error *e);
+int agent_update(const struct FFIAgent *agent, const char *method,
+                 const char *method_args, const void **ret, struct Error *e);
+int agent_query(const struct FFIAgent *agent, const char *method,
+                const char *method_args, const void **ret, struct Error *e);
+void free_agent(void);

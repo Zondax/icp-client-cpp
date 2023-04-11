@@ -5,7 +5,7 @@
 Contains rust code to expose ic-agent lib to C.
 Generates binding from the modules when runing:
 
-    cargo build
+    cargo build --release
 #### lib-agent-c
 Librabry emulation folder. Where we use the wrapper exposed functions
 to create C friendly fucntions to be used.

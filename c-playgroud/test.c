@@ -14,7 +14,6 @@ int str_len;
 int error_len;
 RetPtr_u8 returnPtr(const uint8_t *p, int len) {
     out = malloc(len);
-    printf("len:%d",len);
     memcpy(out,p,len);
      return 0;
 }
@@ -59,19 +58,19 @@ int main(void) {
     fclose(fileptr);
 
     const char *text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
-    principal_from_text(text, *(RetPtr_u8)principalPtr,*(RetPtr_u8)errorPtr);
+    principal_from_text_wrap(text, *(RetPtr_u8)principalPtr,*(RetPtr_u8)errorPtr);
 
     const char *path = "http://127.0.0.1:4943\0";
 
     const void *identity = (const void*)0x4;
     const struct FFIAgent* agent_ptr = malloc(1000);
-    agent_create(path, identity, Anonym, principal, principal_len, didContent, &agent_ptr,*(RetPtr_u8)errorPtr);
+    agent_create_wrap(path, identity, Anonym, principal, principal_len, didContent, &agent_ptr,*(RetPtr_u8)errorPtr);
 
     const void **ret=malloc(30);
     ResultCode test;
-    test=agent_update(agent_ptr, "greet\0", "(\"Zondax\")\0", ret,*(RetPtr_u8)errorPtr);
+    test=agent_update_wrap(agent_ptr, "greet\0", "(\"Zondax\")\0", ret,*(RetPtr_u8)errorPtr);
 
-    idl_args_to_text(*ret,*(RetPtr_u8)strPtr);
+    idl_args_to_text_wrap(*ret,*(RetPtr_u8)strPtr);
 
     printf("ResultCode %d\n",test);
     if(test < 0) {

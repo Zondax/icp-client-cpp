@@ -18,19 +18,11 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-struct RequestId {
+
+struct Text {
   const uint8_t *ptr;
   int len;
 };
 
-/**
- * @brief Get the Requested Id from sha256 hash
- *
- * @param hash Sha256 hash
- * @param hash_len Hash size
- * @param id Return pointer to requested id
- * @return Return 0 in case of success
- */
-int get_requested_id(const uint8_t *hash, int hash_len, struct RequestId *id);
-
-void request_id_free(void);
+int idl_args_to_text(const void *args, struct Text *text);
+void idl_free(void);

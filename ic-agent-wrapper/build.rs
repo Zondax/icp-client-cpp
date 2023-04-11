@@ -12,6 +12,7 @@ fn main() {
           .with_crate(&crate_dir)
           .with_config(config_c)
           .with_parse_deps(true)
+          .with_pragma_once(true)
           .with_parse_include(&["ic-agent"])
           .generate()
           .expect("Unable to generate bindings")

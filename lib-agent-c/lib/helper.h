@@ -13,25 +13,18 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::{ffi::c_int};
-use anyhow::Error as AnyErr;
-use anyhow::Result as AnyResult;
+#pragma once
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
 
-mod request_id;
-mod principal;
-mod identity;
-mod agent;
-mod candid;
+#define LIB_C_ERROR -1
+#define LIB_C_OK     0
 
-/// Ptr creation with size and len
-type RetPtr<T> = extern "C" fn(*const T, c_int);
+struct Error {
+  const uint8_t* ptr;
+  int len;
+};
 
-/// Return for FFI functions
-#[repr(i32)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
-pub enum ResultCode {
-    /// Ok
-    Ok = 0,
-    /// Error
-    Err = -1,
-}
+char *get_did_file_content(const char *didFilePath);

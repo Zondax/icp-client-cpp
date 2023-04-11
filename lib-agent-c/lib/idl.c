@@ -13,25 +13,41 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::{ffi::c_int};
-use anyhow::Error as AnyErr;
-use anyhow::Result as AnyResult;
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
-mod request_id;
-mod principal;
-mod identity;
-mod agent;
-mod candid;
+#include "bindings.h"
+#include "helper.h"
 
-/// Ptr creation with size and len
-type RetPtr<T> = extern "C" fn(*const T, c_int);
+#include "idl.h"
 
-/// Return for FFI functions
-#[repr(i32)]
-#[derive(Debug, Eq, PartialEq, Copy, Clone, Hash)]
-pub enum ResultCode {
-    /// Ok
-    Ok = 0,
-    /// Error
-    Err = -1,
+uint8_t *out;
+int out_len;
+
+static RetPtr_u8 text_cb(const uint8_t *p, int len) {
+    out = malloc(len);
+    out_len=len;
+    memcpy(out,p,len);
+
+    return LIB_C_OK;
 }
+
+int idl_args_to_text(const void *args, struct Text *text){
+    
+    idl_args_to_text_wrap(args,*(RetPtr_u8)text_cb);
+    if (out == NULL) {
+        return LIB_C_ERROR;
+    }
+    text->ptr = out;
+    text->len = out_len;
+
+    return LIB_C_OK;
+}
+
+void idl_free(void) {
+    free(out);
+}
+

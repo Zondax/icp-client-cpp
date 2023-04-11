@@ -1,3 +1,18 @@
+/*******************************************************************************
+*   (c) 2018 - 2022 Zondax AG
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+********************************************************************************/
 use std::ffi::{CString, CStr};
 use candid::Principal;
 use crate::{AnyErr, RetPtr, ResultCode};
@@ -5,7 +20,7 @@ use cty::{c_char, c_int};
 
 /// Construct a Principal of the IC management canister
 #[no_mangle]
-pub extern "C" fn principal_management_canister(principal : RetPtr<u8>) {
+pub extern "C" fn principal_management_canister_wrap(principal : RetPtr<u8>) {
     let principal_tmp = Principal::management_canister();
     let arr = principal_tmp.as_ref();
     let len = arr.len() as c_int;
@@ -15,7 +30,7 @@ pub extern "C" fn principal_management_canister(principal : RetPtr<u8>) {
 
 /// Construct a self-authenticating ID from public key
 #[no_mangle]
-pub extern "C" fn principal_self_authenticating(
+pub extern "C" fn principal_self_authenticating_wrap(
     public_key: *const u8,
     public_key_len: c_int,
     principal : RetPtr<u8>) {
@@ -29,7 +44,7 @@ pub extern "C" fn principal_self_authenticating(
 
 /// Construct an anonymous ID
 #[no_mangle]
-pub extern "C" fn principal_anonymous(principal : RetPtr<u8>){
+pub extern "C" fn principal_anonymous_wrap(principal : RetPtr<u8>){
     let principal_tmp = Principal::anonymous();
     let arr = principal_tmp.as_ref();
     let len = arr.len() as c_int;
@@ -39,7 +54,7 @@ pub extern "C" fn principal_anonymous(principal : RetPtr<u8>){
 
 /// Construct a Principal from a slice of bytes.
 #[no_mangle]
-pub extern "C" fn principal_from_slice(
+pub extern "C" fn principal_from_slice_wrap(
     bytes: *const u8,
     bytes_len: c_int,
     principal : RetPtr<u8>
@@ -55,7 +70,7 @@ pub extern "C" fn principal_from_slice(
 
 /// Construct a Principal from a slice of bytes.
 #[no_mangle]
-pub extern "C" fn principal_try_from_slice(
+pub extern "C" fn principal_try_from_slice_wrap(
     bytes: *const u8,
     bytes_len: c_int,
     principal_ret: RetPtr<u8>,
@@ -86,7 +101,7 @@ pub extern "C" fn principal_try_from_slice(
 
 /// Parse a Principal from text representation.
 #[no_mangle]
-pub extern "C" fn principal_from_text(
+pub extern "C" fn principal_from_text_wrap(
     text: *const c_char,
     principal_ret: RetPtr<u8>,
     error_ret: RetPtr<u8>,
@@ -119,7 +134,7 @@ pub extern "C" fn principal_from_text(
 
 /// Return the textual representation of Principal.
 #[no_mangle]
-pub extern "C" fn principal_to_text(
+pub extern "C" fn principal_to_text_wrap(
     bytes: *const u8,
     bytes_len: c_int,
     principal_ret: RetPtr<u8>,
@@ -168,7 +183,7 @@ mod tests{
             assert_eq!(len, 0);
         }
 
-        principal_management_canister(principal_ret);
+        principal_management_canister_wrap(principal_ret);
     }
 
         #[test]
@@ -194,7 +209,7 @@ mod tests{
             assert_eq!(len as usize, PRINCIPAL.len());
         }
 
-        principal_self_authenticating(PK.as_ptr(), PK.len() as c_int, principal_ret);
+        principal_self_authenticating_wrap(PK.as_ptr(), PK.len() as c_int, principal_ret);
     }
 
     #[test]
@@ -207,7 +222,7 @@ mod tests{
             assert_eq!(len, 1);
         }
 
-        principal_anonymous(principal_ret);
+        principal_anonymous_wrap(principal_ret);
     }
 
     #[test]
@@ -224,7 +239,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_from_text(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
+            principal_from_text_wrap(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
             ResultCode::Ok
         );
     }
@@ -243,7 +258,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_try_from_slice(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
+            principal_try_from_slice_wrap(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
             ResultCode::Ok
         );
     }
@@ -261,7 +276,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_to_text(
+            principal_to_text_wrap(
                 [0u8; 0].as_ptr(),
                 0,
                 principal_ret,

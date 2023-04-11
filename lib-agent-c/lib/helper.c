@@ -13,47 +13,35 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-#include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "bindings.h"
 #include "helper.h"
 
-#include "request_id.h"
-
-uint8_t *out;
-int out_len;
-
-static RetPtr_u8 request_id(const uint8_t *p, int len) {
-    out = malloc(len);
-    out_len=len;
-    memcpy(out,p,len);
-    return 0;
-}
-
-/**
- * @brief Get the Requested Id from sha256 hash
- *
- * @param hash Sha256 hash
- * @param hash_len Hash size
- * @param id Return pointer to requested id
- * @return Return 0 in case of success & -1 in case of failure
- */
-int get_requested_id(const uint8_t *hash, int hash_len, struct RequestId *id) {
-
-    request_id_new_wrap(hash, hash_len, *(RetPtr_u8)request_id);
-    if (out == NULL) {
-        return LIB_C_ERROR;
+char* get_did_file_content(const char *didFilePath) {
+    FILE *file = fopen(didFilePath, "rb");
+    if (file == NULL) {
+        return NULL;  // error opening file
     }
-    id->ptr = out;
-    id->len = out_len;
 
-    return LIB_C_OK;
-}
+    // Get the file size
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
 
-void request_id_free(void) {
-    free(out);
+    // Allocate memory for the file contents
+    char *buffer = (char *)malloc(file_size + 1);
+    if (buffer == NULL) {
+        fclose(file);
+        return NULL;  // error allocating memory
+    }
+
+    // Read the file contents into the buffer
+    fread(buffer, 1, file_size, file);
+    buffer[file_size] = '\0';
+
+    // Close the file and return the buffer
+    fclose(file);
+    return buffer;
 }

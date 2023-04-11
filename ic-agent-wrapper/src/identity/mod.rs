@@ -1,3 +1,18 @@
+/*******************************************************************************
+*   (c) 2018 - 2022 Zondax AG
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+********************************************************************************/
 #![allow(non_snake_case)]
 
 use std::{ffi::{c_char, CStr}};
@@ -29,7 +44,7 @@ pub extern "C" fn identity_type(id_type: IdentityType) -> IdentityType{
 
 /// The anonymous identity.
 #[no_mangle]
-pub extern "C" fn identity_anonymous(identity_ret: *mut *const c_void){
+pub extern "C" fn identity_anonymous_wrap(identity_ret: *mut *const c_void){
     let anonymous_id = Box::new(AnonymousIdentity {});
     let identity: *const c_void = Box::into_raw(anonymous_id) as *const c_void;
     unsafe {
@@ -39,7 +54,7 @@ pub extern "C" fn identity_anonymous(identity_ret: *mut *const c_void){
 
 /// Create a BasicIdentity from reading a PEM Content
 #[no_mangle]
-pub extern "C" fn identity_basic_from_pem(
+pub extern "C" fn identity_basic_from_pem_wrap(
     pem_data: *const c_char, 
     identity_ret: *mut *const c_void, 
     error_ret: RetPtr<u8>) -> ResultCode {
@@ -71,8 +86,9 @@ pub extern "C" fn identity_basic_from_pem(
 }
 
 
+/// Create a BasicIdentity from a KeyPair from the ring crate.
 #[no_mangle]
-pub extern "C" fn identity_basic_from_key_pair(
+pub extern "C" fn identity_basic_from_key_pair_wrap(
     public_key: *const u8,
     private_key_seed: *const u8,
     identity_ret: *mut *const c_void, 
@@ -103,7 +119,7 @@ pub extern "C" fn identity_basic_from_key_pair(
 
 /// Creates an identity from a PEM certificate.
 #[no_mangle]
-pub extern "C" fn identity_secp256k1_from_pem(
+pub extern "C" fn identity_secp256k1_from_pem_wrap(
     pem_data: *const c_char,
     identity_ret: *mut *const c_void, 
     error_ret: RetPtr<u8>) -> ResultCode {
@@ -136,7 +152,7 @@ pub extern "C" fn identity_secp256k1_from_pem(
 
 /// Creates an identity from a private key.
 #[no_mangle]
-pub extern "C" fn identity_secp256k1_from_private_key(
+pub extern "C" fn identity_secp256k1_from_private_key_wrap(
     private_key: *const c_char,
     pk_len: usize,
     identity_ret: *mut *const c_void){
@@ -151,8 +167,10 @@ pub extern "C" fn identity_secp256k1_from_private_key(
     }
 }
 
+/// Returns a sender, ie. the Principal ID that is used to sign a request.
+/// Only one sender can be used per request.
 #[no_mangle]
-pub extern "C" fn identity_sender(
+pub extern "C" fn identity_sender_wrap(
     id_ptr: *mut *const c_void,
     idType: IdentityType,
     principal_ret: RetPtr<u8>,
@@ -225,8 +243,10 @@ pub extern "C" fn identity_sender(
     }
 }
 
+/// Sign a blob, the concatenation of the domain separator & request ID,
+/// creating the sender signature.>
 #[no_mangle]
-pub extern "C" fn identity_sign(
+pub extern "C" fn identity_sign_wrap(
     bytes: *const u8,
     bytes_len: c_int,
     id_ptr: *mut *const c_void,
@@ -361,7 +381,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
     fn test_identity_anonymous() {
         let mut identity: *const c_void = std::ptr::null();
 
-        identity_anonymous(&mut identity);
+        identity_anonymous_wrap(&mut identity);
         assert!(!identity.is_null());
 
         unsafe {
@@ -376,7 +396,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
 
         let mut identity: *const c_void = std::ptr::null();
 
-        identity_anonymous(&mut identity);
+        identity_anonymous_wrap(&mut identity);
 
         extern "C" fn principal_ret(data: *const u8, len: c_int) {
             let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
@@ -387,7 +407,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
 
-        assert_eq!(identity_sender(&mut identity, IdentityType::Anonym, principal_ret, error_ret), ResultCode::Ok);
+        assert_eq!(identity_sender_wrap(&mut identity, IdentityType::Anonym, principal_ret, error_ret), ResultCode::Ok);
     }
 
     #[test]
@@ -397,7 +417,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
         
         assert_eq!(
-            identity_basic_from_pem(
+            identity_basic_from_pem_wrap(
                 BASIC_ID_FILE.as_ptr() as *const c_char,
                 &mut identity,
                 error_ret
@@ -419,7 +439,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
         
         assert_eq!(
-            identity_secp256k1_from_pem(
+            identity_secp256k1_from_pem_wrap(
                 SECP256K1_ID_FILE.as_ptr() as *const c_char,
                 &mut identity,
                 error_ret

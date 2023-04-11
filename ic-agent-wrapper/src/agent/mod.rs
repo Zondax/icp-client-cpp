@@ -1,3 +1,18 @@
+/*******************************************************************************
+*   (c) 2018 - 2022 Zondax AG
+*
+*  Licensed under the Apache License, Version 2.0 (the "License");
+*  you may not use this file except in compliance with the License.
+*  You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+*  Unless required by applicable law or agreed to in writing, software
+*  distributed under the License is distributed on an "AS IS" BASIS,
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+*  See the License for the specific language governing permissions and
+*  limitations under the License.
+********************************************************************************/
 use crate::{identity::IdentityType, AnyErr, AnyResult, ResultCode, RetPtr};
 use anyhow::{anyhow, bail, Context};
 use candid::{
@@ -206,7 +221,7 @@ impl FFIAgent {
 
 /// Creates a FFIAgent instance to be used on the remaining agent functions
 #[no_mangle]
-pub extern "C" fn agent_create(
+pub extern "C" fn agent_create_wrap(
     path: *const c_char,
     identity: *const c_void,
     id_type: IdentityType,
@@ -274,7 +289,7 @@ pub extern "C" fn agent_create(
 
 /// Calls and returns the information returned by the status endpoint of a replica.
 #[no_mangle]
-pub extern "C" fn agent_status(
+pub extern "C" fn agent_status_wrap(
     agent_ptr: *const FFIAgent,
     status_ret: RetPtr<u8>,
     error_ret: RetPtr<u8>,
@@ -312,8 +327,9 @@ pub extern "C" fn agent_status(
     }
 }
 
+/// Calls and returns a query call to the canister.
 #[no_mangle]
-pub extern "C" fn agent_query(
+pub extern "C" fn agent_query_wrap(
     agent_ptr: *const FFIAgent,
     method: *const c_char,
     method_args: *const c_char,
@@ -349,8 +365,9 @@ pub extern "C" fn agent_query(
     }
 }
 
+/// Calls and returns a update call to the canister.
 #[no_mangle]
-pub extern "C" fn agent_update(
+pub extern "C" fn agent_update_wrap(
     agent_ptr: *const FFIAgent,
     method: *const c_char,
     method_args: *const c_char,
@@ -413,7 +430,7 @@ mod tests {
         let mut agent: *const FFIAgent = std::ptr::null();
 
         assert_eq!(
-            agent_create(
+            agent_create_wrap(
                 IC_PATH.as_ptr() as *const c_char,
                 identity,
                 IdentityType::Anonym,
@@ -449,7 +466,7 @@ mod tests {
         let mut agent: *const FFIAgent = std::ptr::null();
 
         assert_eq!(
-            agent_create(
+            agent_create_wrap(
                 IC_PATH.as_ptr() as *const c_char,
                 identity,
                 IdentityType::Anonym,
@@ -465,7 +482,7 @@ mod tests {
         let mut idl_ptr: *const c_void = std::ptr::null();
 
         assert_eq!(
-            agent_query(
+            agent_query_wrap(
                 agent,
                 b"greet\0".as_ptr() as *const c_char,
                 b"(\"World\")\0".as_ptr() as *const c_char,
@@ -489,7 +506,7 @@ mod tests {
         let mut agent: *const FFIAgent = std::ptr::null();
 
         assert_eq!(
-            agent_create(
+            agent_create_wrap(
                 IC_PATH.as_ptr() as *const c_char,
                 identity,
                 IdentityType::Anonym,
@@ -505,7 +522,7 @@ mod tests {
         let mut idl_ptr: *const c_void = std::ptr::null();
 
         assert_eq!(
-            agent_update(
+            agent_update_wrap(
                 agent,
                 b"greet\0".as_ptr() as *const c_char,
                 b"(\"World\")\0".as_ptr() as *const c_char,
@@ -528,7 +545,7 @@ mod tests {
         let mut agent: *const FFIAgent = std::ptr::null();
 
         assert_eq!(
-            agent_create(
+            agent_create_wrap(
                 IC_PATH.as_ptr() as *const c_char,
                 identity,
                 IdentityType::Anonym,
@@ -541,7 +558,7 @@ mod tests {
             ResultCode::Ok
         );
 
-        assert_eq!(agent_status(agent, ret, error_ret), ResultCode::Ok);
+        assert_eq!(agent_status_wrap(agent, ret, error_ret), ResultCode::Ok);
 
         unsafe {
             let id = Box::from_raw(identity as *mut AnonymousIdentity);
