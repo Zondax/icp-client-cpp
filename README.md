@@ -9,7 +9,7 @@ Generates binding from the modules when runing:
 #### lib-agent-c
 Librabry emulation folder. Where we use the wrapper exposed functions
 to create C friendly fucntions to be used.
-The following comand will update the bindings.h, compile lib files and ran the test.c code
+The following comand will update the bindings.h, compile lib files and run the hello_world.c code
 
     sh test_lib.sh
 

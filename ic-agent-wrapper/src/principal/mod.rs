@@ -20,7 +20,7 @@ use cty::{c_char, c_int};
 
 /// Construct a Principal of the IC management canister
 #[no_mangle]
-pub extern "C" fn principal_management_canister_wrap(principal : RetPtr<u8>) {
+pub extern "C" fn principal_management_canister(principal : RetPtr<u8>) {
     let principal_tmp = Principal::management_canister();
     let arr = principal_tmp.as_ref();
     let len = arr.len() as c_int;
@@ -30,7 +30,7 @@ pub extern "C" fn principal_management_canister_wrap(principal : RetPtr<u8>) {
 
 /// Construct a self-authenticating ID from public key
 #[no_mangle]
-pub extern "C" fn principal_self_authenticating_wrap(
+pub extern "C" fn principal_self_authenticating(
     public_key: *const u8,
     public_key_len: c_int,
     principal : RetPtr<u8>) {
@@ -44,7 +44,7 @@ pub extern "C" fn principal_self_authenticating_wrap(
 
 /// Construct an anonymous ID
 #[no_mangle]
-pub extern "C" fn principal_anonymous_wrap(principal : RetPtr<u8>){
+pub extern "C" fn principal_anonymous(principal : RetPtr<u8>){
     let principal_tmp = Principal::anonymous();
     let arr = principal_tmp.as_ref();
     let len = arr.len() as c_int;
@@ -54,7 +54,7 @@ pub extern "C" fn principal_anonymous_wrap(principal : RetPtr<u8>){
 
 /// Construct a Principal from a slice of bytes.
 #[no_mangle]
-pub extern "C" fn principal_from_slice_wrap(
+pub extern "C" fn principal_from_slice(
     bytes: *const u8,
     bytes_len: c_int,
     principal : RetPtr<u8>
@@ -70,7 +70,7 @@ pub extern "C" fn principal_from_slice_wrap(
 
 /// Construct a Principal from a slice of bytes.
 #[no_mangle]
-pub extern "C" fn principal_try_from_slice_wrap(
+pub extern "C" fn principal_try_from_slice(
     bytes: *const u8,
     bytes_len: c_int,
     principal_ret: RetPtr<u8>,
@@ -101,7 +101,7 @@ pub extern "C" fn principal_try_from_slice_wrap(
 
 /// Parse a Principal from text representation.
 #[no_mangle]
-pub extern "C" fn principal_from_text_wrap(
+pub extern "C" fn principal_from_text(
     text: *const c_char,
     principal_ret: RetPtr<u8>,
     error_ret: RetPtr<u8>,
@@ -134,7 +134,7 @@ pub extern "C" fn principal_from_text_wrap(
 
 /// Return the textual representation of Principal.
 #[no_mangle]
-pub extern "C" fn principal_to_text_wrap(
+pub extern "C" fn principal_to_text(
     bytes: *const u8,
     bytes_len: c_int,
     principal_ret: RetPtr<u8>,
@@ -183,7 +183,7 @@ mod tests{
             assert_eq!(len, 0);
         }
 
-        principal_management_canister_wrap(principal_ret);
+        principal_management_canister(principal_ret);
     }
 
         #[test]
@@ -209,7 +209,7 @@ mod tests{
             assert_eq!(len as usize, PRINCIPAL.len());
         }
 
-        principal_self_authenticating_wrap(PK.as_ptr(), PK.len() as c_int, principal_ret);
+        principal_self_authenticating(PK.as_ptr(), PK.len() as c_int, principal_ret);
     }
 
     #[test]
@@ -222,7 +222,7 @@ mod tests{
             assert_eq!(len, 1);
         }
 
-        principal_anonymous_wrap(principal_ret);
+        principal_anonymous(principal_ret);
     }
 
     #[test]
@@ -239,7 +239,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_from_text_wrap(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
+            principal_from_text(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
             ResultCode::Ok
         );
     }
@@ -258,7 +258,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_try_from_slice_wrap(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
+            principal_try_from_slice(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
             ResultCode::Ok
         );
     }
@@ -276,7 +276,7 @@ mod tests{
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
         assert_eq!(
-            principal_to_text_wrap(
+            principal_to_text(
                 [0u8; 0].as_ptr(),
                 0,
                 principal_ret,

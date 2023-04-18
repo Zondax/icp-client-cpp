@@ -18,12 +18,45 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
-#define LIB_C_ERROR -1
-#define LIB_C_OK     0
+#include "bindings.h"
 
 struct Error {
   const uint8_t* ptr;
+  int len;
+};
+
+struct RequestId {
+  const uint8_t *ptr;
+  int len;
+};
+
+struct Principal {
+  const uint8_t *ptr;
+  int len;
+};
+
+struct Identity {
+  const void **ptr;
+  IdentityType type;
+};
+
+struct Signature {
+  const uint8_t *ptr;
+  int len;
+};
+
+struct PublicKey {
+  const uint8_t *ptr;
+  int len;
+};
+
+struct Text {
+  const uint8_t *ptr;
+  int len;
+};
+
+struct Status {
+  const uint8_t *ptr;
   int len;
 };
 

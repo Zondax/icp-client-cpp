@@ -10,7 +10,7 @@ SRC += $(wildcard $(INCDIR)/*.c)
 OBJ = $(SRC:.c=.o)
 LIBS = $(wildcard $(LIBDIR)/*.a)
 
-TARGET = $(BINDIR)/test
+TARGET = $(BINDIR)/hello_world
 
 $(TARGET): $(OBJ) $(LIBS)
 	$(CC) $(LDFLAGS) $(OBJ) -o $@

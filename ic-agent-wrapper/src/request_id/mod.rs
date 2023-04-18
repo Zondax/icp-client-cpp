@@ -19,7 +19,7 @@ use crate::RetPtr;
 
 /// Creates a new RequestId from a SHA-256 hash.
 #[no_mangle]
-pub extern "C" fn request_id_new_wrap(
+pub extern "C" fn request_id_new(
     bytes: *const u8,
     bytes_len: c_int,
     request_id: RetPtr<u8>) {
@@ -62,6 +62,6 @@ mod tests{
             assert_eq!(len as usize, HASH.len());
         }
 
-        request_id_new_wrap(HASH.as_ptr(), HASH.len() as c_int, request_ret);
+        request_id_new(HASH.as_ptr(), HASH.len() as c_int, request_ret);
     }
 }

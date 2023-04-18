@@ -19,18 +19,56 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-struct Status {
-  const uint8_t *ptr;
-  int len;
-};
+/**
+ * @brief Create agent instance 
+ * 
+ * @param url  url points to the ic net
+ * @param id agent assignied indetity
+ * @param canister canister identity
+ * @param did_content .did file content
+ * @param agent returned agent struture
+ * @param error_cb returned error
+ * @return ResultCode 0:ok -1:error
+ */
+ResultCode agent_create(const char *url, struct Identity *id,
+                        struct Principal *canister, const char *did_content,
+                        const struct FFIAgent **agent, RetPtr_u8 error_ret);
 
-int agent_create(const char *url, struct Identity *id,
-                 struct Principal *canister, const char *did_content,
-                 const struct FFIAgent **agent, struct Error *e);
-int agent_status(const struct FFIAgent *agent, struct Status *s,
-                 struct Error *e);
-int agent_update(const struct FFIAgent *agent, const char *method,
-                 const char *method_args, const void **ret, struct Error *e);
-int agent_query(const struct FFIAgent *agent, const char *method,
-                const char *method_args, const void **ret, struct Error *e);
-void free_agent(void);
+/**
+ * @brief Calls and returns the information returned by the status endpoint of a replica
+ * 
+ * @param agent agent to get status from
+ * @param status_cb returned agent status
+ * @param error_cb returned error
+ * @return ResultCode 0:ok -1:error 
+ */
+ResultCode agent_status(const struct FFIAgent *agent, RetPtr_u8 status_cb,
+                        RetPtr_u8 error_cb);
+
+/**
+ * @brief Update call
+ * 
+ * @param agent agent to make the call
+ * @param method canister method (verified with .did content)
+ * @param method_args arguments required by method
+ * @param ret method response
+ * @param error_cb returned error
+ * @return ResultCode 0:ok -1:error  
+ */
+ResultCode agent_update(const struct FFIAgent *agent, const char *method,
+                        const char *method_args, const void **ret,
+                        RetPtr_u8 error_cb);
+
+/**
+ * @brief Query call
+ * 
+ * @param agent agent to make the call
+ * @param method canister method (verified with .did content)
+ * @param method_args arguments required by method
+ * @param ret method response
+ * @param error_cb returned error
+ * @return ResultCode 0:ok -1:error  
+ */
+ResultCode agent_query(const struct FFIAgent *agent, const char *method,
+                       const char *method_args, const void **ret,
+                       RetPtr_u8 error_cb);
