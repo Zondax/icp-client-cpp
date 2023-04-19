@@ -3,13 +3,14 @@
 ## Project
 #### ic-agent-wrapper
 Contains rust code to expose ic-agent lib to C.
-Generates binding from the modules when runing:
+Generates binding from the modules when running:
 
     cargo build --release
 #### lib-agent-c
-Librabry emulation folder. Where we use the wrapper exposed functions
-to create C friendly fucntions to be used.
-The following comand will update the bindings.h, compile lib files and run the hello_world.c code
+
+Library emulation folder. Where we use the wrapper exposed functions
+to create C friendly functions to be used.
+The following command will update the bindings.h, compile lib files and run the hello_world.c code
 
     sh test_lib.sh
 
@@ -47,7 +48,7 @@ What an agent does:
 
 Our objective is to:
 - expose this functionality to C/C++ users
-- Ensure that this works in Linux, MacOS and Windows (use CI)
+- Ensure that this works in Linux, macOS and Windows (use CI)
 
 The Rust code exposes the following functionality:
 
@@ -57,9 +58,9 @@ Ideally, we should be able to:
 - Follow this to expose things https://docs.rust-embedded.org/book/interoperability/rust-with-c.html
 - Then use cbindgen to generate headers https://github.com/eqrion/cbindgen
 - Lastly, use this result to write a few friendlier wrappers + CI tests + examples.
-This will allow other people to understand how to us this.
+This will allow other people to understand how to use this.
 
-Candid can be a challenge, but as discuss with ICP team, we can first expose a simpler minimalistic interface.
+Candid can be a challenge, but as discussed with ICP team, we can first expose a simpler minimalistic interface.
 
 :warning: ICP has indicated that their preferred outcome is that we provide a C wrapper (not C++).
 

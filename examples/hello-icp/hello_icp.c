@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2018 - 2022 Zondax AG
+*   (c) 2018 - 2023 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -16,13 +16,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "lib/bindings.h"
-#include "lib/helper.h"
-#include "lib/agent.h"
+#include "bindings.h"
+#include "helper.h"
+#include "agent.h"
 
-#define ANONYMOUD_ID_LEN 1
+#define ANONYMOUS_ID_LEN 1
 
-// Strutures to save returns from function pointer and use throughout the code
+// Structures to save returns from function pointer and use throughout the code
 struct Error error;
 struct Principal principal;
 struct Identity id;
@@ -49,13 +49,15 @@ static void text_cb(const uint8_t *p, int len) {
 
 int main(void) {
 
+    printf("Hello ICP! \n");
+
     // Canister info from hello world deploy example
     const char *id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
     const char *did_file = "rust_hello_backend.did";
     const char *url = "http://127.0.0.1:4943";
     const char *method = "greet";
     const char *method_args = "(\"World\")";
-    
+
     // Get did file content
     char *did_content = get_did_file_content(did_file);
 
@@ -63,7 +65,7 @@ int main(void) {
     principal_from_text(id_text, principal_cb, error_cb);
 
     // Compute anonymous id
-    id.ptr = malloc(ANONYMOUD_ID_LEN);
+    id.ptr = malloc(ANONYMOUS_ID_LEN);
     identity_anonymous(id.ptr);
     id.type = Anonym;
 
@@ -73,7 +75,7 @@ int main(void) {
     if(result < 0) {
         printf("%s\n",error.ptr);
         return Err;
-    } 
+    }
 
     // Send Update call
     const void **update_ret=malloc(30);
@@ -81,7 +83,7 @@ int main(void) {
     if(result < 0) {
         printf("%s\n",error.ptr);
         return Err;
-    } 
+    }
 
     // Translante idl result
     idl_args_to_text(*update_ret, text_cb);
@@ -90,10 +92,10 @@ int main(void) {
     if(result < 0) {
         printf("%s\n",error.ptr);
         return Err;
-    } 
+    }
     printf("%s\n",text.ptr);
     
-    //Free Memory
+    // Free Memory
     free(did_content);
     free((void *)error.ptr);
     free((void *)principal.ptr);

@@ -55,10 +55,10 @@ pub extern "C" fn identity_anonymous(identity_ret: *mut *const c_void){
 /// Create a BasicIdentity from reading a PEM Content
 #[no_mangle]
 pub extern "C" fn identity_basic_from_pem(
-    pem_data: *const c_char, 
-    identity_ret: *mut *const c_void, 
+    pem_data: *const c_char,
+    identity_ret: *mut *const c_void,
     error_ret: RetPtr<u8>) -> ResultCode {
-    
+
     let pem_cstr = unsafe {
         assert!(!pem_data.is_null());
         CStr::from_ptr(pem_data)
@@ -91,7 +91,7 @@ pub extern "C" fn identity_basic_from_pem(
 pub extern "C" fn identity_basic_from_key_pair(
     public_key: *const u8,
     private_key_seed: *const u8,
-    identity_ret: *mut *const c_void, 
+    identity_ret: *mut *const c_void,
     error_ret: RetPtr<u8>) -> ResultCode {
 
     let public_key_slice =  unsafe {std::slice::from_raw_parts(public_key as *const u8, 32)};
@@ -121,9 +121,9 @@ pub extern "C" fn identity_basic_from_key_pair(
 #[no_mangle]
 pub extern "C" fn identity_secp256k1_from_pem(
     pem_data: *const c_char,
-    identity_ret: *mut *const c_void, 
+    identity_ret: *mut *const c_void,
     error_ret: RetPtr<u8>) -> ResultCode {
-    
+
     let pem_cstr = unsafe {
         assert!(!pem_data.is_null());
         CStr::from_ptr(pem_data)
@@ -156,7 +156,7 @@ pub extern "C" fn identity_secp256k1_from_private_key(
     private_key: *const c_char,
     pk_len: usize,
     identity_ret: *mut *const c_void){
-    
+
     let pk = unsafe { std::slice::from_raw_parts(private_key as *const u8, pk_len) };
     let pk = SecretKey::from_be_bytes(pk).unwrap();
 
@@ -349,7 +349,7 @@ pub extern "C" fn identity_sign(
                         error_ret(arr.as_ptr(), len);
                         ResultCode::Err
                     }
-                } 
+                }
             }
         }
     }
@@ -413,9 +413,9 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
     #[test]
     fn test_identity_basic_from_pem() {
         let mut identity: *const c_void = std::ptr::null();
-        
+
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-        
+
         assert_eq!(
             identity_basic_from_pem(
                 BASIC_ID_FILE.as_ptr() as *const c_char,
@@ -435,9 +435,9 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
         #[test]
     fn test_identity_secp256k1_from_pem() {
         let mut identity: *const c_void = std::ptr::null();
-        
+
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-        
+
         assert_eq!(
             identity_secp256k1_from_pem(
                 SECP256K1_ID_FILE.as_ptr() as *const c_char,

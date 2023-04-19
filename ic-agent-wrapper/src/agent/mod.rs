@@ -43,9 +43,9 @@ pub struct FFIAgent {
     did_content: String,
 }
 
-// taking in consideration a similar struture as agent unity has defined with icx info
+// taking in consideration a similar structure as agent unity has defined with icx info
 impl FFIAgent {
-    // Parse a cadndid file
+    // Parse a candid file
     fn inner_parse_candid_file(&self) -> AnyResult<(TypeEnv, Option<Type>)> {
         let ast = self.did_content.parse::<IDLProg>().map_err(AnyErr::from)?;
 

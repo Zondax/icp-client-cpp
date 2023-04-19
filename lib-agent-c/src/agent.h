@@ -1,5 +1,5 @@
 /*******************************************************************************
- *   (c) 2018 - 2022 Zondax AG
+ *   (c) 2018 - 2023 Zondax AG
  *
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 #include <stdlib.h>
 
 /**
- * @brief Create agent instance 
- * 
+ * @brief Create agent instance
+ *
  * @param url  url points to the ic net
  * @param id agent assignied indetity
  * @param canister canister identity
@@ -36,24 +36,24 @@ ResultCode agent_create(const char *url, struct Identity *id,
 
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
- * 
+ *
  * @param agent agent to get status from
  * @param status_cb returned agent status
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error 
+ * @return ResultCode 0:ok -1:error
  */
 ResultCode agent_status(const struct FFIAgent *agent, RetPtr_u8 status_cb,
                         RetPtr_u8 error_cb);
 
 /**
  * @brief Update call
- * 
+ *
  * @param agent agent to make the call
  * @param method canister method (verified with .did content)
  * @param method_args arguments required by method
  * @param ret method response
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error  
+ * @return ResultCode 0:ok -1:error
  */
 ResultCode agent_update(const struct FFIAgent *agent, const char *method,
                         const char *method_args, const void **ret,
@@ -61,13 +61,13 @@ ResultCode agent_update(const struct FFIAgent *agent, const char *method,
 
 /**
  * @brief Query call
- * 
+ *
  * @param agent agent to make the call
  * @param method canister method (verified with .did content)
  * @param method_args arguments required by method
  * @param ret method response
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error  
+ * @return ResultCode 0:ok -1:error
  */
 ResultCode agent_query(const struct FFIAgent *agent, const char *method,
                        const char *method_args, const void **ret,

@@ -1,5 +1,5 @@
 /*******************************************************************************
-*   (c) 2018 - 2022 Zondax AG
+*   (c) 2018 - 2023 Zondax AG
 *
 *  Licensed under the Apache License, Version 2.0 (the "License");
 *  you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ pub extern "C" fn principal_try_from_slice(
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
 
     let principal_tmp = Principal::try_from_slice(slice);
-    
+
     match principal_tmp {
         Ok(principal) => {
             let arr = principal.as_ref();
@@ -178,7 +178,7 @@ mod tests{
         extern "C" fn principal_ret(data: *const u8, len: c_int) {
             let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
 
-            // principal management 
+            // principal management
             assert_eq!(slice, &[0u8; 0]);
             assert_eq!(len, 0);
         }
@@ -189,9 +189,9 @@ mod tests{
         #[test]
     fn test_principal_self_authenticating() {
         const PK: [u8; 32] = [
-            0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 
-            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0xaa, 0x11, 0xaa, 0x11, 
-            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 
+            0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11,
+            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0xaa, 0x11, 0xaa, 0x11,
+            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa,
             0x11, 0x11, 0xaa, 0x11, 0xaa,
         ];
         const PRINCIPAL: [u8; 29] = [
@@ -204,7 +204,7 @@ mod tests{
         extern "C" fn principal_ret(data: *const u8, len: c_int) {
             let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
 
-            // principal management 
+            // principal management
             assert_eq!(slice, &PRINCIPAL);
             assert_eq!(len as usize, PRINCIPAL.len());
         }
