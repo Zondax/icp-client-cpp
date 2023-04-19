@@ -1,28 +1,30 @@
-# poc-icp-client
+# IC-C
 
-## Project
+## Project Build
+
+Configure Project and generate makefile.
+
+    cmake .
+
+Compile and link project
+
+    cmake --build .
+
+Run hello_world example (deploy canister first):
+
+    ./hello_icp
+
 #### ic-agent-wrapper
-Contains rust code to expose ic-agent lib to C.
-Generates binding from the modules when running:
 
-    cargo build --release
+Contains rust code to expose ic-agent lib to C.
+
 #### lib-agent-c
 
-Library emulation folder. Where we use the wrapper exposed functions
-to create C friendly functions to be used.
-The following command will update the bindings.h, compile lib files and run the hello_world.c code
-
-    sh test_lib.sh
-
-
-#### rust-agent-hw
-Standalone rust actor/agent app to interact with local canister.
-
-    cargo build
-    cargo run
+Library folder where we use the wrapper exposed functions
+to create C friendly functions to be used. It is compiled as a static library.
 
 #### Deploy Hello world canister
-To create a template project with a hello world canister example run:
+To create a template project with a hello world canister example run in a new folder:
 
     dfx new --type=rust rust_hello
 

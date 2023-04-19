@@ -53,7 +53,7 @@ int main(void) {
 
     // Canister info from hello world deploy example
     const char *id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
-    const char *did_file = "rust_hello_backend.did";
+    const char *did_file = "./examples/hello-icp/rust_hello_backend.did";
     const char *url = "http://127.0.0.1:4943";
     const char *method = "greet";
     const char *method_args = "(\"World\")";
