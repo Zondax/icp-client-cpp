@@ -1,3 +1,2 @@
 .idea
-/lib-agent-c/lib/*.o
-/lib-agent-c/*.o
+cmake-build-debug
