@@ -11,21 +11,20 @@ if(APPLE)
     set(EXTRA_LIBS ${SECURITY_LIB} ${COREFOUNDATION_LIB})
 endif()
 
+# Set Rust library path
+set(IC_AGENT_WRAPPER_LIB "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper/target/release/libic_agent_wrapper.a")
+
 # Compile Rust library in ic-agent-wrapper using cargo build
-add_custom_target(
-        ic_agent_wrapper_cargo
+add_custom_command(
+        OUTPUT ${IC_AGENT_WRAPPER_LIB}
         COMMAND cargo build --release
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper"
         COMMENT "Compiling Rust library in ic-agent-wrapper"
-        BYPRODUCTS "${IC_AGENT_WRAPPER_LIB}"
 )
 
-# Find Rust library
-find_library(
-        IC_AGENT_WRAPPER_LIB
-        NAMES ic_agent_wrapper
-        HINTS "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper/target/release"
-)
+add_custom_target(ic_agent_wrapper_build ALL
+        DEPENDS ${IC_AGENT_WRAPPER_LIB}
+        )
 
 # Create an imported target for the Rust library
 add_library(ic_agent_wrapper STATIC IMPORTED GLOBAL)
@@ -33,8 +32,8 @@ set_target_properties(ic_agent_wrapper PROPERTIES
         IMPORTED_LOCATION "${IC_AGENT_WRAPPER_LIB}"
         )
 
-# Make the imported target depend on cargo build
-add_dependencies(ic_agent_wrapper ic_agent_wrapper_cargo)
+# Make the imported target depend on the Rust library build
+add_dependencies(ic_agent_wrapper ic_agent_wrapper_build)
 
 # Compile every C file in lib-agent-c/src into a static library
 file(GLOB LIB_AGENT_C_SRC "lib-agent-c/src/*.c")
