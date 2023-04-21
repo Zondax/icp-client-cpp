@@ -11,6 +11,10 @@ if(APPLE)
     set(EXTRA_LIBS ${SECURITY_LIB} ${COREFOUNDATION_LIB})
 endif()
 
+if(UNIX AND NOT APPLE)
+    set(EXTRA_LIBS m)
+endif()
+
 # Set Rust library path
 set(IC_AGENT_WRAPPER_LIB "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper/target/release/libic_agent_wrapper.a")
 
