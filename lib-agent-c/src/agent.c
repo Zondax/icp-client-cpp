@@ -23,24 +23,21 @@
 #include "helper.h"
 
 #include "agent.h"
-
 /**
- * @brief Create agent instance
+ * @brief Create and Returns agent instance 
  *
  * @param url  url points to the ic net
  * @param id agent assignied indetity
  * @param canister canister identity
  * @param did_content .did file content
- * @param agent returned agent to make calls to a Replica endpoint.
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error
+ * @return FFIAgent pointer 
  */
-ResultCode agent_create(const char *url, Identity *id, Principal *canister,
-                const char *did_content, const struct FFIAgent **agent,
-                RetPtr_u8 error_cb) {
+FFIAgent *agent_create(const char *url, Identity *id, CPrincipal *canister,
+                const char *did_content, RetPtr_u8 error_cb) {
 
     return agent_create_wrap(url, id->ptr, id->type, canister->ptr,
-                                          canister->len, did_content, agent,
+                                          canister->len, did_content,
                                           error_cb);
 }
 
@@ -48,14 +45,11 @@ ResultCode agent_create(const char *url, Identity *id, Principal *canister,
  * @brief Calls and returns the information returned by the status endpoint of a replica
  *
  * @param agent agent to get status from
- * @param status_cb returned agent status
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error
+ * @return agent call result
  */
-ResultCode agent_status(const struct FFIAgent *agent, RetPtr_u8 status_cb,
-                RetPtr_u8 error_cb) {
-
-    return agent_status_wrap(agent, status_cb, error_cb);
+CText* agent_status(const struct FFIAgent *agent, RetPtr_u8 error_cb) {
+    return agent_status_wrap(agent, error_cb);
 }
 
 /**
@@ -64,14 +58,14 @@ ResultCode agent_status(const struct FFIAgent *agent, RetPtr_u8 status_cb,
  * @param agent agent to make the call
  * @param method canister method (verified with .did content)
  * @param method_args arguments required by method
- * @param ret method response
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error
+ * @return agent call result
  */
-ResultCode agent_update(const struct FFIAgent *agent, const char *method,
-                const char *method_args, const void **ret, RetPtr_u8 error_cb) {
+IDLArgs *agent_update(const struct FFIAgent *agent, const char *method,
+                IDLArgs *method_args, RetPtr_u8 error_cb) {
 
-    return agent_update_wrap(agent, method, method_args, ret, error_cb);
+    CText *arg = idl_args_to_text(method_args);
+    return agent_update_wrap(agent, method, ctext_str(arg), error_cb);
 }
 
 /**
@@ -80,13 +74,14 @@ ResultCode agent_update(const struct FFIAgent *agent, const char *method,
  * @param agent agent to make the call
  * @param method canister method (verified with .did content)
  * @param method_args arguments required by method
- * @param ret method response
  * @param error_cb returned error
- * @return ResultCode 0:ok -1:error
+ * @return agent call result
  */
-ResultCode agent_query(const struct FFIAgent *agent, const char *method,
-               const char *method_args, const void **ret, RetPtr_u8 error_cb) {
+IDLArgs *agent_query(const struct FFIAgent *agent, const char *method,
+                IDLArgs *method_args, RetPtr_u8 error_cb) {
 
-    return agent_query_wrap(agent, method, method_args, ret, error_cb);
-
+    CText *arg = idl_args_to_text(method_args);
+    return agent_query_wrap(agent, method, ctext_str(arg), error_cb);
 }
+
+

@@ -15,31 +15,30 @@
 ********************************************************************************/
 use cty::c_int;
 use ic_agent::request_id::RequestId;
-use crate::RetPtr;
+use crate::CText;
 
-/// Creates a new RequestId from a SHA-256 hash.
+/// @brief Creates a new RequestId from a SHA-256 hash.
+///
+/// @param bytes Pointer to hash content
+/// @param bytes_len Length of hash
+/// @return Void pointer to CText structure
 #[no_mangle]
 pub extern "C" fn request_id_new(
     bytes: *const u8,
-    bytes_len: c_int,
-    request_id: RetPtr<u8>) {
+    bytes_len: c_int) -> Option<Box<CText>> {
 
     let slice = unsafe {
         std::slice::from_raw_parts(bytes, bytes_len as usize)
     };
-    let array = <&[u8; 32]>::try_from(slice).unwrap();
+    let array = <&[u8; 32]>::try_from(slice).ok()?;
     let request_tmp = RequestId::new(array);
 
-    let arr = request_tmp.as_slice();
-    let len = arr.len() as c_int;
-    request_id(arr.as_ptr(), len);
+    let mut data = Vec::with_capacity(request_tmp.as_slice().len());
+    data.extend_from_slice(request_tmp.as_slice());
+
+    let c_text = Box::new(CText { data });
+    Some(c_text)
 }
-
-// Does this make sense in C ?  its just the pointer to the struture we already have
-// #[no_mangle]
-// pub extern "C" fn request_id_as_slice(ptr: *mut RequestId) ->  *const u8 {
-
-// TODO : to_request_id
 
 mod tests{
     #[allow(unused)]
@@ -54,14 +53,6 @@ mod tests{
             0x11, 0x11, 0xaa, 0x11, 0xaa,
         ];
 
-        extern "C" fn request_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
-
-            // principal management
-            assert_eq!(slice, &HASH);
-            assert_eq!(len as usize, HASH.len());
-        }
-
-        request_id_new(HASH.as_ptr(), HASH.len() as c_int, request_ret);
+        let _id = request_id_new(HASH.as_ptr(), HASH.len() as c_int);
     }
 }

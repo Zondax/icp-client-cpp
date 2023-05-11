@@ -14,6 +14,8 @@ fn main() {
           .with_parse_deps(true)
           .with_pragma_once(true)
           .with_parse_include(&["ic-agent"])
+          .with_after_include("#ifdef __cplusplus\nextern \"C\"{\n#endif\n\ntypedef struct IDLValue IDLValue;\ntypedef struct IDLArgs IDLArgs;")
+          .with_trailer("#ifdef __cplusplus\n}\n#endif")
           .generate()
           .expect("Unable to generate bindings")
           .write_to_file("bindings.h");

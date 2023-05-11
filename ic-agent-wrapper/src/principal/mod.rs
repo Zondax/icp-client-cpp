@@ -13,100 +13,134 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use std::ffi::{CString, CStr};
+use crate::RetPtr;
 use candid::Principal;
-use crate::{AnyErr, RetPtr, ResultCode};
-use cty::{c_char, c_int};
+use std::ffi::{c_char, c_int, CStr, CString};
 
-/// Construct a Principal of the IC management canister
-#[no_mangle]
-pub extern "C" fn principal_management_canister(principal : RetPtr<u8>) {
-    let principal_tmp = Principal::management_canister();
-    let arr = principal_tmp.as_ref();
-    let len = arr.len() as c_int;
-
-    principal(arr.as_ptr(), len);
+#[repr(C)]
+pub struct CPrincipal {
+    pub ptr: *mut u8,
+    pub len: usize,
 }
 
-/// Construct a self-authenticating ID from public key
+/// @brief Construct a Principal of the IC management canister
+///
+/// @return Pointer to CPrincipal structure
+#[no_mangle]
+pub extern "C" fn principal_management_canister() -> Option<Box<CPrincipal>> {
+    let principal = Principal::management_canister();
+    let arr = principal.as_ref();
+    let len = arr.len();
+    let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+    let c_principal = Box::new(CPrincipal { ptr, len });
+    Some(c_principal)
+}
+
+/// @brief Construct a self-authenticating ID from public key
+///
+/// @param public_key Pointer to array that holds public key
+/// @param public_key_len Length of public_key
+/// @return Pointer to CPrincipal structure
 #[no_mangle]
 pub extern "C" fn principal_self_authenticating(
     public_key: *const u8,
     public_key_len: c_int,
-    principal : RetPtr<u8>) {
+) -> Option<Box<CPrincipal>> {
     let public_key = unsafe { std::slice::from_raw_parts(public_key, public_key_len as usize) };
-    let principal_tmp = Principal::self_authenticating(public_key);
-    let arr = principal_tmp.as_ref();
-    let len = arr.len() as c_int;
+    let principal = Principal::self_authenticating(public_key);
 
-    principal(arr.as_ptr(), len);
+    let arr = principal.as_ref();
+    let len = arr.len();
+    let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+    let c_principal = Box::new(CPrincipal { ptr, len });
+    Some(c_principal)
 }
 
-/// Construct an anonymous ID
+/// @brief Construct an anonymous ID
+///
+/// @return Pointer to CPrincipal structure
 #[no_mangle]
-pub extern "C" fn principal_anonymous(principal : RetPtr<u8>){
-    let principal_tmp = Principal::anonymous();
-    let arr = principal_tmp.as_ref();
-    let len = arr.len() as c_int;
-
-    principal(arr.as_ptr(), len);
+pub extern "C" fn principal_anonymous() -> Option<Box<CPrincipal>> {
+    // Create an anonymous principal
+    let principal = Principal::anonymous();
+    let arr = principal.as_ref();
+    let len = arr.len();
+    let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+    let c_principal = Box::new(CPrincipal { ptr, len });
+    Some(c_principal)
 }
 
-/// Construct a Principal from a slice of bytes.
+/// @brief Construct a Principal from a array of bytes.
+///
+/// @param bytes Pointer to array of bytes
+/// @param bytes_len Length of array of bytes
+/// @return Pointer to CPrincipal structure
 #[no_mangle]
 pub extern "C" fn principal_from_slice(
     bytes: *const u8,
     bytes_len: c_int,
-    principal : RetPtr<u8>
-) {
+) -> Option<Box<CPrincipal>> {
     //Compute Slice of bytes
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
-    let principal_tmp = Principal::from_slice(slice);
-    let arr = principal_tmp.as_ref();
-    let len = arr.len() as c_int;
-
-    principal(arr.as_ptr(), len);
+    let principal = Principal::from_slice(slice);
+    let arr = principal.as_ref();
+    let len = arr.len();
+    let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+    let c_principal = Box::new(CPrincipal { ptr, len });
+    Some(c_principal)
 }
 
-/// Construct a Principal from a slice of bytes.
+/// @brief Try to Construct a Principal from a array of bytes.
+///
+/// @param bytes Pointer to array of bytes
+/// @param bytes_len Length of array of bytes
+/// @param error_ret CallBack to get error
+/// @return Pointer to CPrincipal structure
+/// If the function returns a NULL CPrincipal the user should check
+/// The error callback, to attain the error
 #[no_mangle]
 pub extern "C" fn principal_try_from_slice(
     bytes: *const u8,
     bytes_len: c_int,
-    principal_ret: RetPtr<u8>,
-    error_ret: RetPtr<u8>
-) -> ResultCode {
+    error_ret: RetPtr<u8>,
+) -> Option<Box<CPrincipal>> {
     //Compute Slice of bytes
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
-
     let principal_tmp = Principal::try_from_slice(slice);
 
     match principal_tmp {
         Ok(principal) => {
             let arr = principal.as_ref();
-            let len = arr.len() as c_int;
-            principal_ret(arr.as_ptr(), len);
-            ResultCode::Ok
+            let len = arr.len();
+            let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+            let c_principal = Box::new(CPrincipal { ptr, len });
+            Some(c_principal)
         }
 
         Err(e) => {
-            let err_str = e.to_string() + "\0";
-            let arr = err_str.as_bytes();
-            let len = arr.len() as c_int;
-            error_ret(arr.as_ptr(), len);
-            ResultCode::Err
+            let err_str = e.to_string();
+            let c_string = CString::new(err_str.clone()).unwrap_or_else(|_| {
+                let fallback_error = "Failed to convert error message to CString";
+                CString::new(fallback_error).expect("Fallback error message is invalid")
+            });
+            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            None
         }
     }
 }
 
-/// Parse a Principal from text representation.
+/// @brief Construct a Principal from text representation.
+///
+/// @param text Pointer to text representation
+/// @param error_ret CallBack to get error
+/// @return Pointer to CPrincipal structure
+/// If the function returns a NULL CPrincipal the user should check
+/// The error callback, to attain the error
 #[no_mangle]
 pub extern "C" fn principal_from_text(
     text: *const c_char,
-    principal_ret: RetPtr<u8>,
     error_ret: RetPtr<u8>,
-) -> ResultCode {
-
+) -> Option<Box<CPrincipal>> {
     let text_cstr = unsafe {
         assert!(!text.is_null());
         CStr::from_ptr(text)
@@ -117,172 +151,162 @@ pub extern "C" fn principal_from_text(
     match principal_tmp {
         Ok(principal) => {
             let arr = principal.as_ref();
-            let len = arr.len() as c_int;
-            principal_ret(arr.as_ptr(), len);
-            ResultCode::Ok
+            let len = arr.len();
+            let ptr = Box::into_raw(arr.to_owned().into_boxed_slice()) as *mut u8;
+            let c_principal = Box::new(CPrincipal { ptr, len });
+            Some(c_principal)
         }
 
         Err(e) => {
-            let err_str = e.to_string() + "\0";
-            let arr = err_str.as_bytes();
-            let len = arr.len() as c_int;
-            error_ret(arr.as_ptr(), len);
-            ResultCode::Err
+            let err_str = e.to_string();
+            let c_string = CString::new(err_str.clone()).unwrap_or_else(|_| {
+                let fallback_error = "Failed to convert error message to CString";
+                CString::new(fallback_error).expect("Fallback error message is invalid")
+            });
+            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            None
         }
     }
 }
 
-/// Return the textual representation of Principal.
+/// @brief Return the textual representation of Principal.
+///
+/// @param bytes Principal in bytes
+/// @param bytes_len Length of array of bytes
+/// @param error_ret CallBack to get error
+/// @return Pointer to CPrincipal structure will hold the text
+/// If the function returns a NULL CPrincipal the user should check
+/// The error callback, to attain the error
 #[no_mangle]
 pub extern "C" fn principal_to_text(
     bytes: *const u8,
     bytes_len: c_int,
-    principal_ret: RetPtr<u8>,
-    error_ret: RetPtr<u8>
-) -> ResultCode {
-
-    // In C Principal will be just a chunk of memory so compute principal struture here in rust
+    error_ret: RetPtr<u8>,
+) -> Option<Box<CPrincipal>> {
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
-    let principal = Principal::try_from_slice(slice).map_err(AnyErr::from);
+    let principal_tmp = Principal::try_from_slice(slice);
 
-    let text = principal
-        .map(|principal| principal.to_text())
-        .and_then(|text| CString::new(text).map_err(AnyErr::from))
-        .map(|text| text.into_bytes_with_nul());
-
-    match text {
+    match principal_tmp {
         Ok(principal) => {
-            let arr = principal.as_slice();
-            let len = arr.len() as c_int;
-            principal_ret(arr.as_ptr(), len);
-            ResultCode::Ok
+            let arr = CString::new(principal.to_text()).unwrap_or_else(|_| {
+                let fallback_error = "Failed to convert to CString";
+                CString::new(fallback_error).expect("Fallback error message is invalid")
+            });
+            let len = arr.as_bytes().len();
+            let ptr = arr.into_raw() as *mut u8;
+            let c_principal = Box::new(CPrincipal { ptr, len });
+            Some(c_principal)
         }
-
         Err(e) => {
-            let err_str = e.to_string() + "\0";
-            let arr = err_str.as_bytes();
-            let len = arr.len() as c_int;
-            error_ret(arr.as_ptr(), len);
-            ResultCode::Err
+            let err_str = e.to_string();
+            let c_string = CString::new(err_str.clone()).unwrap_or_else(|_| {
+                let fallback_error = "Failed to convert error message to CString";
+                CString::new(fallback_error).expect("Fallback error message is invalid")
+            });
+            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            None
         }
     }
-
 }
 
-mod tests{
+/// @brief Free allocated Memory
+///
+/// @param bytes CPrincipal structure pointer
+/// Rust code will deal the memory allocation but the user should guarantee
+/// The memory is free when isn't needed anymore
+#[no_mangle]
+pub extern "C" fn principal_destroy(ptr: Option<Box<CPrincipal>>) {
+    if ptr.is_some() {
+        let p = ptr.unwrap();
+        let _: Vec<u8> = unsafe { Vec::from_raw_parts(p.ptr, p.len, 0) };
+    }
+}
+
+mod tests {
+    #[allow(unused)]
+    use core::slice;
+    #[allow(unused)]
+    use std::ffi::CStr;
+
     #[allow(unused)]
     use super::*;
 
     #[test]
-    fn test_principal_management_canister() {
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
+    fn test_principal_anonymous() {
+        let principal = principal_anonymous();
+        assert!(principal.is_some());
 
-            // principal management
-            assert_eq!(slice, &[0u8; 0]);
-            assert_eq!(len, 0);
-        }
+        let principal = principal.unwrap();
+        let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };
+        assert_eq!(slice.len(), 1);
+        assert_eq!(slice[0], 4);
 
-        principal_management_canister(principal_ret);
-    }
-
-        #[test]
-    fn test_principal_self_authenticating() {
-        const PK: [u8; 32] = [
-            0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11,
-            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0xaa, 0x11, 0xaa, 0x11,
-            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa,
-            0x11, 0x11, 0xaa, 0x11, 0xaa,
-        ];
-        const PRINCIPAL: [u8; 29] = [
-            0x9e, 0x3a, 0xde, 0x5f, 0xe2 ,0x5a, 0x80, 0x89, 0x4d,
-            0x27, 0x04, 0xe8, 0x44, 0xff, 0xf8, 0x80, 0x30, 0x75,
-            0x06, 0x93, 0x09, 0x86, 0xed, 0xf5, 0x4c, 0xc4, 0xfb,
-            0xad, 0x02,
-        ];
-
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
-
-            // principal management
-            assert_eq!(slice, &PRINCIPAL);
-            assert_eq!(len as usize, PRINCIPAL.len());
-        }
-
-        principal_self_authenticating(PK.as_ptr(), PK.len() as c_int, principal_ret);
+        principal_destroy(Some(principal));
     }
 
     #[test]
-    fn test_principal_anonymous() {
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
+    fn test_principal_management_canister() {
+        let principal = principal_management_canister();
+        assert!(principal.is_some());
+        let principal = principal.unwrap();
+        assert_eq!(principal.len, 0);
 
-            // should equal anonymous Tag
-            assert_eq!(slice, &[4u8; 1]);
-            assert_eq!(len, 1);
-        }
+        principal_destroy(Some(principal));
+    }
 
-        principal_anonymous(principal_ret);
+    #[test]
+    fn test_principal_self_authenticating() {
+        const PK: [u8; 32] = [
+            0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa,
+            0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11, 0xaa, 0x11,
+            0x11, 0xaa, 0x11, 0xaa,
+        ];
+        const PRINCIPAL: [u8; 29] = [
+            0x9e, 0x3a, 0xde, 0x5f, 0xe2, 0x5a, 0x80, 0x89, 0x4d, 0x27, 0x04, 0xe8, 0x44, 0xff,
+            0xf8, 0x80, 0x30, 0x75, 0x06, 0x93, 0x09, 0x86, 0xed, 0xf5, 0x4c, 0xc4, 0xfb, 0xad,
+            0x02,
+        ];
+
+        let principal = principal_self_authenticating(PK.as_ptr(), PK.len() as c_int);
+        assert!(principal.is_some());
+        let principal = principal.unwrap();
+        let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };
+
+        assert_eq!(slice, &PRINCIPAL[..]);
+
+        principal_destroy(Some(principal));
+    }
+
+    #[test]
+    fn test_principal_to_text() {
+        const TEXT: &[u8; 8] = b"aaaaa-aa";
+
+        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
+
+        let principal = principal_to_text([0u8; 0].as_ptr(), 0, error_ret);
+        assert!(principal.is_some());
+        let principal = principal.unwrap();
+        let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };
+
+        assert_eq!(slice, TEXT);
+
+        principal_destroy(Some(principal));
     }
 
     #[test]
     fn test_principal_from_text() {
-        const TEXT: &[u8; 28] = b"rrkah-fqaaa-aaaaa-aaaaq-cai\0";
+        const ANONYMOUS_TEXT: &[u8; 28] = b"rrkah-fqaaa-aaaaa-aaaaq-cai\0";
         const BYTES: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 1, 1, 1];
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
-
-            assert_eq!(slice, BYTES);
-            assert_eq!(len as usize, BYTES.len());
-        }
 
         extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
 
-        assert_eq!(
-            principal_from_text(TEXT.as_ptr() as *const c_char, principal_ret, error_ret),
-            ResultCode::Ok
-        );
-    }
+        let principal = principal_from_text(ANONYMOUS_TEXT.as_ptr() as *const c_char, error_ret);
+        assert!(principal.is_some());
+        let principal = principal.unwrap();
+        let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };
 
-    #[test]
-    fn test_principal_try_from_slice() {
-        const SLICE_BYTES: [u8; 3] = [0x01, 0x23, 0x45];
+        assert_eq!(slice, BYTES);
 
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
-
-            assert_eq!(slice, &SLICE_BYTES);
-            assert_eq!(len as usize, SLICE_BYTES.len());
-        }
-
-        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-
-        assert_eq!(
-            principal_try_from_slice(SLICE_BYTES.as_ptr(), SLICE_BYTES.len() as c_int, principal_ret, error_ret),
-            ResultCode::Ok
-        );
-    }
-    #[test]
-    fn test_principal_to_text() {
-        const TEXT: &[u8; 9] = b"aaaaa-aa\0";
-
-        extern "C" fn principal_ret(data: *const u8, len: c_int) {
-            let slice = unsafe { std::slice::from_raw_parts(data, len as usize) };
-
-            assert_eq!(slice, TEXT);
-            assert_eq!(len as usize, TEXT.len());
-        }
-
-        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-
-        assert_eq!(
-            principal_to_text(
-                [0u8; 0].as_ptr(),
-                0,
-                principal_ret,
-                error_ret,
-            ),
-            ResultCode::Ok
-        );
+        principal_destroy(Some(principal));
     }
 }
