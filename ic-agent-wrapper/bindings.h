@@ -162,6 +162,8 @@ ResultCode agent_create_wrap(const char *path,
                              const struct FFIAgent **agent_ptr,
                              RetPtr_u8 error_ret);
 
+void agent_destroy_wrap(struct FFIAgent *_agent);
+
 /**
  * Calls and returns the information returned by the status endpoint of a replica.
  */

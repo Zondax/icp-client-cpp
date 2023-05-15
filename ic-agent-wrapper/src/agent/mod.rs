@@ -36,12 +36,21 @@ use std::{
     sync::Arc,
 };
 use tokio::runtime;
+// This is declare in C as an opaque pointer, and is ok.
+// but if we wanted to access its fields in C, we should tagged this 
+// with #[repr(C)], but no need for that so far.
 pub struct FFIAgent {
     path: String,
     identity: Arc<dyn Identity>,
     canister_id: Principal,
     did_content: String,
 }
+
+impl FFIAgent {
+    pub fn size() -> usize {
+        std::mem::size_of::<Self>()
+    }
+} 
 
 // taking in consideration a similar structure as agent unity has defined with icx info
 impl FFIAgent {
@@ -287,16 +296,38 @@ pub extern "C" fn agent_create_wrap(
     }
 }
 
+// this is the agent destructor, only valid for agents allocated by rust, which is the 
+// case here for all agents.
+// Option<Box<FFIAgent>> is optimized out as a pointer which could be null.
+// in case FFIAgent *ptr is not null, rust takes ownership of tha pointer 
+// and free the memory(even if the function is empty, magic!!)
+//
+// another option(manual) is to write this function as:
+// agent_destroy_wrap(agent: *FFIAgent) {
+//      // this is unsafe and do check for null pointer first.
+//      _ = Box::from_raw(agent);
+// }
+// but a bit more verbose.
+#[no_mangle]
+pub extern "C" fn agent_destroy_wrap(_agent: Option<Box<FFIAgent>>) {}
+
+//
 /// Calls and returns the information returned by the status endpoint of a replica.
 #[no_mangle]
 pub extern "C" fn agent_status_wrap(
-    agent_ptr: *const FFIAgent,
+    agent_ptr: *const FFIAgent, // can be expressed as Option<&FFIAgent>, so no need for
+    // Box::from_raw/Box::into_raw in function body.
+    // also is agent is going to be modified here, it should be declare as: 
+    // Option<&mut FFIAgent>
     status_ret: RetPtr<u8>,
     error_ret: RetPtr<u8>,
 ) -> ResultCode {
     let computation = || -> AnyResult<_> {
         let agent = unsafe { Box::from_raw(agent_ptr as *mut FFIAgent) };
 
+        // It is possible to lazily init and execulte the runtime.
+        // using once_cell, so the next time any function that uses 
+        // the runtime can invoke it directly, making the call more performant.
         let runtime = runtime::Runtime::new()?;
         let status = runtime.block_on(agent.inner_ic_status())?;
 
@@ -327,10 +358,65 @@ pub extern "C" fn agent_status_wrap(
     }
 }
 
+// the function agent_status_wrap_alternative, could alse be written as :
+pub extern "C" fn agent_status_wrap_alternative(
+    agent_ptr: Option<&FFIAgent>,
+    status_ret: RetPtr<u8>,
+    error_ret: RetPtr<u8>,
+) -> ResultCode {
+    
+    let computation = || -> AnyResult<_> {
+        // no need for Box::from_raw
+        // let agent = unsafe { Box::from_raw(agent_ptr as *mut FFIAgent) };
+        // this function will return an error if FFIAgent pointer is null,
+        let agent = agent_ptr.ok_or(anyhow!("FFIAgent instance null"))?;
+
+        // It is possible to lazily init and execulte the runtime.
+        // using once_cell, so the next time any function that uses 
+        // the runtime can invoke it directly, making the call more performant.
+        let runtime = runtime::Runtime::new()?;
+        let status = runtime.block_on(agent.inner_ic_status())?;
+
+        // the Box::into_raw bellow is not longer necessary as Option<&FFIAgent>, means,
+        // this function is not taking ownership of the pointer(the reason for &FFIAgent, it is a
+        // reference)
+        
+        // Don't drop the [`AgentWrapper`]
+        // Box::into_raw(agent);// not longer needed Option<&FFIAgent> means this function is not
+    // taking ownership of the agent 
+
+        let status_cstr = CString::new(status.to_string())
+            .map_err(AnyErr::from)?
+            .into_bytes_with_nul();
+
+        Ok(status_cstr)
+    };
+
+    match computation() {
+        Ok(status_cstr) => {
+            let arr = status_cstr.as_slice();
+            let len = arr.len() as c_int;
+            status_ret(arr.as_ptr(), len);
+            ResultCode::Ok
+        }
+        Err(e) => {
+            let err_str = e.to_string() + "\0";
+            let arr = err_str.as_bytes();
+            let len = arr.len() as c_int;
+            error_ret(arr.as_ptr(), len);
+            ResultCode::Err
+        }
+    }
+}
+// this is more ergonomic and less error prone. This is valid only with type defined in rust as C
+// compatible. this includes opaque pointers(lets say like void pointers, and types defined in rust
+// and tagget with #[repr(C)])
+
 /// Calls and returns a query call to the canister.
 #[no_mangle]
 pub extern "C" fn agent_query_wrap(
-    agent_ptr: *const FFIAgent,
+    agent_ptr: *const FFIAgent, // same as above, agent_ptr could be Option<&FFIAgent>, no need for
+    // Box::from_raw/Box::into_raw.
     method: *const c_char,
     method_args: *const c_char,
     ret: *mut *const c_void,
@@ -373,7 +459,7 @@ pub extern "C" fn agent_update_wrap(
     method_args: *const c_char,
     ret: *mut *const c_void,
     error_ret: RetPtr<u8>,
-) -> ResultCode {
+) -> ResultCode { // why not returning Option<Box<return_type_helper>>
     let computation = || -> AnyResult<_> {
         let agent = unsafe { Box::from_raw(agent_ptr as *mut FFIAgent) };
         let method = unsafe { CStr::from_ptr(method).to_str().map_err(AnyErr::from) }?;

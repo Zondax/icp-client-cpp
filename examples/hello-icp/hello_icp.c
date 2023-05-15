@@ -105,9 +105,17 @@ int main(void) {
     identity_anonymous(id.ptr);
     id.type = Anonym;
 
+    // here agent_ptr points to memory allocated by malloc(1000 bytes)
+    // but we do not need to allocate memory in C for that.
+    // I don't think the struct keyword is necessary, FFIAgent is defined as a fully type 
+    // in bindings.h 
+    const FFIAgent *agent_ptr = malloc(1000);
+    // this would be enough:
+    // const FFIAgent *agent_ptr;
     // Create Agent
-    const struct FFIAgent *agent_ptr = malloc(1000);
     ResultCode result = agent_create(url, &id, &principal, did_content, &agent_ptr, error_cb);
+    // after this call agent_ptr points to memory allocated by rust, so it does not longer 
+    // points to malloc(1000)
     if (result < 0) {
         printf("%s\n", error.ptr);
         return Err;
@@ -130,7 +138,20 @@ int main(void) {
     free((void *) error.ptr);
     free((void *) principal.ptr);
     free(id.ptr);
-    free((void *) agent_ptr);
+    // as agent_ptr not longer points to malloc(1000), that memory is not being freed(memory leak)
+    // also we are trying to use C allocator by invoking free over agent_ptr, but that memory 
+    // was allocated by rust, which might be using a different allocator that C, so this could cause 
+    // an undefined behavior. ALWAYS use the right allocator, use rust for memory allocated by it, or C otherwise.
+    // free((void *) agent_ptr); 
+    
+    // better option, FFIAgent *ptr is optimized as 
+    // Option<Box<FFIAgent>> by the compiler, and rust 
+    // automatically deletes the agent object
+    agent_destroy(agent_ptr);
+
     free(update_ret);
     return 0;
 }
+// in general good.
+// Nice Rust project that provides C bindings:
+// https://github.com/wasmerio/wasmer/tree/master/lib/c-api (Personally recommend this one!!! to follow design and rust-C idioms)

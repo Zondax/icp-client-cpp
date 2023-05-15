@@ -44,6 +44,10 @@ ResultCode agent_create(const char *url, Identity *id, Principal *canister,
                                           error_cb);
 }
 
+void agent_destroy(FFIAgent *agent) {
+    return agent_destroy_wrap(agent);
+}
+
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
  *

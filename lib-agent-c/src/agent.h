@@ -14,11 +14,16 @@
  *  limitations under the License.
  ********************************************************************************/
 #pragma once
+#include "bindings.h"
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
+// It is prefered that the function bellow returns a full allocated object
+// this means that the FFIAgent is still needed but the memory gets allocated 
+    // by rust. which also requires to add another function for destroying the created agent 
+    // instance.
 /**
  * @brief Create agent instance
  *
@@ -33,6 +38,8 @@
 ResultCode agent_create(const char *url, Identity *id,
                         Principal *canister, const char *did_content,
                         const struct FFIAgent **agent, RetPtr_u8 error_ret);
+
+void agent_destroy(FFIAgent *agent);
 
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
