@@ -15,51 +15,31 @@
 ********************************************************************************/
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include "bindings.h"
 
+#define ERR -1
+#define OK 0
+
 typedef struct {
     const uint8_t *ptr;
     int len;
 } Error;
-
 typedef struct {
-    const uint8_t *ptr;
-    int len;
-} RequestId;
-
-typedef struct {
-    const uint8_t *ptr;
-    int len;
-} Principal;
-
-typedef struct {
-    const void **ptr;
+    char *ptr;
     IdentityType type;
 } Identity;
 
-typedef struct {
-    const uint8_t *ptr;
-    int len;
-} Signature;
-
-typedef struct {
-    const uint8_t *ptr;
-    int len;
-} PublicKey;
-
-typedef struct {
-    const uint8_t *ptr;
-    int len;
-} Text;
-
-typedef struct {
-    const uint8_t *ptr;
-    int len;
-} Status;
-
-ResultCode get_did_file_content(const char *didFilePath, long file_size, char* buffer);
+int get_did_file_content(const char *didFilePath, long file_size, char* buffer);
 long get_did_file_size(const char *didFilePath);
+
+#ifdef __cplusplus
+}
+#endif

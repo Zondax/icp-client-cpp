@@ -19,10 +19,10 @@
 
 #include "helper.h"
 
-ResultCode get_did_file_content(const char *didFilePath, long file_size, char* buffer) {
+int get_did_file_content(const char *didFilePath, long file_size, char* buffer) {
     FILE *file = fopen(didFilePath, "rb");
     if (file == NULL) {
-        return Err;  // error opening file
+        return ERR;  // error opening file
     }
 
     // Read the file contents into the buffer
@@ -31,7 +31,7 @@ ResultCode get_did_file_content(const char *didFilePath, long file_size, char* b
 
     // Close the file and return the buffer
     fclose(file);
-    return Ok;
+    return OK;
 }
 
 long get_did_file_size(const char *didFilePath) {

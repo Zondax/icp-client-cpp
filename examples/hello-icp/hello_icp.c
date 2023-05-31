@@ -34,17 +34,8 @@
         > ./hello_icp
 The example sends the text "World" to the available canister service "greet",
 the response is represented inside the () :
-    Hello ICP! 
     ("Hello, World!")
-
-DISCLAIMER: On Milestone 1 the team was focused on studying and understanding
-the full scope of ICP network and also achieving a functional hello world 
-example to test the acquired knowledge and prove the concept and usability of a
-C wrapper for the rust agent.
-
-For Milestone 2 the team will iterate over library code and structure, to improve
-library usability. Namely, code consistency, memory management improvement and
-removing the need for global variables.
+    ("Hello, zondax!")
 ********************************************************************************/
 
 #include <stdio.h>
@@ -53,44 +44,33 @@ removing the need for global variables.
 #include "bindings.h"
 #include "helper.h"
 #include "agent.h"
+#include "identity.h"
 
-#define ANONYMOUS_ID_LEN 1
+#define CHECK_ERROR(e)              \
+        if (e.len > 0) {            \
+            printf("%s\n", e.ptr);   \
+            return ERR;              \
+        }                           \
 
-// Structures to save returns from function pointer and use throughout the code
 Error error;
-Principal principal;
-Identity id;
-Text text;
 
 // Function pointers used to get the return from rust lib
 static void error_cb(const uint8_t *p, int len) {
+    if (error.ptr != NULL) {
+        free((void *)error.ptr);
+    }
     error.ptr = malloc(len);
     error.len = len;
     memcpy((void *) error.ptr, p, len);
 }
 
-static void principal_cb(const uint8_t *p, int len) {
-    principal.ptr = malloc(len);
-    principal.len = len;
-    memcpy((void *) principal.ptr, p, len);
-}
-
-static void text_cb(const uint8_t *p, int len) {
-    text.ptr = malloc(len);
-    text.len = len;
-    memcpy((void *) text.ptr, p, len);
-}
-
 int main(void) {
-
-    printf("Hello ICP! \n");
 
     // Canister info from hello world deploy example
     const char *id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
     const char *did_file = "./examples/hello-icp/rust_hello_backend.did";
     const char *url = "http://127.0.0.1:4943";
     const char *method = "greet";
-    const char *method_args = "(\"World\")";
 
     // Get did file content
     long file_size = get_did_file_size(did_file);
@@ -98,39 +78,65 @@ int main(void) {
     get_did_file_content(did_file, file_size, did_content);
 
     // Compute principal id from text
-    principal_from_text(id_text, principal_cb, error_cb);
+    CPrincipal *principal = principal_from_text(id_text,error_cb);
+    CHECK_ERROR(error);
 
-    // Compute anonymous id
-    id.ptr = malloc(ANONYMOUS_ID_LEN);
-    identity_anonymous(id.ptr);
-    id.type = Anonym;
+    //compute id
+    Identity id = {0};
+    anonymous_identity(&id);
 
-    // Create Agent
-    const struct FFIAgent *agent_ptr = malloc(1000);
-    ResultCode result = agent_create(url, &id, &principal, did_content, &agent_ptr, error_cb);
-    if (result < 0) {
-        printf("%s\n", error.ptr);
-        return Err;
-    }
+    // Create an IDLArg argument from a IDLValue
+    const char * arg1 = "world";
+    IDLValue *element_1 = idl_value_with_text(arg1, error_cb);
+    CHECK_ERROR(error);
+    const IDLValue* elems[] = {element_1};
+    IDLArgs *idl_args_ptr_1 = idl_args_from_vec(elems, 1);
 
-    // Send Update call
-    const void **update_ret = malloc(30);
-    result = agent_update(agent_ptr, method, method_args, update_ret, error_cb);
-    if (result < 0) {
-        printf("%s\n", error.ptr);
-        return Err;
-    }
+    // Create Agent 1
+    FFIAgent *agent_1 = agent_create(url, &id, principal, did_content, error_cb);
+    CHECK_ERROR(error);
 
-    // Translate idl result
-    idl_args_to_text(*update_ret, text_cb);
-    printf("%s\n", text.ptr);
+    // Send query call to agent 1
+    IDLArgs *call_1 = agent_query(agent_1, method, idl_args_ptr_1, error_cb);
+    CHECK_ERROR(error);
+
+    //Translate IdlArg to text
+    CText *text_1 = idl_args_to_text(call_1);
+
+    // Create an IDLArg argument from a IDLValue
+    const char * arg2 = "zondax";
+    IDLValue *element_2 = idl_value_with_text(arg2, error_cb);
+    CHECK_ERROR(error);
+    const IDLValue* elems2[] = {element_2};
+    IDLArgs* idl_args_ptr_2 = idl_args_from_vec(elems2, 1);
+
+    // Create Agent 2
+    FFIAgent *agent_2 = agent_create(url, &id, principal, did_content, error_cb);
+    CHECK_ERROR(error);
+
+    // Send query call to agent 2
+    IDLArgs *call_2 = agent_query(agent_2, method, idl_args_ptr_2, error_cb);
+    CHECK_ERROR(error);
+
+    //Translate IdlArg to text
+    CText *text_2 = idl_args_to_text(call_2);
+
+    // Print Results
+    printf("%s\n", ctext_str(text_1));
+    printf("%s\n", ctext_str(text_2));
 
     // Free Memory
     free(did_content);
     free((void *) error.ptr);
-    free((void *) principal.ptr);
-    free(id.ptr);
-    free((void *) agent_ptr);
-    free(update_ret);
+    principal_destroy(principal);
+    agent_destroy(agent_1);
+    agent_destroy(agent_2);
+    idl_args_destroy(idl_args_ptr_1);
+    idl_args_destroy(idl_args_ptr_2);
+    idl_args_destroy(call_2);
+    idl_args_destroy(call_1);
+    ctext_destroy(text_1);
+    ctext_destroy(text_2);
+
     return 0;
 }
