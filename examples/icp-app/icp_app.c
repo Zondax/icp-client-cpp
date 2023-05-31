@@ -45,7 +45,7 @@ static void error_cb(const uint8_t *p, int len) {
 int main(void) {
     // Canister info from hello world deploy example
     const char *id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    const char *did_file = "./examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    const char *did_file = "../examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     const char *url = "https://ic0.app";
 
     // Get did file content
@@ -101,7 +101,6 @@ int main(void) {
     idl_args_destroy(call_1);
     idl_value_destroy((IDLValue *)val);
     idl_value_destroy((IDLValue *)val2);
-    idl_value_destroy((IDLValue *)element_1);
     ctext_destroy(text);
     cidlval_vec_destroy(vec);
     cidlval_vec_destroy(vec2);

@@ -173,7 +173,7 @@ pub extern "C" fn identity_secp256k1_from_private_key(
     pk_len: usize,
 ) -> *mut c_void {
     let pk = unsafe { std::slice::from_raw_parts(private_key as *const u8, pk_len) };
-    let pk = SecretKey::from_be_bytes(pk).unwrap();
+    let pk = SecretKey::from_bytes(pk.into()).unwrap();
 
     let anonymous_id = Box::new(Secp256k1Identity::from_private_key(pk));
     Box::into_raw(anonymous_id) as *mut c_void
