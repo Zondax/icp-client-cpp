@@ -35,11 +35,10 @@ Team is currently working on building the project and running it on Windows plat
 
 Configure Project and generate makefile.
 
-    cmake .
-
-Compile and link project
-
-    cmake --build .
+    mkdir build
+    cd build
+    cmake ..
+    make
 
 #### ic-agent-wrapper
 
@@ -55,7 +54,7 @@ to create C friendly functions to be used. It is compiled as a static library.
 On the example folder it can be found different usage examples and
 testing examples for the core exposed functions. 
 
-After the project is built, with the previous commands, there will be available on the main folder
+After the project is built, with the previous commands, there will be available on the build folder
 different binaries:
 
 - hello-icp: simple example that requires deploying a local hello world canister (see more below);
