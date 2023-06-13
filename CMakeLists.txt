@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(ICP-C)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_LIBRARY_PATH "")
 
 # OS-specific libraries
@@ -51,6 +52,12 @@ file(GLOB LIB_AGENT_C_SRC "lib-agent-c/src/*.c")
 add_library(agent_c STATIC ${LIB_AGENT_C_SRC})
 configure_file(${BINDING_FILE} ${OUT_BINDING_FILE} COPYONLY)
 
+# Compile every C++ file in lib-agent-cpp/src into a static library
+include_directories("lib-agent-cpp/inc")
+file(GLOB LIB_AGENT_CPP_SRC "lib-agent-cpp/src/*.cpp")
+add_library(agent_cpp STATIC ${LIB_AGENT_CPP_SRC})
+target_link_libraries(agent_cpp ic_agent_wrapper agent_c)
+
 # Compile every example in examples/
 file(GLOB EXAMPLE_DIRS "examples/*")
 foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
@@ -63,3 +70,17 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "lib-agent-c/inc")
     endif()
 endforeach()
+
+# Compile every example in examples-cpp/
+file(GLOB EXAMPLE_DIRS "examples-cpp/*")
+foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
+    if(IS_DIRECTORY ${EXAMPLE_DIR})
+        get_filename_component(EXAMPLE_NAME ${EXAMPLE_DIR} NAME)
+        file(GLOB EXAMPLE_SRC "${EXAMPLE_DIR}/*.cpp")
+        add_executable(${EXAMPLE_NAME} ${EXAMPLE_SRC})
+        add_dependencies(${EXAMPLE_NAME} ic_agent_wrapper agent_c)
+        target_link_libraries(${EXAMPLE_NAME} agent_cpp ${EXTRA_LIBS})
+        target_include_directories(${EXAMPLE_NAME} PRIVATE "lib-agent-cpp/inc")
+    endif()
+endforeach()
+
