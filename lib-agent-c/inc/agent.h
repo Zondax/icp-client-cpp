@@ -34,7 +34,7 @@ extern "C" {
  * @param error_cb returned error
  * @return FFIAgent pointer 
  */
-FFIAgent *agent_create(const char *url, Identity *id, CPrincipal *canister,
+FFIAgent *agent_create(const char *url, CIdentity *id, CPrincipal *canister,
                 const char *did_content, RetPtr_u8 error_cb);
 
 /**

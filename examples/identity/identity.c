@@ -71,7 +71,7 @@ const char* secp256_expected = "t2kpu-6xt6l-tyb3d-rll2p-irv5c-no5nd-h6spj-jsetq-
 int main(void) {
     printf("+++++++++ Testing exported Identity Core Functions +++++++++\n");
     
-    Identity id = {0};
+    CIdentity id = {0};
 
     // Create anonymous ID and sender so we verify with principal anonymous
     anonymous_identity(&id);

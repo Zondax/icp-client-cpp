@@ -35,7 +35,7 @@ typedef struct {
 typedef struct {
     char *ptr;
     IdentityType type;
-} Identity;
+} CIdentity;
 
 int get_did_file_content(const char *didFilePath, long file_size, char* buffer);
 long get_did_file_size(const char *didFilePath);

@@ -13,36 +13,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef PRINCIPAL_WRAP_H
-#define PRINCIPAL_WRAP_H
+#ifndef AGENT_WRAP_H
+#define AGENT_WRAP_H
 
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include "principal_wrap.h"
+#include "identity_wrap.h"
 
 extern "C" {
 #include "bindings.h"
 }
 
-namespace zondax::principal {
-class Principal {
+namespace zondax::agent {
+class Agent {
+
 private:
-    std::vector<unsigned char> bytes;
-    CPrincipal* cPrincipal;
+    FFIAgent * agent;
 
 public:
-    explicit Principal(bool anonym);
-    explicit Principal(const std::vector<uint8_t> &bytes);
+    Agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
+          const std::vector<char>& did_content, RetPtr_u8 error);
+    ~Agent();
 
-    static Principal SelfAuthenticating(const std::vector<uint8_t> &public_key);
-    static std::optional<Principal> TryFromSlice(const std::vector<uint8_t> &bytes, RetPtr_u8 errorCallback);
-    static std::optional<Principal> FromText(const std::string& text,  RetPtr_u8 errorCallback);
-    static std::string ToText(const std::vector<uint8_t> &bytes,  RetPtr_u8 errorCallback);
-
-    std::vector<unsigned char> getBytes() const;
-    ~Principal();
 };
-
 }
-#endif  // PRINCIPAL_WRAP_H
+
+#endif  // IDENTITY_WRAP_H

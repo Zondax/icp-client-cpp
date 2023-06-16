@@ -29,8 +29,8 @@
         }                           \
 
 Error error;
-Identity id_anonym;
-Identity id_secp26k1;
+CIdentity id_anonym;
+CIdentity id_secp26k1;
 
 // Function pointers used to get the return from rust lib
 static void error_cb(const uint8_t *p, int len) {
@@ -58,7 +58,7 @@ int main(void) {
     CHECK_ERROR(error);
 
     //compute id
-    Identity id = {0};
+    CIdentity id = {0};
     anonymous_identity(&id);
 
     // Create Agent 1

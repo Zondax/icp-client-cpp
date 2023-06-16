@@ -82,7 +82,7 @@ int main(void) {
     CHECK_ERROR(error);
 
     //compute id
-    Identity id = {0};
+    CIdentity id = {0};
     anonymous_identity(&id);
 
     // Create an IDLArg argument from a IDLValue

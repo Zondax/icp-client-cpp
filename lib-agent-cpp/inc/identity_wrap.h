@@ -20,26 +20,36 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include "principal_wrap.h"
 
 extern "C" {
 #include "bindings.h"
 }
 
+namespace zondax::identity {
 class Identity {
+
 private:
-    char* ptr;
+    void* ptr;
     IdentityType type;
 
 public:
+    Identity(void* ptr, IdentityType type);
+    ~Identity();
 
-    // Getter methods
-    const char* getPtr() const {
-        return ptr;
-    };
+    static Identity Anonymous();
+    static std::optional<Identity> BasicFromPem(const std::string& pemData, RetPtr_u8 error);
+    static std::optional<Identity> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
+                                    const std::vector<uint8_t>& privateKeySeed,
+                                    RetPtr_u8 error);
+    static std::optional<Identity> Secp256k1FromPem(const std::string& pemData, RetPtr_u8 error);
+    static Identity Secp256k1FromPrivateKey(const std::vector<char>& privateKey);
 
-    IdentityType getType() const {
-        return type;
-    };
+    std::optional<zondax::principal::Principal> Sender(RetPtr_u8 error) const;
 
+    void* getPtr() const;
+    IdentityType getType() const;
 };
+
+}
 #endif  // IDENTITY_WRAP_H

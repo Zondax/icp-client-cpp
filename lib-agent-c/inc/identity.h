@@ -29,7 +29,7 @@ extern "C" {
  * 
  * @param id Identity struture pointer
  */
-void anonymous_identity(Identity *id);
+void anonymous_identity(CIdentity *id);
 
 /**
  * @brief Get Basic identity using data from PEM file
@@ -38,7 +38,7 @@ void anonymous_identity(Identity *id);
  * @param id Identity struture pointer
  * @param error_cb returned error
  */
-void basic_identity_from_pem(const char *pem_data, Identity *id,
+void basic_identity_from_pem(const char *pem_data, CIdentity *id,
                              RetPtr_u8 error);
 
 /**
@@ -50,7 +50,7 @@ void basic_identity_from_pem(const char *pem_data, Identity *id,
  * @param error_cb returned error
  */
 void basic_identity_from_key_pair(const uint8_t *public_key,
-                                  const uint8_t *private_key_seed, Identity *id,
+                                  const uint8_t *private_key_seed, CIdentity *id,
                                   RetPtr_u8 error_ret);
 
 /**
@@ -60,7 +60,7 @@ void basic_identity_from_key_pair(const uint8_t *public_key,
  * @param id Identity struture pointer
  * @param error_cb returned error
  */
-void secp256k1_identity_from_pem(const char *pem_data, Identity *id,
+void secp256k1_identity_from_pem(const char *pem_data, CIdentity *id,
                                  RetPtr_u8 error);
 
 /**
@@ -71,7 +71,7 @@ void secp256k1_identity_from_pem(const char *pem_data, Identity *id,
  * @param id Identity struture pointer
  */
 void secp256k1_identity_from_key_pair(const char *private_key, uintptr_t pk_len,
-                                      Identity *id);
+                                      CIdentity *id);
 
 #ifdef __cplusplus
 }
