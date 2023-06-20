@@ -13,15 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-
-#include "agent_wrap.h"
-
-namespace zondax::agent {
-
-    // Agent::Agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
-    //             const std::vector<char>& did_content, RetPtr_u8 error) ptr(agent){
+#ifndef HELPER_H
+#define HELPER_H
 
 
-    //     }
-
-}
+#endif

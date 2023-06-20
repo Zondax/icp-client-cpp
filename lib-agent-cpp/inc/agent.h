@@ -13,32 +13,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef AGENT_WRAP_H
-#define AGENT_WRAP_H
+#ifndef AGENT_H
+#define AGENT_H
 
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <vector>
-#include <cstring>
-#include "principal_wrap.h"
-#include "identity_wrap.h"
+
+#include "identity.h"
+#include "idl_args.h"
+#include "principal.h"
 
 extern "C" {
-#include "bindings.h"
+#include "zondax_ic.h"
 }
 
 namespace zondax::agent {
 class Agent {
+    private:
+        FFIAgent* agent;
 
-private:
-    FFIAgent * agent;
+    public:
+        Agent(std::string url, zondax::identity::Identity id,
+            zondax::principal::Principal principal,
+            const std::vector<char>& did_content, RetPtr_u8 error);
+        ~Agent();
 
-public:
-    Agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
-          const std::vector<char>& did_content, RetPtr_u8 error);
-    ~Agent();
-
+        zondax::idl_args::IdlArgs Query(std::string service,
+                                        zondax::idl_args::IdlArgs args,
+                                        RetPtr_u8 error);
+        zondax::idl_args::IdlArgs Update(std::string service,
+                                        zondax::idl_args::IdlArgs args,
+                                        RetPtr_u8 error);
+        std::string Status(RetPtr_u8 error);
 };
-}
+}  // namespace zondax::agent
 
-#endif  // IDENTITY_WRAP_H
+#endif  // IDENTITY_H

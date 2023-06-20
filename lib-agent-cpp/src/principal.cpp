@@ -15,7 +15,7 @@
  ********************************************************************************/
 #include <optional>
 #include <cstdlib>
-#include "principal_wrap.h"
+#include "principal.h"
 
 namespace zondax::principal {
 
@@ -36,7 +36,7 @@ Principal::Principal(const std::vector<unsigned char>& data) : bytes(data) {
 /**
  * @brief Constructor for creating an anonymous or management Principal.
  * 
- * @param anonym if set to true this constructor creates an anonymous Principal object.
+ * @param anonym if set to true this constructor creates an anonymous Principal object(Default).
  *               if set to false this constructor creates an management Principal object.
  */
 Principal::Principal(bool anonym) {
@@ -72,6 +72,7 @@ std::optional<Principal> Principal::TryFromSlice(const std::vector<uint8_t> &byt
     CPrincipal *p = principal_try_from_slice(bytes.data(), bytes.size(), errorCallback);
 
     if (p == nullptr) {
+        principal_destroy(p);
         return std::nullopt;
     }
 
@@ -89,9 +90,10 @@ std::optional<Principal> Principal::TryFromSlice(const std::vector<uint8_t> &byt
 std::optional<Principal> Principal::FromText(const std::string& text,  RetPtr_u8 errorCallback) {
 
     // get error from error_ret here and send it on string of result
-    CPrincipal *p = principal_from_text(text.data(), errorCallback);
+    CPrincipal *p = principal_from_text(text.c_str(), errorCallback);
 
     if (p == nullptr) {
+        principal_destroy(p);
         return std::nullopt;
     }
 
@@ -112,6 +114,7 @@ std::string Principal::ToText(const std::vector<unsigned char>& data,  RetPtr_u8
     CPrincipal *p = principal_to_text(data.data(), data.size(), errorCallback);
 
     if (p == nullptr) {
+        principal_destroy(p);
         return "";
     }
 

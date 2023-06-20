@@ -13,15 +13,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
+#include "identity.h"
 
-#include "identity_wrap.h"
 namespace zondax::identity {
 
     Identity::Identity(void* ptr, IdentityType type) : ptr(ptr), type(type) {}
 
-    Identity Identity::Anonymous() {
-        void* ptr = identity_anonymous();
-        return Identity(ptr, IdentityType::Anonym);
+    Identity::Identity() {
+        ptr = identity_anonymous();
+        type = IdentityType::Anonym;
     }
 
     std::optional<Identity> Identity::BasicFromPem(const std::string& pemData, RetPtr_u8 error) {
@@ -62,7 +62,7 @@ namespace zondax::identity {
         return Identity(ptr, IdentityType::Basic);
     }
 
-    std::optional<zondax::principal::Principal> Identity::Sender(RetPtr_u8 error) const{
+    std::optional<zondax::principal::Principal> Identity::Sender(RetPtr_u8 error) {
         CPrincipal *p = identity_sender(ptr, type, error);
 
         if (p == nullptr) {
@@ -70,17 +70,29 @@ namespace zondax::identity {
         }
 
         std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
+        ptr = nullptr;
+
         return zondax::principal::Principal(outBytes);
     }
 
+    std::optional<IdentitySign> Identity::Sign(const std::vector<uint8_t>& bytes, RetPtr_u8 error) {
+        CIdentitySign* p = identity_sign(bytes.data(), bytes.size(), ptr, type, error);
 
-    // CidenitySign is a struture in rust for we defined functions to get the two arrays inside
-    // should we create a struture and use those function inside to populate the struture ?
-    // struct CIdentitySign *identity_sign(const uint8_t *bytes, int bytes_len,
-    //                                void *id_ptr,
-    //                                enum IdentityType idType,
-    //                                RetPtr_u8 error_ret);
+        if (p == nullptr) {
+            return std::nullopt;
+        }
 
+        IdentitySign result;
+
+        std::vector<unsigned char> pk(cidentitysign_pubkey(p), cidentitysign_pubkey(p) + cidentitysign_pubkey_len(p));
+        std::vector<unsigned char> sig(cidentitysign_sig(p), cidentitysign_sig(p) + cidentitysign_sig_len(p));
+
+        result.pubkey = pk;
+        result.signature = sig;
+        cidentitysign_destroy(p);
+
+        return result;
+    }
 
     void* Identity::getPtr() const {
         return ptr;

@@ -13,18 +13,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef IDENTITY_WRAP_H
-#define IDENTITY_WRAP_H
+#ifndef IDENTITY_H
+#define IDENTITY_H
 
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include <cstring>
-#include "principal_wrap.h"
+#include "principal.h"
 
 extern "C" {
-#include "bindings.h"
+#include "zondax_ic.h"
 }
+struct IdentitySign {
+    std::vector<uint8_t> pubkey;
+    std::vector<uint8_t> signature;
+};
 
 namespace zondax::identity {
 class Identity {
@@ -32,11 +36,11 @@ class Identity {
 private:
     void* ptr;
     IdentityType type;
+    explicit Identity(void* ptr, IdentityType type);
 
 public:
-    Identity(void* ptr, IdentityType type);
     ~Identity();
-
+    Identity();
     static Identity Anonymous();
     static std::optional<Identity> BasicFromPem(const std::string& pemData, RetPtr_u8 error);
     static std::optional<Identity> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
@@ -44,12 +48,12 @@ public:
                                     RetPtr_u8 error);
     static std::optional<Identity> Secp256k1FromPem(const std::string& pemData, RetPtr_u8 error);
     static Identity Secp256k1FromPrivateKey(const std::vector<char>& privateKey);
-
-    std::optional<zondax::principal::Principal> Sender(RetPtr_u8 error) const;
+    std::optional<zondax::principal::Principal> Sender(RetPtr_u8 error);
+    std::optional<IdentitySign> Sign(const std::vector<uint8_t>& bytes, RetPtr_u8 error);
 
     void* getPtr() const;
     IdentityType getType() const;
 };
 
 }
-#endif  // IDENTITY_WRAP_H
+#endif  // IDENTITY_H

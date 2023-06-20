@@ -13,8 +13,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef PRINCIPAL_WRAP_H
-#define PRINCIPAL_WRAP_H
+#ifndef PRINCIPAL_H
+#define PRINCIPAL_H
 
 #include <cstdint>
 #include <iostream>
@@ -22,7 +22,7 @@
 #include <cstring>
 
 extern "C" {
-#include "bindings.h"
+#include "zondax_ic.h"
 }
 
 namespace zondax::principal {
@@ -32,7 +32,7 @@ private:
     CPrincipal* cPrincipal;
 
 public:
-    explicit Principal(bool anonym);
+    explicit Principal(bool anonym = true);
     explicit Principal(const std::vector<uint8_t> &bytes);
 
     static Principal SelfAuthenticating(const std::vector<uint8_t> &public_key);
@@ -45,4 +45,4 @@ public:
 };
 
 }
-#endif  // PRINCIPAL_WRAP_H
+#endif  // PRINCIPAL_H

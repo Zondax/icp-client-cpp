@@ -14,10 +14,10 @@
  *  limitations under the License.
  ********************************************************************************/
 #include <iostream>
-#include "principal_wrap.h"
+#include "principal.h"
 
 extern "C" {
-#include "helper.h"
+#include "helper_c.h"
 }
 
 using namespace zondax::principal;
@@ -46,7 +46,7 @@ int main() {
     }
 
     // Get Anonymous Principal
-    Principal anonym(true);
+    Principal anonym;
 
     bytes = anonym.getBytes();
     if (bytes.size() == 1 && bytes[0] == 4) {
