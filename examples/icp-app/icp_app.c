@@ -17,10 +17,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "bindings.h"
-#include "helper.h"
-#include "agent.h"
-#include "identity.h"
+#include "zondax_ic.h"
+#include "helper_c.h"
+#include "agent_c.h"
+#include "identity_c.h"
 
 #define CHECK_ERROR(e)              \
         if (e.len > 0) {            \

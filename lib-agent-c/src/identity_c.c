@@ -19,10 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bindings.h"
-#include "helper.h"
+#include "zondax_ic.h"
+#include "helper_c.h"
 
-#include "identity.h"
+#include "identity_c.h"
 
 /**
  * @brief Get Anonymous ID

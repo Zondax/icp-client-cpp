@@ -19,10 +19,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bindings.h"
-#include "helper.h"
+#include "zondax_ic.h"
+#include "helper_c.h"
 
-#include "agent.h"
+#include "agent_c.h"
 /**
  * @brief Create and Returns agent instance 
  *

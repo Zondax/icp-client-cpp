@@ -17,7 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "helper.h"
+#include "helper_c.h"
 
 int get_did_file_content(const char *didFilePath, long file_size, char* buffer) {
     FILE *file = fopen(didFilePath, "rb");

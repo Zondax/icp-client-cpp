@@ -23,7 +23,7 @@ endif()
 # Set Rust library path
 set(IC_AGENT_WRAPPER_LIB "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper/target/release/libic_agent_wrapper.a")
 set(BINDING_FILE "${CMAKE_CURRENT_SOURCE_DIR}/ic-agent-wrapper/bindings.h")
-set(OUT_BINDING_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib-agent-c/inc/bindings.h")
+set(OUT_BINDING_FILE "${CMAKE_CURRENT_SOURCE_DIR}/lib-agent-c/inc/zondax_ic.h")
 
 # Compile Rust library in ic-agent-wrapper using cargo build
 add_custom_command(

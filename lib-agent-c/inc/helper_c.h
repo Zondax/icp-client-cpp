@@ -23,7 +23,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include "bindings.h"
+#include "zondax_ic.h"
 
 #define ERR -1
 #define OK 0
