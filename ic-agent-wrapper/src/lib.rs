@@ -17,6 +17,7 @@ use ::candid::parser::value::IDLValue;
 use ::candid::Principal;
 use anyhow::Error as AnyErr;
 use anyhow::Result as AnyResult;
+use libc::c_void;
 use principal::CPrincipal;
 use std::ffi::c_char;
 use std::ffi::c_int;
@@ -28,7 +29,13 @@ mod principal;
 mod request_id;
 
 /// CallBack Ptr creation with size and len
-type RetPtr<T> = extern "C" fn(*const T, c_int);
+type RetPtr<T> = extern "C" fn(*const T, c_int, *mut c_void);
+
+#[repr(C)]
+pub struct RetError {
+    user_data: *mut c_void,
+    call: RetPtr<u8>,
+}
 
 /// @brief Free allocated memory
 ///

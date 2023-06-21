@@ -13,9 +13,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
+#include <memory>
 #include "idl_value.h"
+// #include "idl_value_utils.h"
+
 
 namespace zondax::idl_value {
+
+IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr) {};
 
 IdlValue::IdlValue() : ptr(nullptr) {};
 
@@ -64,16 +69,18 @@ IdlValue::IdlValue(bool value) {
 }
 
 IdlValue::IdlValue(std::string text) {
-    RetPtr_u8 error;
+    // TODO: Use RetError
+    // RetPtr_u8 error;
 
-    ptr = idl_value_with_text(text.c_str(), error);
+    ptr = idl_value_with_text(text.c_str(), nullptr);
 }
 
 IdlValue::IdlValue(zondax::principal::Principal principal, bool is_principal) {
-    RetPtr_u8 error;
+    // TODO: Use RetError
+    // RetPtr_u8 error;
 
-    ptr = is_principal ? idl_value_with_principal(principal.getBytes().data(), principal.getBytes().size(), error) :
-                        idl_value_with_service(principal.getBytes().data(), principal.getBytes().size(), error);
+    ptr = is_principal ? idl_value_with_principal(principal.getBytes().data(), principal.getBytes().size(), nullptr) :
+                        idl_value_with_service(principal.getBytes().data(), principal.getBytes().size(), nullptr);
 }
 
 IdlValue IdlValue::FromNone(void) {
@@ -92,9 +99,10 @@ IdlValue IdlValue::FromReserved(void) {
 }
 
 IdlValue IdlValue::FromNumber(std::string number) {
-    RetPtr_u8 error;
+    // TODO: Use RetError
+    // RetPtr_u8 error;
 
-    ptr = idl_value_with_number(number.c_str(), error);
+    ptr = idl_value_with_number(number.c_str(), nullptr);
     return IdlValue(ptr);
 }
 
@@ -254,53 +262,61 @@ std::vector<IdlValue> IdlValue::getVec() {
     return result;
 }
 
-Record IdlValue::getRecord() {
-    struct CRecord* cRecord = record_from_idl_value(ptr);
-    Record result;
+// TODO: Enable later forward declaration is tricky here,
+// specially because it requires raw pointers, which might lead 
+// to aliasing of the inner idlValue ptr, and this if doing wrong
+// could cause memory issues, double free and so on.
+// also smart pointers do not work here as types are not fully
+// qualify.
 
-    // Extract keys
-    uintptr_t keysLength = crecord_keys_len(cRecord);
-    for (uintptr_t i = 0; i < keysLength; ++i) {
-        const char* keyPtr = reinterpret_cast<const char*>(crecord_get_key(cRecord, i));
-        result.keys.emplace_back(keyPtr);
-    }
+// zondax::idl_value_utils::Record IdlValue::getRecord() {
+//     struct CRecord* cRecord = record_from_idl_value(ptr);
+//     zondax::idl_value_utils::Record result;
+//
+//     // Extract keys
+//     uintptr_t keysLength = crecord_keys_len(cRecord);
+//     for (uintptr_t i = 0; i < keysLength; ++i) {
+//         const char* keyPtr = reinterpret_cast<const char*>(crecord_get_key(cRecord, i));
+//         result.keys.emplace_back(keyPtr);
+//     }
+//
+//     // Extract values
+//     uintptr_t valsLength = crecord_vals_len(cRecord);
+//     for (uintptr_t i = 0; i < valsLength; ++i) {
+//         const IDLValue* valPtr = crecord_get_val(cRecord, i);
+//         result.vals.emplace_back(valPtr);
+//     }
+//
+//     // Free the allocated CRecord
+//     crecord_destroy(cRecord);
+//
+//     return result;
+// }
 
-    // Extract values
-    uintptr_t valsLength = crecord_vals_len(cRecord);
-    for (uintptr_t i = 0; i < valsLength; ++i) {
-        const IDLValue* valPtr = crecord_get_val(cRecord, i);
-        result.vals.emplace_back(valPtr);
-    }
+// zondax::idl_value_utils::Variant IdlValue::getVariant(){
+//     struct CVariant* cVariant = variant_from_idl_value(ptr);
+//     zondax::idl_value_utils::Variant result;
+//
+//     // Extract ID
+//     result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) + cvariant_id_len(cVariant));
+//
+//     // Extract value
+//     const IDLValue* valPtr = cvariant_idlvalue(cVariant);
+//
+//     result.val(new IdlValue(valPtr));
+//
+//     // Extract code
+//     result.code = cvariant_code(cVariant);
+//
+//     // Free the allocated CVariant
+//     cvariant_destroy(cVariant);
+//
+//     return result;
+// }
 
-    // Free the allocated CRecord
-    crecord_destroy(cRecord);
-
-    return result;
-}
-
-Variant IdlValue::getVariant(){
-    struct CVariant* cVariant = variant_from_idl_value(ptr);
-    Variant result;
-
-    // Extract ID
-    result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) + cvariant_id_len(cVariant));
-
-    // Extract value
-    const IDLValue* valPtr = cvariant_idlvalue(cVariant);
-    result.val = new IdlValue(valPtr);
-
-    // Extract code
-    result.code = cvariant_code(cVariant);
-
-    // Free the allocated CVariant
-    cvariant_destroy(cVariant);
-
-    return result;
-}
-
-Func IdlValue::getFunc() {
+zondax::idl_value_utils::Func IdlValue::getFunc() {
     struct CFunc* cFunc = func_from_idl_value(ptr);
-    Func result;
+    zondax::idl_value_utils::Func result;
 
     // Extract string
     result.s = std::string(cfunc_string(cFunc), cfunc_string(cFunc) + cfunc_string_len(cFunc));

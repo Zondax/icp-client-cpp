@@ -14,6 +14,7 @@
  *  limitations under the License.
  ********************************************************************************/
 #include <iostream>
+#include <variant>
 #include "principal.h"
 
 extern "C" {
@@ -22,23 +23,13 @@ extern "C" {
 
 using namespace zondax::principal;
 
-Error error_cpp;
-
-void error_cb_cpp(const uint8_t* p, int len) {
-    if (error_cpp.ptr != nullptr) {
-         free((void*)error_cpp.ptr);
-    }
-    error_cpp.ptr = static_cast<const uint8_t*>(malloc(len));
-    error_cpp.len = len;
-    memcpy((void*)error_cpp.ptr, p, len);
-}
-
 int main() {
     
     // Get Management Principal
     Principal management(false);
 
     std::vector<unsigned char> bytes = management.getBytes();
+
     if (bytes.size() == 0 ) {
         std::cout << "Test 1: Valid Principal Management" << std::endl;
     } else {
@@ -49,6 +40,7 @@ int main() {
     Principal anonym;
 
     bytes = anonym.getBytes();
+
     if (bytes.size() == 1 && bytes[0] == 4) {
         std::cout << "Test 2: Valid Principal Anonymous" << std::endl;
     } else {
@@ -73,6 +65,7 @@ int main() {
     Principal p = Principal::SelfAuthenticating(publicKey);
 
     bytes = p.getBytes();
+
     if (bytes.size() == bytesExpected.size() &&
         std::equal(bytes.begin(), bytes.end(), std::begin(bytesExpected))) {
         std::cout << "Test 3: Valid Principal Self Authenticating" << std::endl;
@@ -83,9 +76,11 @@ int main() {
 
     // Get Principal from slice of bytes
     std::vector<uint8_t> slice = {0x1};
+
     Principal principal(slice);
 
     bytes = principal.getBytes();
+
     if (bytes.size() == 1 && static_cast<int>(bytes[0])==0x1 ) {
         std::cout << "Test 4.0: Valid Principal from bytes" << std::endl;
     } else {
@@ -99,40 +94,44 @@ int main() {
         0x33, 0x22, 0x11, 0x00,
     };
 
-   std::optional<Principal> result = Principal::TryFromSlice(slice_long, error_cb_cpp);
+   auto result = Principal::TryFromSlice(slice_long);
 
-    if(result.has_value()) {
-        bytes = result.value().getBytes();
-        if (bytes.size() == slice_long.size() &&
-            std::equal(bytes.begin(), bytes.end(), std::begin(slice_long))) {
+    if(!std::holds_alternative<Principal>(result)) {
+        std::cout << "Test 4.1: "<< std::get<std::string>(result)<< std::endl;
+        return -1;
+    }
+
+    bytes = std::get<Principal>( result ).getBytes();
+    if (bytes.size() == slice_long.size() &&
+        std::equal(bytes.begin(), bytes.end(), std::begin(slice_long))) {
             std::cout << "Test 4.1: Valid Principal from slice" << std::endl;
         } else {
-            std::cout << "Test 4.1: Invalid Principal from slice" << std::endl;
-        }
-    } else {
-        std::cout << "Test 4.1: "<< error_cpp.ptr << std::endl;
+        std::cout << "Test 4.1: Invalid Principal from slice" << std::endl;
     }
 
     // Get principal from Text , testing with anonymous principal
     std::string text = "2vxsx-fae";
     
-    std::optional<Principal> result2 = Principal::FromText(text, error_cb_cpp);
+    auto result2 = Principal::FromText(text);
+
+    if(!std::holds_alternative<Principal>(result2)) {
+        std::cout << "Test 5: "<< std::get<std::string>(result2)<< std::endl;
+        return -1;
+    }
     
-    if(result2.has_value()) {
-        bytes = result2.value().getBytes();
-        if (bytes.size() == 1 && bytes[0] == 4) {
-            std::cout << "Test 5: Valid Principal from text" << std::endl;
-        } else {
-            std::cout << "Test 5: Invalid Principal from text" << std::endl;
-        }
+    bytes = std::get<Principal>( result2 ).getBytes();
+
+    if (bytes.size() == 1 && bytes[0] == 4) {
+        std::cout << "Test 5: Valid Principal from text" << std::endl;
     } else {
-        std::cout << "Test 5: "<< error_cpp.ptr << std::endl;
+        std::cout << "Test 5: Invalid Principal from text" << std::endl;
+        return -1;
     }
 
     // Get Text from principal, testing with anonymous principal
     std::vector<unsigned char> p_slice= { 4 };
 
-    std::string str = Principal::ToText(p_slice, error_cb_cpp);
+    std::string str = Principal::ToText(p_slice);
     
     if (str == text) {
         std::cout << "Test 6: Valid Text from Principal"<< std::endl;

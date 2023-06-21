@@ -17,6 +17,12 @@
 
 namespace zondax::identity {
 
+    void error_callback(const unsigned char *data, int len, void *user_data) {
+        std::string error_msg((const char *)data, len);
+        *(std::string *)user_data = error_msg;
+    }
+
+
     Identity::Identity(void* ptr, IdentityType type) : ptr(ptr), type(type) {}
 
     Identity::Identity() {
@@ -24,36 +30,65 @@ namespace zondax::identity {
         type = IdentityType::Anonym;
     }
 
-    std::optional<Identity> Identity::BasicFromPem(const std::string& pemData, RetPtr_u8 error) {
-        void* ptr = identity_basic_from_pem(pemData.data(), error);
+    std::variant<Identity, std::string> Identity::BasicFromPem(const std::string& pemData) {
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        void* ptr = identity_basic_from_pem(pemData.data(), &ret);
         
         if (ptr == nullptr) {
-            return std::nullopt;
+            std::variant<Identity, std::string> error(data);
+            return error;
         }
 
-        return Identity(ptr, IdentityType::Basic);
+        std::variant<Identity, std::string> ok(std::move(Identity(ptr, IdentityType::Basic)));
+        // return Identity(ptr, IdentityType::Basic);
+        return ok;
     }
 
-    std::optional<Identity> Identity::Secp256k1FromPem(const std::string& pemData, RetPtr_u8 error) {
-        void* ptr = identity_secp256k1_from_pem(pemData.data(), error);
+    std::variant<Identity, std::string> Identity::Secp256k1FromPem(const std::string& pemData) {
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        void* ptr = identity_secp256k1_from_pem(pemData.data(), &ret);
 
         if (ptr == nullptr) {
-            return std::nullopt;
+            std::variant<Identity, std::string> error(data);
+            return error;
         }
 
-        return Identity(ptr, IdentityType::Secp256k1);
+        std::variant<Identity, std::string> ok(std::move(Identity(ptr, IdentityType::Secp256k1)));
+        // return Identity(ptr, IdentityType::Secp256k1);
+        return ok;
     }
 
-    std::optional<Identity> Identity::BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
-                                     const std::vector<uint8_t>& privateKeySeed,
-                                     RetPtr_u8 error) {
-        void *ptr = identity_basic_from_key_pair(publicKey.data(), privateKeySeed.data(), error);
+    std::variant<Identity, std::string> Identity::BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
+                                     const std::vector<uint8_t>& privateKeySeed) {
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        void *ptr = identity_basic_from_key_pair(publicKey.data(), privateKeySeed.data(), &ret);
         
         if (ptr == nullptr) {
-            return std::nullopt;
+            std::variant<Identity, std::string> error(data);
+            return error;
         }
 
-        return Identity(ptr, IdentityType::Basic);
+        std::variant<Identity, std::string> ok(std::move(Identity(ptr, IdentityType::Basic)));
+        // return Identity(ptr, IdentityType::Basic);
+        return ok;
     }
 
     Identity Identity::Secp256k1FromPrivateKey(const std::vector<char>& privateKey) {
@@ -62,24 +97,44 @@ namespace zondax::identity {
         return Identity(ptr, IdentityType::Basic);
     }
 
-    std::optional<zondax::principal::Principal> Identity::Sender(RetPtr_u8 error) {
-        CPrincipal *p = identity_sender(ptr, type, error);
+    std::variant<zondax::principal::Principal, std::string> Identity::Sender() {
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        CPrincipal *p = identity_sender(ptr, type, &ret);
 
         if (p == nullptr) {
-            return std::nullopt;
+            std::variant<zondax::principal::Principal, std::string> error(data);
+            return error;
         }
 
         std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
         ptr = nullptr;
-        
-        return zondax::principal::Principal(outBytes);
+
+        auto principal = zondax::principal::Principal(outBytes);
+
+        std::variant<zondax::principal::Principal, std::string> ok(std::move(principal));
+
+        return ok;
     }
 
-    std::optional<IdentitySign> Identity::Sign(const std::vector<uint8_t>& bytes, RetPtr_u8 error) {
-        CIdentitySign* p = identity_sign(bytes.data(), bytes.size(), ptr, type, error);
+    std::variant<IdentitySign, std::string> Identity::Sign(const std::vector<uint8_t>& bytes) {
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        CIdentitySign* p = identity_sign(bytes.data(), bytes.size(), ptr, type, &ret);
 
         if (p == nullptr) {
-            return std::nullopt;
+            std::variant<IdentitySign, std::string> error(data);
+            return error;
         }
 
         IdentitySign result;
@@ -90,6 +145,8 @@ namespace zondax::identity {
         result.pubkey = pk;
         result.signature = sig;
         cidentitysign_destroy(p);
+
+        std::variant<IdentitySign, std::string> ok(std::move(result));
 
         return result;
     }

@@ -15,10 +15,23 @@
  ********************************************************************************/
 #include <optional>
 #include <cstdlib>
+
 #include "principal.h"
 
 namespace zondax::principal {
 
+void error_callback(const unsigned char *data, int len, void *user_data) {
+    std::string error_msg((const char *)data, len);
+    *(std::string *)user_data = error_msg;
+}
+
+/**
+ * @brief Constructs a Principal object from a vector of bytes.
+ * @param data The vector of bytes to initialize the Principal.
+ *
+ * This constructor initializes a Principal object with the provided vector of bytes.
+ * The bytes parameter contains the data used to construct the Principal.
+ */
 Principal::Principal(const std::vector<unsigned char>& data) : bytes(data) {
     cPrincipal = principal_from_slice(data.data(), data.size());
 
@@ -41,42 +54,94 @@ Principal Principal::SelfAuthenticating(const std::vector<uint8_t> &public_key) 
     return Principal(outBytes);
 }
 
-std::optional<Principal> Principal::TryFromSlice(const std::vector<uint8_t> &bytes, RetPtr_u8 errorCallback) {
+/**
+ * @brief 
+ * 
+ * @param bytes 
+ * @param errorCallback 
+ * @return std::optional<Principal> 
+ */
+std::variant<Principal, std::string> Principal::TryFromSlice(const std::vector<uint8_t> &bytes) {
 
-    CPrincipal *p = principal_try_from_slice(bytes.data(), bytes.size(), errorCallback);
+    std::string data;
+
+    RetError ret;
+    ret.user_data = (void *)&data;
+    ret.call = error_callback;
+
+    // get error from error_ret here and send it on string of result
+    CPrincipal *p = principal_try_from_slice(bytes.data(), bytes.size(), &ret);
 
     if (p == nullptr) {
-        return std::nullopt;
+        // TODO: Why a call to destroy over a null pointer?
+        // principal_destroy(p);
+        std::variant<Principal, std::string> error(data);
+        return error;
     }
 
     std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
-    principal_destroy(p);
-    return Principal(outBytes);
+    auto cpp_principal = Principal(outBytes);
+
+    std::variant<Principal, std::string> ok(std::move(cpp_principal));
+
+    return ok;
 }
 
-std::optional<Principal> Principal::FromText(const std::string& text,  RetPtr_u8 errorCallback) {
+/**
+ * @brief 
+ * 
+ * @param text 
+ * @param errorCallback 
+ * @return std::optional<Principal> 
+ */
+std::variant<Principal, std::string> Principal::FromText(const std::string& text) {
 
-    CPrincipal *p = principal_from_text(text.c_str(), errorCallback);
+    std::string data;
+
+    RetError ret;
+    ret.user_data = (void *)&data;
+    ret.call = error_callback;
+
+    // get error from error_ret here and send it on string of result
+    CPrincipal *p = principal_from_text(text.c_str(), &ret);
 
     if (p == nullptr) {
-        return std::nullopt;
+        // TODO: Why calling destructor over a null ptr?
+        // principal_destroy(p);
+        std::variant<Principal, std::string> error(data);
+        return error;
     }
 
     std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
-    principal_destroy(p);
-    return Principal(outBytes);
+    auto cpp_principal = Principal(outBytes);
+
+    std::variant<Principal, std::string> ok(std::move(cpp_principal));
+
+    return ok;
+
 }
 
-std::string Principal::ToText(const std::vector<unsigned char>& data,  RetPtr_u8 errorCallback) {
-
-    CPrincipal *p = principal_to_text(data.data(), data.size(), errorCallback);
+/**
+ * @brief 
+ * 
+ * @param data 
+ * @param errorCallback 
+ * @return std::string 
+ */
+std::string Principal::ToText(const std::vector<unsigned char>& data) {
+    // get error from error_ret here and send it on string of result
+    CPrincipal *p = principal_to_text(data.data(), data.size(), nullptr);
 
     if (p == nullptr) {
+        // TODO: destroy call over a null ptr?
+        // principal_destroy(p);
         return "";
     }
 
     std::string result(reinterpret_cast<const char*>(p->ptr), p->len);
+
     principal_destroy(p);
+
     return result;
 }
 

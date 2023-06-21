@@ -35,7 +35,7 @@ extern "C" {
  * @return FFIAgent pointer 
  */
 FFIAgent *agent_create(const char *url, CIdentity *id, CPrincipal *canister,
-                const char *did_content, RetPtr_u8 error_cb);
+                const char *did_content, RetError *error_cb);
 
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
@@ -44,7 +44,7 @@ FFIAgent *agent_create(const char *url, CIdentity *id, CPrincipal *canister,
  * @param error_cb returned error
  * @return agent call result
  */
-CText* agent_status(const struct FFIAgent *agent, RetPtr_u8 error_cb);
+CText* agent_status(const struct FFIAgent *agent, RetError *error_cb);
 
 /**
  * @brief Update call
@@ -56,7 +56,7 @@ CText* agent_status(const struct FFIAgent *agent, RetPtr_u8 error_cb);
  * @return agent call result
  */
 IDLArgs *agent_update(const struct FFIAgent *agent, const char *method,
-                IDLArgs *method_args, RetPtr_u8 error_cb);
+                IDLArgs *method_args, RetError *error_cb);
 
 /**
  * @brief Query call
@@ -68,7 +68,7 @@ IDLArgs *agent_update(const struct FFIAgent *agent, const char *method,
  * @return agent call result
  */
 IDLArgs *agent_query(const struct FFIAgent *agent, const char *method,
-                IDLArgs *method_args, RetPtr_u8 error_cb);
+                IDLArgs *method_args, RetError *error_cb);
 
 #ifdef __cplusplus
 }

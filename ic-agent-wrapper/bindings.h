@@ -68,7 +68,12 @@ typedef struct CPrincipal {
 /**
  * CallBack Ptr creation with size and len
  */
-typedef void (*RetPtr_u8)(const uint8_t*, int);
+typedef void (*RetPtr_u8)(const uint8_t*, int, void*);
+
+typedef struct RetError {
+  void *user_data;
+  RetPtr_u8 call;
+} RetError;
 
 /**
  * @brief Free allocated memory
@@ -355,7 +360,7 @@ struct FFIAgent *agent_create_wrap(const char *path,
                                    const uint8_t *canister_id,
                                    int canister_id_len,
                                    const char *did_content,
-                                   RetPtr_u8 error_ret);
+                                   struct RetError *error_ret);
 
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
@@ -366,7 +371,7 @@ struct FFIAgent *agent_create_wrap(const char *path,
  * If the function returns a NULL CText the user should check
  * The error callback, to attain the error
  */
-struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, RetPtr_u8 error_ret);
+struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, struct RetError *error_ret);
 
 /**
  * @brief Calls and returns a query call to the canister
@@ -380,7 +385,7 @@ struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, RetPtr_u8 erro
 IDLArgs *agent_query_wrap(const struct FFIAgent *agent_ptr,
                           const char *method,
                           const char *method_args,
-                          RetPtr_u8 error_ret);
+                          struct RetError *error_ret);
 
 /**
  * @brief Calls and returns a update call to the canister
@@ -396,7 +401,7 @@ IDLArgs *agent_query_wrap(const struct FFIAgent *agent_ptr,
 IDLArgs *agent_update_wrap(const struct FFIAgent *agent_ptr,
                            const char *method,
                            const char *method_args,
-                           RetPtr_u8 error_ret);
+                           struct RetError *error_ret);
 
 /**
  * @brief Free allocated Agent
@@ -424,7 +429,7 @@ struct CText *idl_args_to_text(const IDLArgs *idl_args);
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-IDLArgs *idl_args_from_text(const char *text, RetPtr_u8 error_ret);
+IDLArgs *idl_args_from_text(const char *text, struct RetError *error_ret);
 
 /**
  * @brief Translate IDLArgs to bytes array
@@ -434,7 +439,7 @@ IDLArgs *idl_args_from_text(const char *text, RetPtr_u8 error_ret);
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, RetPtr_u8 error_ret);
+struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, struct RetError *error_ret);
 
 /**
  * @brief Translate IDLArgs from a byte representation
@@ -446,7 +451,7 @@ struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, RetPtr_u8 error_ret);
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-IDLArgs *idl_args_from_bytes(const uint8_t *bytes, int bytes_len, RetPtr_u8 error_ret);
+IDLArgs *idl_args_from_bytes(const uint8_t *bytes, int bytes_len, struct RetError *error_ret);
 
 /**
  * @brief Create IDLArgs from an IDLValue Array(C)/Vector(Rust)
@@ -477,7 +482,7 @@ void idl_args_destroy(IDLArgs *_ptr);
 /**
  * Format Text to IDLValue text format
  */
-IDLValue *idl_value_format_text(const char *text, RetPtr_u8 error_ret);
+IDLValue *idl_value_format_text(const char *text, struct RetError *error_ret);
 
 /**
  * @brief Test if IDLValues are equal
@@ -497,7 +502,7 @@ bool idl_value_is_equal(const IDLValue *idl_1, const IDLValue *idl_2);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_nat(const char *nat, RetPtr_u8 error_ret);
+IDLValue *idl_value_with_nat(const char *nat, struct RetError *error_ret);
 
 /**
  * @brief Create IDLValue with nat8
@@ -720,7 +725,7 @@ IDLValue *idl_value_with_none(void);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_text(const char *text, RetPtr_u8 error_ret);
+IDLValue *idl_value_with_text(const char *text, struct RetError *error_ret);
 
 /**
  * @brief Get Text from IDLValue
@@ -742,7 +747,7 @@ struct CText *text_from_idl_value(const IDLValue *ptr);
  */
 IDLValue *idl_value_with_principal(const uint8_t *principal,
                                    int principal_len,
-                                   RetPtr_u8 error_ret);
+                                   struct RetError *error_ret);
 
 /**
  * @brief Principal from IDLValue
@@ -762,7 +767,9 @@ struct CPrincipal *principal_from_idl_value(const IDLValue *ptr);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_service(const uint8_t *principal, int principal_len, RetPtr_u8 error_ret);
+IDLValue *idl_value_with_service(const uint8_t *principal,
+                                 int principal_len,
+                                 struct RetError *error_ret);
 
 /**
  * @brief Service from IDLValue
@@ -781,7 +788,7 @@ struct CPrincipal *service_from_idl_value(const IDLValue *ptr);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_number(const char *number, RetPtr_u8 error_ret);
+IDLValue *idl_value_with_number(const char *number, struct RetError *error_ret);
 
 /**
  * @brief Get Number from IDLValue
@@ -915,7 +922,7 @@ void *identity_anonymous(void);
  * If the function returns a NULL pointer the user should check
  * The error callback, to attain the error
  */
-void *identity_basic_from_pem(const char *pem_data, RetPtr_u8 error_ret);
+void *identity_basic_from_pem(const char *pem_data, struct RetError *error_ret);
 
 /**
  * @brief Create a BasicIdentity from a KeyPair from the ring crate
@@ -931,7 +938,7 @@ void *identity_basic_from_pem(const char *pem_data, RetPtr_u8 error_ret);
  */
 void *identity_basic_from_key_pair(const uint8_t *public_key,
                                    const uint8_t *private_key_seed,
-                                   RetPtr_u8 error_ret);
+                                   struct RetError *error_ret);
 
 /**
  * @brief Creates an Secp256k1 identity from a PEM file
@@ -944,7 +951,7 @@ void *identity_basic_from_key_pair(const uint8_t *public_key,
  * If the function returns a NULL pointer the user should check
  * The error callback, to attain the error
  */
-void *identity_secp256k1_from_pem(const char *pem_data, RetPtr_u8 error_ret);
+void *identity_secp256k1_from_pem(const char *pem_data, struct RetError *error_ret);
 
 /**
  * @brief Create a Secp256k1 from a KeyPair from the ring crate
@@ -970,7 +977,7 @@ void *identity_secp256k1_from_private_key(const char *private_key, uintptr_t pk_
  */
 struct CPrincipal *identity_sender(void *id_ptr,
                                    enum IdentityType idType,
-                                   RetPtr_u8 error_ret);
+                                   struct RetError *error_ret);
 
 /**
  * @brief Sign a blob, the concatenation of the domain separator & request ID,
@@ -989,7 +996,7 @@ struct CIdentitySign *identity_sign(const uint8_t *bytes,
                                     int bytes_len,
                                     void *id_ptr,
                                     enum IdentityType idType,
-                                    RetPtr_u8 error_ret);
+                                    struct RetError *error_ret);
 
 /**
  * @brief Construct a Principal of the IC management canister
@@ -1035,7 +1042,7 @@ struct CPrincipal *principal_from_slice(const uint8_t *bytes, int bytes_len);
  */
 struct CPrincipal *principal_try_from_slice(const uint8_t *bytes,
                                             int bytes_len,
-                                            RetPtr_u8 error_ret);
+                                            struct RetError *error_ret);
 
 /**
  * @brief Construct a Principal from text representation.
@@ -1046,7 +1053,7 @@ struct CPrincipal *principal_try_from_slice(const uint8_t *bytes,
  * If the function returns a NULL CPrincipal the user should check
  * The error callback, to attain the error
  */
-struct CPrincipal *principal_from_text(const char *text, RetPtr_u8 error_ret);
+struct CPrincipal *principal_from_text(const char *text, struct RetError *error_ret);
 
 /**
  * @brief Return the textual representation of Principal.
@@ -1058,7 +1065,9 @@ struct CPrincipal *principal_from_text(const char *text, RetPtr_u8 error_ret);
  * If the function returns a NULL CPrincipal the user should check
  * The error callback, to attain the error
  */
-struct CPrincipal *principal_to_text(const uint8_t *bytes, int bytes_len, RetPtr_u8 error_ret);
+struct CPrincipal *principal_to_text(const uint8_t *bytes,
+                                     int bytes_len,
+                                     struct RetError *error_ret);
 
 /**
  * @brief Free allocated Memory

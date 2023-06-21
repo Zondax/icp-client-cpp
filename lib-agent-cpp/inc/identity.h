@@ -20,6 +20,8 @@
 #include <iostream>
 #include <vector>
 #include <cstring>
+#include <variant>
+
 #include "principal.h"
 
 extern "C" {
@@ -42,14 +44,13 @@ public:
     ~Identity();
     Identity();
     static Identity Anonymous();
-    static std::optional<Identity> BasicFromPem(const std::string& pemData, RetPtr_u8 error);
-    static std::optional<Identity> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
-                                    const std::vector<uint8_t>& privateKeySeed,
-                                    RetPtr_u8 error);
-    static std::optional<Identity> Secp256k1FromPem(const std::string& pemData, RetPtr_u8 error);
+    static std::variant<Identity, std::string> BasicFromPem(const std::string& pemData);
+    static std::variant<Identity, std::string> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
+                                    const std::vector<uint8_t>& privateKeySeed);
+    static std::variant<Identity, std::string> Secp256k1FromPem(const std::string& pemData);
     static Identity Secp256k1FromPrivateKey(const std::vector<char>& privateKey);
-    std::optional<zondax::principal::Principal> Sender(RetPtr_u8 error);
-    std::optional<IdentitySign> Sign(const std::vector<uint8_t>& bytes, RetPtr_u8 error);
+    std::variant<zondax::principal::Principal, std::string> Sender();
+    std::variant<IdentitySign, std::string> Sign(const std::vector<uint8_t>& bytes);
 
     void* getPtr() const;
     IdentityType getType() const;

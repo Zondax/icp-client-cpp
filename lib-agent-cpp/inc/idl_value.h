@@ -21,6 +21,7 @@
 #include <vector>
 #include <cstring>
 #include "principal.h"
+#include "idl_value_utils.h"
 
 
 extern "C" {
@@ -29,30 +30,13 @@ extern "C" {
 
 namespace zondax::idl_value {
 
-class IdlValue;
-
-struct Variant {
-    std::vector<uint8_t> id;
-    IdlValue *val;
-    uint64_t code;
-};
-
-struct Func {
-    std::string s;
-    zondax::principal::Principal p;
-};
-
-struct Record {
-    std::vector<std::string> keys;
-    std::vector<IdlValue> vals;
-};
-
 class IdlValue {  
 private:
     IDLValue *ptr;
 
 public:
     // Create IdlValues from types
+    IdlValue(IDLValue *ptr);
     IdlValue();
     explicit IdlValue(uint8_t val);
     explicit IdlValue(uint16_t val);
@@ -95,15 +79,13 @@ public:
     std::string getNumber();
     IdlValue getOpt();
     std::vector<IdlValue> getVec();
-    Record getRecord();
-    Variant getVariant();
-    Func getFunc();
+    // zondax::idl_value_utils::Record getRecord();
+    // zondax::idl_value_utils::Variant getVariant();
+    zondax::idl_value_utils::Func getFunc();
 
    IDLValue* getPtr() const;
    ~IdlValue();
 };
-
-
 }
 
 

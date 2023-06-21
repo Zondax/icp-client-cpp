@@ -51,9 +51,9 @@ std::string IdlArgs::getText() {
 }
 
 std::vector<uint8_t> IdlArgs::getBytes() {
-    RetPtr_u8 error;
 
-    CBytes* cBytes = idl_args_to_bytes(ptr, error);
+    // TODO: Remove null and use proper callback if needed
+    CBytes* cBytes = idl_args_to_bytes(ptr, nullptr);
     const uint8_t* byte = cbytes_ptr(cBytes);
     uintptr_t len = cbytes_len(cBytes);
 

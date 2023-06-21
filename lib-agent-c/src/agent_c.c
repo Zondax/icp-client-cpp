@@ -34,7 +34,7 @@
  * @return FFIAgent pointer 
  */
 FFIAgent *agent_create(const char *url, CIdentity *id, CPrincipal *canister,
-                const char *did_content, RetPtr_u8 error_cb) {
+                const char *did_content, RetError *error_cb) {
 
     return agent_create_wrap(url, id->ptr, id->type, canister->ptr,
                                           canister->len, did_content,
@@ -48,7 +48,7 @@ FFIAgent *agent_create(const char *url, CIdentity *id, CPrincipal *canister,
  * @param error_cb returned error
  * @return agent call result
  */
-CText* agent_status(const struct FFIAgent *agent, RetPtr_u8 error_cb) {
+CText* agent_status(const struct FFIAgent *agent, RetError *error_cb) {
     return agent_status_wrap(agent, error_cb);
 }
 
@@ -62,7 +62,7 @@ CText* agent_status(const struct FFIAgent *agent, RetPtr_u8 error_cb) {
  * @return agent call result
  */
 IDLArgs *agent_update(const struct FFIAgent *agent, const char *method,
-                IDLArgs *method_args, RetPtr_u8 error_cb) {
+                IDLArgs *method_args, RetError *error_cb) {
 
     CText *arg = idl_args_to_text(method_args);
     return agent_update_wrap(agent, method, ctext_str(arg), error_cb);
@@ -78,7 +78,7 @@ IDLArgs *agent_update(const struct FFIAgent *agent, const char *method,
  * @return agent call result
  */
 IDLArgs *agent_query(const struct FFIAgent *agent, const char *method,
-                IDLArgs *method_args, RetPtr_u8 error_cb) {
+                IDLArgs *method_args, RetError *error_cb) {
 
     CText *arg = idl_args_to_text(method_args);
     return agent_query_wrap(agent, method, ctext_str(arg), error_cb);
