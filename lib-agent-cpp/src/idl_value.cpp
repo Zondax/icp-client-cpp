@@ -254,67 +254,67 @@ std::vector<IdlValue> IdlValue::getVec() {
     return result;
 }
 
-Record IdlValue::getRecord() {
-    struct CRecord* cRecord = record_from_idl_value(ptr);
-    Record result;
+// Record IdlValue::getRecord() {
+//     struct CRecord* cRecord = record_from_idl_value(ptr);
+//     Record result;
 
-    // Extract keys
-    uintptr_t keysLength = crecord_keys_len(cRecord);
-    for (uintptr_t i = 0; i < keysLength; ++i) {
-        const char* keyPtr = reinterpret_cast<const char*>(crecord_get_key(cRecord, i));
-        result.keys.emplace_back(keyPtr);
-    }
+//     // Extract keys
+//     uintptr_t keysLength = crecord_keys_len(cRecord);
+//     for (uintptr_t i = 0; i < keysLength; ++i) {
+//         const char* keyPtr = reinterpret_cast<const char*>(crecord_get_key(cRecord, i));
+//         result.keys.emplace_back(keyPtr);
+//     }
 
-    // Extract values
-    uintptr_t valsLength = crecord_vals_len(cRecord);
-    for (uintptr_t i = 0; i < valsLength; ++i) {
-        const IDLValue* valPtr = crecord_get_val(cRecord, i);
-        result.vals.emplace_back(valPtr);
-    }
+//     // Extract values
+//     uintptr_t valsLength = crecord_vals_len(cRecord);
+//     for (uintptr_t i = 0; i < valsLength; ++i) {
+//         const IDLValue* valPtr = crecord_get_val(cRecord, i);
+//         result.vals.emplace_back(valPtr);
+//     }
 
-    // Free the allocated CRecord
-    crecord_destroy(cRecord);
+//     // Free the allocated CRecord
+//     crecord_destroy(cRecord);
 
-    return result;
-}
+//     return result;
+// }
 
-Variant IdlValue::getVariant(){
-    struct CVariant* cVariant = variant_from_idl_value(ptr);
-    Variant result;
+// Variant IdlValue::getVariant(){
+//     struct CVariant* cVariant = variant_from_idl_value(ptr);
+//     Variant result;
 
-    // Extract ID
-    result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) + cvariant_id_len(cVariant));
+//     // Extract ID
+//     result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) + cvariant_id_len(cVariant));
 
-    // Extract value
-    const IDLValue* valPtr = cvariant_idlvalue(cVariant);
-    result.val = IdlValue(valPtr);
+//     // Extract value
+//     const IDLValue* valPtr = cvariant_idlvalue(cVariant);
+//     result.val = IdlValue(valPtr);
 
-    // Extract code
-    result.code = cvariant_code(cVariant);
+//     // Extract code
+//     result.code = cvariant_code(cVariant);
 
-    // Free the allocated CVariant
-    cvariant_destroy(cVariant);
+//     // Free the allocated CVariant
+//     cvariant_destroy(cVariant);
 
-    return result;
-}
+//     return result;
+// }
 
-Func IdlValue::getFunc() {
-    struct CFunc* cFunc = func_from_idl_value(ptr);
-    Func result;
+// Func IdlValue::getFunc() {
+//     struct CFunc* cFunc = func_from_idl_value(ptr);
+//     Func result;
 
-    // Extract string
-    result.s = std::string(cfunc_string(cFunc), cfunc_string(cFunc) + cfunc_string_len(cFunc));
+//     // Extract string
+//     result.s = std::string(cfunc_string(cFunc), cfunc_string(cFunc) + cfunc_string_len(cFunc));
 
-    // Extract principal
-    struct CPrincipal* cPrincipal = cfunc_principal(cFunc);
-    std::vector<uint8_t> vec = std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
-    result.p = zondax::principal::Principal(vec);
+//     // Extract principal
+//     struct CPrincipal* cPrincipal = cfunc_principal(cFunc);
+//     std::vector<uint8_t> vec = std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
+//     result.p = zondax::principal::Principal(vec);
 
-    // Free the allocated CFunc
-    cfunc_destroy(cFunc);
+//     // Free the allocated CFunc
+//     cfunc_destroy(cFunc);
 
-    return result;
-}
+//     return result;
+// }
 
 IDLValue* IdlValue::getPtr() const{
     return ptr;

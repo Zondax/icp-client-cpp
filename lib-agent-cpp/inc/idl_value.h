@@ -31,21 +31,21 @@ namespace zondax::idl_value {
 
 class IdlValue;
 
-struct Variant {
-    std::vector<uint8_t> id;
-    IdlValue val;
-    uint64_t code;
-};
+// struct Variant {
+//     std::vector<uint8_t> id;
+//     IdlValue val;
+//     uint64_t code;
+// };
 
-struct Func {
-    std::string s;
-    zondax::principal::Principal p;
-};
+// struct Func {
+//     std::string s;
+//     zondax::principal::Principal p;
+// };
 
-struct Record {
-    std::vector<std::string> keys;
-    std::vector<IdlValue> vals;
-};
+// struct Record {
+//     std::vector<std::string> keys;
+//     std::vector<IdlValue> vals;
+// };
 
 class IdlValue {  
 private:
@@ -95,9 +95,9 @@ public:
     std::string getNumber();
     IdlValue getOpt();
     std::vector<IdlValue> getVec();
-    Record getRecord();
-    Variant getVariant();
-    Func getFunc();
+    // Record getRecord();
+    // Variant getVariant();
+    // Func getFunc();
 
    IDLValue* getPtr() const;
    ~IdlValue();

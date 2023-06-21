@@ -13,12 +13,30 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef HELPER_H
-#define HELPER_H
+#include <iostream>
+#include "helper.h"
+#include "agent.h"
+extern "C" {
+#include "helper_c.h"
+}
 
-#define ERR -1
-#define OK 0
+using namespace zondax::agent;
+using namespace zondax::principal;
+using namespace zondax::identity;
+using namespace zondax::idl_args;
+using namespace zondax::idl_value;
 
-int did_file_content(const std::string& didFilePath, long file_size, char* buffer);
-long did_file_size(const std::string& didFilePath);
-#endif
+Error error_cpp;
+
+void error_cb_cpp(const uint8_t* p, int len) {
+    if (error_cpp.ptr != nullptr) {
+         free((void*)error_cpp.ptr);
+    }
+    error_cpp.ptr = static_cast<const uint8_t*>(malloc(len));
+    error_cpp.len = len;
+    memcpy((void*)error_cpp.ptr, p, len);
+}
+
+int main() {
+
+}
