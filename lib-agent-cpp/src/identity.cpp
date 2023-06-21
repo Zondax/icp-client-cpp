@@ -71,7 +71,7 @@ namespace zondax::identity {
 
         std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
         ptr = nullptr;
-
+        
         return zondax::principal::Principal(outBytes);
     }
 

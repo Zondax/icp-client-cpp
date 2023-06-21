@@ -103,5 +103,4 @@ int main() {
         std::cout << "Test 3: "<< error_cpp.ptr << std::endl;
     }
 
-
 }

@@ -41,7 +41,7 @@ void error_cb_cpp(const uint8_t* p, int len) {
 int main() {
     // Canister info from hello world deploy example
     std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    std::string did_file = "../examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     std::string url = "https://ic0.app";
 
     // Get did file content
