@@ -24,10 +24,11 @@
 Error error;
 
 // Function pointers used to get the return from rust lib
-static void error_cb(const uint8_t *p, int len) {
+static void error_cb(const uint8_t *p, int len, void *) {
 
     if (error.ptr != NULL) {
         free((void *)error.ptr);
+        error.ptr = NULL;
     }
 
     error.ptr = malloc(len);
@@ -38,6 +39,9 @@ static void error_cb(const uint8_t *p, int len) {
 
 int main(void) {
     printf("+++++++++ Testing exported Candid Args Core Functions +++++++++\n");
+    
+    RetError ret_error;
+    ret_error.call = error_cb;
 
     // Anonymous Principal
     const uint8_t p[] = {4};
@@ -48,7 +52,7 @@ int main(void) {
 
     // Create a simple array of IdlValues 
     IDLValue *element_1 = idl_value_with_bool(true);
-    IDLValue *element_2 = idl_value_with_principal(p, 1, error_cb);
+    IDLValue *element_2 = idl_value_with_principal(p, 1, &ret_error);
     IDLValue *element_3 = idl_value_with_int32(-12);
     const IDLValue *elems[] = {element_1, element_2, element_3};
     
@@ -63,11 +67,11 @@ int main(void) {
         printf(" Test 1: Error.\n");
     }
     // Reconsturct args from previous text with the Ctext specific functions
-    IDLArgs *args_new = idl_args_from_text(ctext_str(text), error_cb);
+    IDLArgs *args_new = idl_args_from_text(ctext_str(text), &ret_error);
 
     // Test Expected Bytes using reconstructed args it is expected that it matched
     // the original used args
-    CBytes *bytes = idl_args_to_bytes(args_new, error_cb);
+    CBytes *bytes = idl_args_to_bytes(args_new, &ret_error);
     if (!memcmp(cbytes_ptr(bytes), bytes_args, 17)) {
         printf(" Test 2: Bytes from IDLArgs are Valid\n");
     } else {
@@ -151,7 +155,7 @@ int main(void) {
 
     // Create IDLValue with number and extarct the number from it
     idl_value_destroy(val);
-    val = idl_value_with_number("123", error_cb);
+    val = idl_value_with_number("123", &ret_error);
 
     CText *t = number_from_idl_value(val);
     // ctext_len does not include the /0
@@ -163,7 +167,7 @@ int main(void) {
 
     // Create IDLValue with text and extarct the text from it
     idl_value_destroy(val);
-    val = idl_value_with_text("zondax", error_cb);
+    val = idl_value_with_text("zondax", &ret_error);
 
     ctext_destroy(t);
     t = text_from_idl_value(val);
@@ -175,7 +179,7 @@ int main(void) {
 
     // Create IDLValue with principal and extarct the principal from it
     idl_value_destroy(val);
-    val = idl_value_with_principal(p, 1, error_cb);
+    val = idl_value_with_principal(p, 1, &ret_error);
 
     CPrincipal *id = principal_from_idl_value(val);
     if ( id->len == 1 && id->ptr[0] == 4) {
@@ -186,7 +190,7 @@ int main(void) {
 
     // Create IDLValue with service and extarct the service from it
     idl_value_destroy(val);
-    val = idl_value_with_service(p, 1, error_cb);
+    val = idl_value_with_service(p, 1, &ret_error);
 
     principal_destroy(id);
     id = service_from_idl_value(val);

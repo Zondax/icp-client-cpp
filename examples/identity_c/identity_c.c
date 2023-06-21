@@ -25,7 +25,7 @@
 Error error;
 
 // Function pointers used to get the return from rust lib
-static void error_cb(const uint8_t *p, int len) {
+static void error_cb(const uint8_t *p, int len, void *) {
     if (error.ptr != NULL) {
         free((void *)error.ptr);
     }
@@ -69,6 +69,9 @@ const char* basic_expected = "emrl6-qe3wz-fh5ib-sx2r4-fbx46-6g4ql-5ro3g-zhbtm-nx
 const char* secp256_expected = "t2kpu-6xt6l-tyb3d-rll2p-irv5c-no5nd-h6spj-jsetq-bmqdz-iap77-pqe";
 
 int main(void) {
+    RetError ret_error;
+    ret_error.call = error_cb;
+
     printf("+++++++++ Testing exported Identity Core Functions +++++++++\n");
     
     CIdentity id = {0};
@@ -76,7 +79,7 @@ int main(void) {
     // Create anonymous ID and sender so we verify with principal anonymous
     anonymous_identity(&id);
     // Use idenity sender to get principal ID
-    CPrincipal *p = identity_sender(id.ptr, id.type, error_cb);
+    CPrincipal *p = identity_sender(id.ptr, id.type, &ret_error);
     if (p->len == 1 && p->ptr[0] == 4) {
         printf(" Test 1: Valid Anonym identity.\n");
     } else {
@@ -84,11 +87,11 @@ int main(void) {
     }
 
     // Create Basic ID 
-    basic_identity_from_pem(BasicIdentityFile, &id, error_cb);
+    basic_identity_from_pem(BasicIdentityFile, &id, &ret_error);
 
     principal_destroy(p);
-    p = identity_sender(id.ptr, id.type, error_cb);
-    CPrincipal *p_text = principal_to_text(p->ptr,p->len,error_cb);
+    p = identity_sender(id.ptr, id.type, &ret_error);
+    CPrincipal *p_text = principal_to_text(p->ptr,p->len,&ret_error);
     if (!strcmp((const char *)p_text->ptr, basic_expected)) {
         printf(" Test 2: Valid Basic from file identity.\n");
     } else {
@@ -97,8 +100,8 @@ int main(void) {
 
     // Create Basic idenity again because identity_sender takes ownership of the memory
     // on the rust side so try to use the previous pointer might have an undefined behaviour
-    basic_identity_from_pem(BasicIdentityFile, &id, error_cb);
-    CIdentitySign *sign = identity_sign(NULL, 0, id.ptr, id.type, error_cb);
+    basic_identity_from_pem(BasicIdentityFile, &id, &ret_error);
+    CIdentitySign *sign = identity_sign(NULL, 0, id.ptr, id.type, &ret_error);
     const uint8_t *pubkey = cidentitysign_pubkey(sign);
     const uint8_t *signature = cidentitysign_sig(sign);
 
@@ -110,13 +113,13 @@ int main(void) {
     }
 
     // Create Secp256k1 ID 
-    secp256k1_identity_from_pem(Secp256K1IdentityFile, &id, error_cb);
+    secp256k1_identity_from_pem(Secp256K1IdentityFile, &id, &ret_error);
 
     principal_destroy(p);
-    p = identity_sender(id.ptr, id.type, error_cb);
+    p = identity_sender(id.ptr, id.type, &ret_error);
 
     principal_destroy(p_text);
-    p_text = principal_to_text(p->ptr,p->len,error_cb);
+    p_text = principal_to_text(p->ptr,p->len,&ret_error);
     if (!strcmp((const char *)p_text->ptr, secp256_expected)) {
         printf(" Test 4: Valid Secp256k1 from file identity.\n");
     } else {

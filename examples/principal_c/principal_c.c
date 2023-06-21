@@ -25,7 +25,7 @@
 Error error;
 
 // Function pointers used to get the return from rust lib
-static void error_cb(const uint8_t *p, int len) {
+static void error_cb(const uint8_t *p, int len, void *) {
     if (error.ptr != NULL) {
         free((void *)error.ptr);
     }
@@ -35,6 +35,9 @@ static void error_cb(const uint8_t *p, int len) {
 }
 
 int main(void) {
+    RetError ret_error;
+    ret_error.call = error_cb;
+
     printf("+++++++++ Testing exported Principal Core Functions +++++++++\n");
 
     // Get Principal Management Canister
@@ -107,7 +110,7 @@ int main(void) {
     };
 
     principal_destroy(p);
-    p = principal_try_from_slice(bytes, 32, error_cb);
+    p = principal_try_from_slice(bytes, 32, &ret_error);
     if (error.ptr != NULL) {
         printf(" Test 4.1: Error is expected : %s\n", error.ptr);
     } else {
@@ -118,7 +121,7 @@ int main(void) {
     const char *text = "2vxsx-fae";
     
     principal_destroy(p);
-    p = principal_from_text(text, error_cb);
+    p = principal_from_text(text, &ret_error);
     
     if (p->len == 1 && p->ptr[0] == 4) {
         printf(" Test 5: Valid Principal from text.\n");
@@ -130,7 +133,7 @@ int main(void) {
     unsigned char principal[] = { 4 };
 
     principal_destroy(p);
-    p = principal_to_text(principal, 1, error_cb);
+    p = principal_to_text(principal, 1, &ret_error);
     
     if (!strcmp(text, (const char *)p->ptr)) {
         printf(" Test 6: Valid Text from Principal.\n");

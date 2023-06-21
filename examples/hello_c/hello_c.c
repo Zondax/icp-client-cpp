@@ -55,7 +55,7 @@ the response is represented inside the () :
 Error error;
 
 // Function pointers used to get the return from rust lib
-static void error_cb(const uint8_t *p, int len) {
+static void error_cb(const uint8_t *p, int len, void *) {
     if (error.ptr != NULL) {
         free((void *)error.ptr);
     }
@@ -65,6 +65,8 @@ static void error_cb(const uint8_t *p, int len) {
 }
 
 int main(void) {
+    RetError ret_error;
+    ret_error.call = error_cb;
 
     // Canister info from hello world deploy example
     const char *id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
@@ -78,7 +80,7 @@ int main(void) {
     get_did_file_content(did_file, file_size, did_content);
 
     // Compute principal id from text
-    CPrincipal *principal = principal_from_text(id_text,error_cb);
+    CPrincipal *principal = principal_from_text(id_text,&ret_error);
     CHECK_ERROR(error);
 
     //compute id
@@ -87,17 +89,17 @@ int main(void) {
 
     // Create an IDLArg argument from a IDLValue
     const char * arg1 = "world";
-    IDLValue *element_1 = idl_value_with_text(arg1, error_cb);
+    IDLValue *element_1 = idl_value_with_text(arg1, &ret_error);
     CHECK_ERROR(error);
     const IDLValue* elems[] = {element_1};
     IDLArgs *idl_args_ptr_1 = idl_args_from_vec(elems, 1);
 
     // Create Agent 1
-    FFIAgent *agent_1 = agent_create(url, &id, principal, did_content, error_cb);
+    FFIAgent *agent_1 = agent_create(url, &id, principal, did_content, &ret_error);
     CHECK_ERROR(error);
 
     // Send query call to agent 1
-    IDLArgs *call_1 = agent_query(agent_1, method, idl_args_ptr_1, error_cb);
+    IDLArgs *call_1 = agent_query(agent_1, method, idl_args_ptr_1, &ret_error);
     CHECK_ERROR(error);
 
     //Translate IdlArg to text
@@ -105,17 +107,17 @@ int main(void) {
 
     // Create an IDLArg argument from a IDLValue
     const char * arg2 = "zondax";
-    IDLValue *element_2 = idl_value_with_text(arg2, error_cb);
+    IDLValue *element_2 = idl_value_with_text(arg2, &ret_error);
     CHECK_ERROR(error);
     const IDLValue* elems2[] = {element_2};
     IDLArgs* idl_args_ptr_2 = idl_args_from_vec(elems2, 1);
 
     // Create Agent 2
-    FFIAgent *agent_2 = agent_create(url, &id, principal, did_content, error_cb);
+    FFIAgent *agent_2 = agent_create(url, &id, principal, did_content, &ret_error);
     CHECK_ERROR(error);
 
     // Send query call to agent 2
-    IDLArgs *call_2 = agent_query(agent_2, method, idl_args_ptr_2, error_cb);
+    IDLArgs *call_2 = agent_query(agent_2, method, idl_args_ptr_2, &ret_error);
     CHECK_ERROR(error);
 
     //Translate IdlArg to text
