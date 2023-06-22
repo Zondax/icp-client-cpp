@@ -67,11 +67,8 @@ int main() {
     std::vector<zondax::idl_value::IdlValue*> values;
     values.push_back(&elem);
 
-    // Create an IdlArgs object using the vector of IdlValue pointers
-    IdlArgs args(values);
-
-    //Make Query call to canister
-    auto out = std::get<Agent>(agent).Query("lookup", args);
+    //Make Query call to canister, pass args using move semantics
+    auto out = std::get<Agent>(agent).Query("lookup", IdlArgs(values));
 
 
     //Get text representation and print

@@ -32,6 +32,15 @@ private:
     IDLArgs *ptr;
 
 public:
+    // Disable copies, just move semantics
+    IdlArgs(const IdlArgs &args) = delete;
+    void operator=(const IdlArgs&) = delete;
+
+    // declare move constructor
+    IdlArgs(IdlArgs &&o) noexcept;
+    // declare move assignment
+    IdlArgs& operator=(IdlArgs &&o) noexcept;
+
     // why this constructor?
     // does this takes ownership of memory pointed by argsPtr?
     explicit IdlArgs(IDLArgs* argsPtr);

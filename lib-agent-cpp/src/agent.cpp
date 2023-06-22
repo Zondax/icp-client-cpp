@@ -96,9 +96,9 @@ std::variant<IdlArgs, std::string> Agent::Query(std::string service,
         return error;
     }
 
-    IdlArgs result(argsPtr);
+    // IdlArgs result(argsPtr);
 
-    std::variant<IdlArgs, std::string> ok(result);
+    std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
 
     return ok;
 }
@@ -120,8 +120,7 @@ std::variant<IdlArgs, std::string> Agent::Update(std::string service,
         return error;
     }
 
-    IdlArgs result(argsPtr);
-    std::variant<IdlArgs, std::string> ok(result);
+    std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
 
     return ok;
 }
