@@ -14,7 +14,9 @@
  *  limitations under the License.
  ********************************************************************************/
 #include <iostream>
+#include <variant>
 #include "agent.h"
+#include "idl_value.h"
 
 extern "C" {
 #include "helper_c.h"
@@ -26,17 +28,6 @@ using namespace zondax::principal;
 using namespace zondax::identity;
 using namespace zondax::idl_args;
 using namespace zondax::idl_value;
-
-Error error_cpp;
-
-void error_cb_cpp(const uint8_t* p, int len) {
-    if (error_cpp.ptr != nullptr) {
-         free((void*)error_cpp.ptr);
-    }
-    error_cpp.ptr = static_cast<const uint8_t*>(malloc(len));
-    error_cpp.len = len;
-    memcpy((void*)error_cpp.ptr, p, len);
-}
 
 int main() {
     // Canister info from hello world deploy example
@@ -50,17 +41,27 @@ int main() {
     int result = did_file_content(did_file, file_size, buffer.data());
 
     //Get principal form text
-    std::optional<Principal> principal = Principal::FromText(id_text, error_cb_cpp);
+    auto principal = Principal::FromText(id_text);
+
+    if(std::holds_alternative<std::string>(principal)) {
+        std::cout<<"Error: "<<std::get<std::string>(principal)<<std::endl;
+        return -1;
+    }
     
     //Construct anonymoous id
     Identity anonymousIdentity;
     
     //Create agent with agent constructor
-    Agent agent(url, anonymousIdentity, principal.value(), buffer, error_cb_cpp);
+    auto agent = Agent::create_agent(url, anonymousIdentity, std::get<Principal>(principal), buffer);
+
+    if (std::holds_alternative<std::string>(agent)) {
+        std::cout<<"Error: "<<std::get<std::string>(agent)<<std::endl;
+        return -1;
+    }
 
     // Create an IdlValue object with the uint64_t value (nat64 in candid)
     uint64_t nat64 = 1974211;
-    IdlValue elem(nat64);
+    auto elem = zondax::idl_value::IdlValue(nat64);
 
     // Create a vector of IdlValue pointers
     std::vector<zondax::idl_value::IdlValue*> values;
@@ -70,10 +71,11 @@ int main() {
     IdlArgs args(values);
 
     //Make Query call to canister
-    IdlArgs out = agent.Query("lookup", args, error_cb_cpp);
+    auto out = std::get<Agent>(agent).Query("lookup", args);
+
 
     //Get text representation and print
-    std::string out_text = out.getText();
+    std::string out_text = std::get<IdlArgs>(out).getText();
     std::cout << out_text << std::endl;
 
     return 0;
