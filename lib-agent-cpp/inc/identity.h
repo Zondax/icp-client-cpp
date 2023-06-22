@@ -43,6 +43,16 @@ private:
 public:
     ~Identity();
     Identity();
+
+    // Disable copies, just move semantics
+    Identity(const Identity &args) = delete;
+    void operator=(const Identity&) = delete;
+
+    // declare move constructor
+    Identity(Identity &&o) noexcept;
+    // declare move assignment
+    Identity& operator=(Identity &&o) noexcept;
+
     static Identity Anonymous();
     static std::variant<Identity, std::string> BasicFromPem(const std::string& pemData);
     static std::variant<Identity, std::string> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,

@@ -22,6 +22,34 @@ namespace zondax::identity {
         *(std::string *)user_data = error_msg;
     }
 
+    // declare move constructor
+    Identity::Identity(Identity &&o) noexcept {
+        ptr = o.ptr;
+        type = o.type; 
+        o.ptr = nullptr;
+    } 
+
+    // declare move assignment
+    Identity& Identity::operator=(Identity &&o) noexcept {
+        // check they are not the same object
+        if (&o == this)
+            return *this;
+
+        // now release our inner identity.
+        if (ptr != nullptr)
+            // identity_destroy(ptr);
+
+        // now takes ownership of the o.agent 
+        ptr = o.ptr;
+        type = o.type;
+
+        // ensure o.agent is null 
+        o.ptr = nullptr;
+
+
+        return *this;
+    }
+
 
     Identity::Identity(void* ptr, IdentityType type) : ptr(ptr), type(type) {}
 
@@ -159,6 +187,7 @@ namespace zondax::identity {
         return type;
     }
 
+    // TODO: what function to call for identity destruction?
     Identity::~Identity() {}
 }
 
