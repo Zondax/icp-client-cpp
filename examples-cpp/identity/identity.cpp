@@ -25,15 +25,11 @@ using namespace zondax::principal;
 
 Error error_cpp;
 
-void error_cb_cpp(const uint8_t* p, int len) {
-    if (error_cpp.ptr != nullptr) {
-         free((void*)error_cpp.ptr);
-    }
-    error_cpp.ptr = static_cast<const uint8_t*>(malloc(len));
-    error_cpp.len = len;
-    memcpy((void*)error_cpp.ptr, p, len);
-}
+// TODO: Add example to verify callback mechanism works fine!!!!
+
+
 std::string basic_expected = "emrl6-qe3wz-fh5ib-sx2r4-fbx46-6g4ql-5ro3g-zhbtm-nxdrq-q2oqo-jqe";
+
 std::string BasicIdentityFile =
     "-----BEGIN PRIVATE KEY-----\n"
     "MFMCAQEwBQYDK2VwBCIEIL9r4XBKsg4pquYBHY6rgfzuBsvCy89tgqDfDpofXRBP\n"
@@ -60,47 +56,61 @@ int main() {
     Identity anonymousIdentity;
 
     // Getting the sender principal
-    std::optional<Principal> senderPrincipal = anonymousIdentity.Sender(error_cb_cpp);
-    if(senderPrincipal.has_value()) {
-        std::vector<unsigned char> bytes = senderPrincipal.value().getBytes();
+    auto senderPrincipal = anonymousIdentity.Sender();
+
+    if(std::holds_alternative<Principal>(senderPrincipal)) {
+
+        std::vector<unsigned char> bytes = std::get<Principal>(senderPrincipal).getBytes();
+
         if (bytes.size() == 1 && bytes[0] == 4 && anonymousIdentity.getType() == Anonym) {
             std::cout << "Test 1: Valid Anonym identity" << std::endl;
         } else {
             std::cout << "Test 1: Invalid Anonym identity" << std::endl;
         }
+
     } else {
-        std::cout << "Test 1: "<< error_cpp.ptr << std::endl;
+        std::cout << "Test 1: "<< std::get<std::string>(senderPrincipal) << std::endl;
     }
 
     // Creating an Basic Identity
-    std::optional<Identity> id = Identity::BasicFromPem(BasicIdentityFile, error_cb_cpp);
+    auto id = Identity::BasicFromPem(BasicIdentityFile);
+
+    if (!std::holds_alternative<Identity>(id)) {
+        std::cout << std::get<std::string>(id)<<std::endl;
+        return -1;
+    }
 
     // Getting the sender principal
-    std::optional<Principal> idPrincipal = id.value().Sender(error_cb_cpp);
-    std::string str = Principal::ToText(idPrincipal.value().getBytes(), error_cb_cpp);
+    auto idPrincipal = std::get<Identity>(id).Sender();
 
-    if(idPrincipal.has_value()) {
-        if(str == basic_expected) {
-            std::cout << "Test 2: Valid Basic from file identity" << std::endl;
-        } else {
-            std::cout << "Test 2: Invalid Basic from file identity" << std::endl;
-        }
-    } else {
-        std::cout << "Test 2: "<< error_cpp.ptr << std::endl;
+    if ( std::holds_alternative<std::string>(idPrincipal) ) {
+        std::cout<<"Error:  "<<std::get<std::string>(idPrincipal)<<std::endl;
+        return -1;
     }
+
+    std::string str = Principal::ToText(std::get<Principal>(idPrincipal).getBytes());
 
     // Creating an Basic Identity
-    std::optional<Identity> basic = Identity::BasicFromPem(BasicIdentityFile, error_cb_cpp);
-    std::optional<IdentitySign> result = basic.value().Sign({}, error_cb_cpp);
+    auto basic = Identity::BasicFromPem(BasicIdentityFile);
 
-    if(result.has_value()) {
-        if(result.value().pubkey == PubKeyExpected && result.value().signature == SignatureExpected) {
-            std::cout << "Test 3: Valid Sign Basic" << std::endl;
-        } else {
-            std::cout << "Test 3: Invalid Sign Basic" << std::endl;
-        }
-    } else {
-        std::cout << "Test 3: "<< error_cpp.ptr << std::endl;
+    if ( std::holds_alternative<std::string>(basic) ) {
+        std::cout<<"Error:  "<<std::get<std::string>(basic)<<std::endl;
+        return -1;
+    }
+    // identitySign
+    auto result = std::get<Identity>(basic).Sign({});
+
+    if ( std::holds_alternative<std::string>(result) ) {
+        std::cout<<"Error:  "<<std::get<std::string>(result)<<std::endl;
+        return -1;
     }
 
+    auto value = std::get<IdentitySign>(result);
+    if(value.pubkey == PubKeyExpected && value.signature == SignatureExpected) {
+        std::cout << "Test 3: Valid Sign Basic" << std::endl;
+    } else {
+        std::cout << "Test 3: Invalid Sign Basic" << std::endl;
+    }
+
+    return 0;
 }

@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::RetPtr;
+use crate::RetError;
 use candid::Principal;
 use std::ffi::{c_char, c_int, CStr, CString};
 
@@ -102,7 +102,7 @@ pub extern "C" fn principal_from_slice(
 pub extern "C" fn principal_try_from_slice(
     bytes: *const u8,
     bytes_len: c_int,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<CPrincipal>> {
     //Compute Slice of bytes
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
@@ -123,7 +123,9 @@ pub extern "C" fn principal_try_from_slice(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             None
         }
     }
@@ -139,7 +141,7 @@ pub extern "C" fn principal_try_from_slice(
 #[no_mangle]
 pub extern "C" fn principal_from_text(
     text: *const c_char,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<CPrincipal>> {
     let text_cstr = unsafe {
         assert!(!text.is_null());
@@ -163,7 +165,9 @@ pub extern "C" fn principal_from_text(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             None
         }
     }
@@ -181,7 +185,7 @@ pub extern "C" fn principal_from_text(
 pub extern "C" fn principal_to_text(
     bytes: *const u8,
     bytes_len: c_int,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<CPrincipal>> {
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
     let principal_tmp = Principal::try_from_slice(slice);
@@ -203,7 +207,9 @@ pub extern "C" fn principal_to_text(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             None
         }
     }
@@ -281,9 +287,7 @@ mod tests {
     fn test_principal_to_text() {
         const TEXT: &[u8; 8] = b"aaaaa-aa";
 
-        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-
-        let principal = principal_to_text([0u8; 0].as_ptr(), 0, error_ret);
+        let principal = principal_to_text([0u8; 0].as_ptr(), 0, None);
         assert!(principal.is_some());
         let principal = principal.unwrap();
         let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };
@@ -298,9 +302,7 @@ mod tests {
         const ANONYMOUS_TEXT: &[u8; 28] = b"rrkah-fqaaa-aaaaa-aaaaq-cai\0";
         const BYTES: &[u8] = &[0, 0, 0, 0, 0, 0, 0, 1, 1, 1];
 
-        extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-
-        let principal = principal_from_text(ANONYMOUS_TEXT.as_ptr() as *const c_char, error_ret);
+        let principal = principal_from_text(ANONYMOUS_TEXT.as_ptr() as *const c_char, None);
         assert!(principal.is_some());
         let principal = principal.unwrap();
         let slice = unsafe { std::slice::from_raw_parts(principal.ptr, principal.len as usize) };

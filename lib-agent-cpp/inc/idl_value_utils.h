@@ -13,38 +13,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#ifndef PRINCIPAL_H
-#define PRINCIPAL_H
+#ifndef IDL_VALUE_UTILS_H
+#define IDL_VALUE_UTILS_H
 
 #include <cstdint>
 #include <iostream>
 #include <vector>
 #include <cstring>
-#include <variant>
+#include <memory>
+
+#include "principal.h"
+// #include "idl_value.h"
+
+class IdlValue;
+
+namespace zondax::idl_value_utils {
 
 
-extern "C" {
-#include "zondax_ic.h"
-}
-
-namespace zondax::principal {
-class Principal {
-private:
-    std::vector<unsigned char> bytes;
-    CPrincipal* cPrincipal;
-
-public:
-    explicit Principal(bool anonym = true);
-    explicit Principal(const std::vector<uint8_t> &bytes);
-
-    static Principal SelfAuthenticating(const std::vector<uint8_t> &public_key);
-    static std::variant<Principal, std::string>  TryFromSlice(const std::vector<uint8_t> &bytes);
-    static std::variant<Principal, std::string>   FromText(const std::string& text);
-    static std::string ToText(const std::vector<uint8_t> &bytes);
-
-    std::vector<unsigned char> getBytes() const;
-    ~Principal();
+struct Func {
+    std::string s;
+    zondax::principal::Principal p;
 };
 
-}
-#endif  // PRINCIPAL_H
+struct Record {
+    std::vector<std::string> keys;
+    std::vector<std::unique_ptr<IdlValue *>> vals;
+};
+
+struct Variant {
+    std::vector<uint8_t> id;
+    IdlValue *val;
+    uint64_t code;
+};
+
+}// namespace
+
+#endif

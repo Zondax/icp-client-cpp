@@ -14,32 +14,91 @@
  *  limitations under the License.
  ********************************************************************************/
 
+#include <utility>
 #include "agent.h"
+
+using zondax::idl_args::IdlArgs;
 
 namespace zondax::agent {
 
-Agent::Agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
-                const std::vector<char>& did_content, RetPtr_u8 error) {
-
-        agent = agent_create_wrap(url.c_str(), id.getPtr(), id.getType(), principal.getBytes().data(), principal.getBytes().size(), did_content.data(), error);
+void error_callback(const unsigned char *data, int len, void *user_data) {
+    std::string error_msg((const char *)data, len);
+    *(std::string *)user_data = error_msg;
 }
 
-zondax::idl_args::IdlArgs Agent::Query(std::string service,
-                                        zondax::idl_args::IdlArgs args,
-                                        RetPtr_u8 error){
-    CText *arg = idl_args_to_text(args.getPtr());
-    IDLArgs* argsPtr = agent_query_wrap(agent, service.c_str(), ctext_str(arg), error);
-    zondax::idl_args::IdlArgs result(argsPtr);
-    return result;
+std::variant<Agent, std::string> Agent::create_agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
+                const std::vector<char>& did_content) {
+
+        // string to get error message from callback
+        std::string data;
+
+        RetError ret;
+        ret.user_data = (void *)&data;
+        ret.call = error_callback;
+
+        
+        FFIAgent* c_agent = agent_create_wrap(url.c_str(), id.getPtr(), id.getType(), principal.getBytes().data(), principal.getBytes().size(), did_content.data(), &ret);
+
+        if (c_agent == nullptr) {
+            std::variant<Agent, std::string> error(data);
+            return error;
+        }
+        
+        // here we can use private default constructor, but users can't, also if default were disabled using the delete keyboard, we 
+        // would not be able to use it here.
+        Agent cpp_agent;
+
+        cpp_agent.agent = c_agent;
+        std::variant<Agent, std::string> ok(std::move(cpp_agent));
+
+        return ok;
 }
 
-zondax::idl_args::IdlArgs Agent::Update(std::string service,
-                                        zondax::idl_args::IdlArgs args,
-                                        RetPtr_u8 error){
+std::variant<IdlArgs, std::string> Agent::Query(std::string service,
+                                        zondax::idl_args::IdlArgs args) {
+
     CText *arg = idl_args_to_text(args.getPtr());
-    IDLArgs* argsPtr = agent_update_wrap(agent, service.c_str(), ctext_str(arg), error);
-    zondax::idl_args::IdlArgs result(argsPtr);
-    return result;
+
+    RetError ret;
+    std::string data;
+    ret.user_data = (void *)&data;
+    ret.call = error_callback;
+
+    IDLArgs* argsPtr = agent_query_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+
+    if (argsPtr == nullptr) {
+        std::variant<IdlArgs, std::string> error(data);
+        return error;
+    }
+
+    IdlArgs result(argsPtr);
+
+    std::variant<IdlArgs, std::string> ok(result);
+
+    return ok;
+}
+
+std::variant<IdlArgs, std::string> Agent::Update(std::string service,
+                                        zondax::idl_args::IdlArgs args){
+
+    CText *arg = idl_args_to_text(args.getPtr());
+
+    RetError ret;
+    std::string data;
+    ret.user_data = (void *)&data;
+    ret.call = error_callback;
+
+    IDLArgs* argsPtr = agent_update_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+
+    if (argsPtr == nullptr) {
+        std::variant<IdlArgs, std::string> error(data);
+        return error;
+    }
+
+    IdlArgs result(argsPtr);
+    std::variant<IdlArgs, std::string> ok(result);
+
+    return ok;
 }
 
 Agent::~Agent(){

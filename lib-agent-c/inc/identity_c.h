@@ -39,7 +39,7 @@ void anonymous_identity(CIdentity *id);
  * @param error_cb returned error
  */
 void basic_identity_from_pem(const char *pem_data, CIdentity *id,
-                             RetPtr_u8 error);
+                             RetError *error);
 
 /**
  * @brief Get Basic Identity from pair of keys
@@ -51,7 +51,7 @@ void basic_identity_from_pem(const char *pem_data, CIdentity *id,
  */
 void basic_identity_from_key_pair(const uint8_t *public_key,
                                   const uint8_t *private_key_seed, CIdentity *id,
-                                  RetPtr_u8 error_ret);
+                                  RetError *error_ret);
 
 /**
  * @brief Get Secp256k1 identity using data from PEM file
@@ -61,7 +61,7 @@ void basic_identity_from_key_pair(const uint8_t *public_key,
  * @param error_cb returned error
  */
 void secp256k1_identity_from_pem(const char *pem_data, CIdentity *id,
-                                 RetPtr_u8 error);
+                                 RetError *error);
 
 /**
  * @brief Get Secp256k1 identity from private key

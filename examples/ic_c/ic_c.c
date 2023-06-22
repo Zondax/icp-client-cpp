@@ -33,7 +33,7 @@ CIdentity id_anonym;
 CIdentity id_secp26k1;
 
 // Function pointers used to get the return from rust lib
-static void error_cb(const uint8_t *p, int len) {
+static void error_cb(const uint8_t *p, int len, void *) {
     if (error.ptr != NULL) {
         free((void *)error.ptr);
     }
@@ -43,6 +43,9 @@ static void error_cb(const uint8_t *p, int len) {
 }
 
 int main(void) {
+    RetError ret_error;
+    ret_error.call = error_cb;
+
     // Canister info from hello world deploy example
     const char *id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
     const char *did_file = "../examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
@@ -54,7 +57,7 @@ int main(void) {
     get_did_file_content(did_file, file_size, did_content);
 
     // Compute principal id from text
-    CPrincipal *principal = principal_from_text(id_text,error_cb);
+    CPrincipal *principal = principal_from_text(id_text,&ret_error);
     CHECK_ERROR(error);
 
     //compute id
@@ -62,7 +65,7 @@ int main(void) {
     anonymous_identity(&id);
 
     // Create Agent 1
-    FFIAgent *agent_1 = agent_create(url, &id_anonym, principal, did_content, error_cb);
+    FFIAgent *agent_1 = agent_create(url, &id_anonym, principal, did_content, &ret_error);
     CHECK_ERROR(error);
     
     // Create IDL argument
@@ -71,7 +74,7 @@ int main(void) {
     IDLArgs* idl_args_ptr = idl_args_from_vec(elems, 1);
 
     // IDL Args
-    IDLArgs *call_1 = agent_query(agent_1, "lookup", idl_args_ptr,error_cb);
+    IDLArgs *call_1 = agent_query(agent_1, "lookup", idl_args_ptr,&ret_error);
     CHECK_ERROR(error);
 
     // Print arg in text

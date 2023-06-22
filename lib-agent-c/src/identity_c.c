@@ -41,8 +41,7 @@ void anonymous_identity(CIdentity *id) {
  * @param id Identity struture pointer
  * @param error_cb returned error
  */
-void basic_identity_from_pem(const char *pem_data, CIdentity *id,
-                             RetPtr_u8 error) {
+void basic_identity_from_pem(const char *pem_data, CIdentity *id, RetError *error) {
     id->type = Basic;
     id->ptr = identity_basic_from_pem(pem_data, error);
 }
@@ -57,7 +56,7 @@ void basic_identity_from_pem(const char *pem_data, CIdentity *id,
  */
 void basic_identity_from_key_pair(const uint8_t *public_key,
                                   const uint8_t *private_key_seed, CIdentity *id,
-                                  RetPtr_u8 error_ret) {
+                                  RetError *error_ret) {
     id->type = Basic;
     id->ptr = identity_basic_from_key_pair(public_key, private_key_seed, error_ret);
 }
@@ -69,8 +68,7 @@ void basic_identity_from_key_pair(const uint8_t *public_key,
  * @param id Identity struture pointer
  * @param error_cb returned error
  */
-void secp256k1_identity_from_pem(const char *pem_data, CIdentity *id,
-                                 RetPtr_u8 error) {
+void secp256k1_identity_from_pem(const char *pem_data, CIdentity *id, RetError *error) {
     id->type = Secp256k1;
     id->ptr = identity_secp256k1_from_pem(pem_data, error);
 }

@@ -32,6 +32,8 @@ private:
     IDLArgs *ptr;
 
 public:
+    // why this constructor?
+    // does this takes ownership of memory pointed by argsPtr?
     explicit IdlArgs(IDLArgs* argsPtr);
     explicit IdlArgs(std::string text);
     explicit IdlArgs(std::vector<uint8_t> bytes);
@@ -41,6 +43,8 @@ public:
     std::vector<uint8_t> getBytes();
     std::vector<zondax::idl_value::IdlValue> getVec();
     
+    // why C++ users would want to have a pointer to an opque type?
+    // it is meant to be use by us?
     IDLArgs* getPtr() const;
     ~IdlArgs();
 };

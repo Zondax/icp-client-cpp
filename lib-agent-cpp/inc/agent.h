@@ -20,33 +20,36 @@
 #include <cstring>
 #include <iostream>
 #include <vector>
+#include <optional>
+#include <functional>
+#include <variant>
 
 #include "identity.h"
 #include "idl_args.h"
 #include "principal.h"
 
+
 extern "C" {
 #include "zondax_ic.h"
 }
 
+using zondax::idl_args::IdlArgs;
+
 namespace zondax::agent {
+
 class Agent {
     private:
         FFIAgent* agent;
 
     public:
-        Agent(std::string url, zondax::identity::Identity id,
-            zondax::principal::Principal principal,
-            const std::vector<char>& did_content, RetPtr_u8 error);
+        static std::variant<Agent, std::string> create_agent(std::string url, zondax::identity::Identity id,
+            zondax::principal::Principal principal, const std::vector<char>& did_content); 
+
         ~Agent();
 
-        zondax::idl_args::IdlArgs Query(std::string service,
-                                        zondax::idl_args::IdlArgs args,
-                                        RetPtr_u8 error);
-        zondax::idl_args::IdlArgs Update(std::string service,
-                                        zondax::idl_args::IdlArgs args,
-                                        RetPtr_u8 error);
-        std::string Status(RetPtr_u8 error);
+        std::variant<IdlArgs, std::string> Query(std::string service, zondax::idl_args::IdlArgs args);
+
+        std::variant<IdlArgs, std::string> Update(std::string service, zondax::idl_args::IdlArgs args);
 };
 }  // namespace zondax::agent
 
