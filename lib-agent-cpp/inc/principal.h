@@ -34,6 +34,15 @@ private:
     CPrincipal* cPrincipal;
 
 public:
+    // Disable copies, just move semantics
+    Principal(const Principal &args) = delete;
+    void operator=(const Principal&) = delete;
+
+    // declare move constructor
+    Principal(Principal &&o) noexcept;
+    // declare move assignment
+    Principal& operator=(Principal &&o) noexcept;
+
     explicit Principal(bool anonym = true);
     explicit Principal(const std::vector<uint8_t> &bytes);
 

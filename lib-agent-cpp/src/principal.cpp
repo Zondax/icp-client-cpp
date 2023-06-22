@@ -25,6 +25,31 @@ void error_callback(const unsigned char *data, int len, void *user_data) {
     *(std::string *)user_data = error_msg;
 }
 
+// declare move constructor
+Principal::Principal(Principal &&o) noexcept : bytes(std::move(o.bytes)) {
+    cPrincipal = o.cPrincipal;
+} 
+
+// declare move assignment
+Principal& Principal::operator=(Principal &&o) noexcept {
+    // check they are not the same object
+    if (&o == this)
+        return *this;
+
+    // now release our inner identity.
+    if (cPrincipal != nullptr)
+        principal_destroy(cPrincipal);
+
+    // now takes ownership of the values
+    cPrincipal = o.cPrincipal;
+    bytes = std::move(o.bytes);
+
+    // set other to null
+    o.cPrincipal = nullptr;
+
+    return *this;
+}
+
 /**
  * @brief Constructs a Principal object from a vector of bytes.
  * @param data The vector of bytes to initialize the Principal.
@@ -133,8 +158,6 @@ std::string Principal::ToText(const std::vector<unsigned char>& data) {
     CPrincipal *p = principal_to_text(data.data(), data.size(), nullptr);
 
     if (p == nullptr) {
-        // TODO: destroy call over a null ptr?
-        // principal_destroy(p);
         return "";
     }
 

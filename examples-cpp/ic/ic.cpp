@@ -52,7 +52,7 @@ int main() {
     Identity anonymousIdentity;
     
     //Create agent with agent constructor
-    auto agent = Agent::create_agent(url, std::move(anonymousIdentity), std::get<Principal>(principal), buffer);
+    auto agent = Agent::create_agent(url, std::move(anonymousIdentity), std::move(std::get<Principal>(principal)), buffer);
 
     if (std::holds_alternative<std::string>(agent)) {
         std::cout<<"Error: "<<std::get<std::string>(agent)<<std::endl;
