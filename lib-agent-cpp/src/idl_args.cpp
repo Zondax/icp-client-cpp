@@ -82,6 +82,7 @@ IDLArgs* IdlArgs::getPtr() const{
 }
 
 IdlArgs::~IdlArgs() {
-    idl_args_destroy(ptr); // Call the destroy function
+    if (ptr != nullptr)
+        idl_args_destroy(ptr);
 }
 }

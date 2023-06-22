@@ -26,6 +26,31 @@ void error_callback(const unsigned char *data, int len, void *user_data) {
     *(std::string *)user_data = error_msg;
 }
 
+// declare move constructor
+Agent::Agent(Agent &&o) noexcept {
+    agent = o.agent;
+    o.agent = nullptr;
+} 
+
+// declare move assignment
+Agent& Agent::operator=(Agent &&o) noexcept {
+    // check they are not the same object
+    if (&o == this)
+        return *this;
+
+    // now release our inner agent.
+    if (agent != nullptr)
+        agent_destroy(agent);
+
+    // now takes ownership of the o.agent 
+    agent = o.agent;
+
+    // ensure o.agent is null 
+    o.agent = nullptr;
+
+    return *this;
+}
+
 std::variant<Agent, std::string> Agent::create_agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
                 const std::vector<char>& did_content) {
 
@@ -46,7 +71,7 @@ std::variant<Agent, std::string> Agent::create_agent(std::string url, zondax::id
         
         // here we can use private default constructor, but users can't, also if default were disabled using the delete keyboard, we 
         // would not be able to use it here.
-        Agent cpp_agent;
+        auto cpp_agent = Agent();
 
         cpp_agent.agent = c_agent;
         std::variant<Agent, std::string> ok(std::move(cpp_agent));
@@ -102,7 +127,8 @@ std::variant<IdlArgs, std::string> Agent::Update(std::string service,
 }
 
 Agent::~Agent(){
-    agent_destroy(agent);
+    if (agent != nullptr)
+        agent_destroy(agent);
 }
 
 }

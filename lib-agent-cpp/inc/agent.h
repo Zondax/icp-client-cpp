@@ -41,7 +41,20 @@ class Agent {
     private:
         FFIAgent* agent;
 
+        Agent() noexcept{
+            agent = nullptr;
+        };
+
     public:
+        // Disable copies, just move semantics
+        Agent(const Agent &args) = delete;
+        void operator=(const Agent&) = delete;
+
+        // declare move constructor
+        Agent(Agent &&o) noexcept;
+        // declare move assignment
+        Agent& operator=(Agent &&o) noexcept;
+
         static std::variant<Agent, std::string> create_agent(std::string url, zondax::identity::Identity id,
             zondax::principal::Principal principal, const std::vector<char>& did_content); 
 

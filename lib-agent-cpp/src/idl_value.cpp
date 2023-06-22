@@ -20,6 +20,13 @@
 
 namespace zondax::idl_value {
 
+IdlValue::~IdlValue() {
+    if (ptr != nullptr) {
+        idl_value_destroy(ptr); // Call the destroy function
+        ptr = nullptr;
+    }    
+}
+
 IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr) {};
 
 IdlValue::IdlValue() : ptr(nullptr) {};
@@ -334,10 +341,6 @@ zondax::idl_value_utils::Func IdlValue::getFunc() {
 
 IDLValue* IdlValue::getPtr() const{
     return ptr;
-}
-
-IdlValue::~IdlValue() {
-    idl_value_destroy(ptr); // Call the destroy function
 }
 
 }
