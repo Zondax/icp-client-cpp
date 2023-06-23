@@ -23,9 +23,7 @@ namespace zondax::identity {
     }
 
     // declare move constructor
-    Identity::Identity(Identity &&o) noexcept {
-        ptr = o.ptr;
-        type = o.type; 
+    Identity::Identity(Identity &&o) noexcept: ptr(o.ptr), type(o.type) {
         o.ptr = nullptr;
     } 
 
@@ -39,13 +37,12 @@ namespace zondax::identity {
         if (ptr != nullptr)
             // identity_destroy(ptr);
 
-        // now takes ownership of the o.agent 
+        // now takes ownership of pointer
         ptr = o.ptr;
         type = o.type;
 
-        // ensure o.agent is null 
+        // ensure o.ptr is null 
         o.ptr = nullptr;
-
 
         return *this;
     }

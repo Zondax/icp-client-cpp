@@ -27,6 +27,32 @@ IdlValue::~IdlValue() {
     }    
 }
 
+// declare move constructor
+IdlValue::IdlValue(IdlValue &&o) noexcept: ptr(o.ptr)  {
+    o.ptr = nullptr;
+} 
+
+// declare move assignment
+IdlValue& IdlValue::operator=(IdlValue &&o) noexcept {
+    // check they are not the same object
+    if (&o == this)
+        return *this;
+
+    // now release our inner idl_value.
+    if (ptr != nullptr)
+        idl_value_destroy(ptr);
+
+    // now takes ownership of the o.agent 
+    ptr = o.ptr;
+
+    // ensure o.agent is null 
+    o.ptr = nullptr;
+
+    return *this;
+}
+
+
+
 IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr) {};
 
 IdlValue::IdlValue() : ptr(nullptr) {};
@@ -77,15 +103,11 @@ IdlValue::IdlValue(bool value) {
 
 IdlValue::IdlValue(std::string text) {
     // TODO: Use RetError
-    // RetPtr_u8 error;
-
     ptr = idl_value_with_text(text.c_str(), nullptr);
 }
 
 IdlValue::IdlValue(zondax::principal::Principal principal, bool is_principal) {
     // TODO: Use RetError
-    // RetPtr_u8 error;
-
     ptr = is_principal ? idl_value_with_principal(principal.getBytes().data(), principal.getBytes().size(), nullptr) :
                         idl_value_with_service(principal.getBytes().data(), principal.getBytes().size(), nullptr);
 }
@@ -107,7 +129,6 @@ IdlValue IdlValue::FromReserved(void) {
 
 IdlValue IdlValue::FromNumber(std::string number) {
     // TODO: Use RetError
-    // RetPtr_u8 error;
 
     ptr = idl_value_with_number(number.c_str(), nullptr);
     return IdlValue(ptr);

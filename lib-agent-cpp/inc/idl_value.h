@@ -35,6 +35,16 @@ private:
     IDLValue *ptr;
 
 public:
+
+    // Disable copies, just move semantics
+    IdlValue(const IdlValue &args) = delete;
+    void operator=(const IdlValue&) = delete;
+
+    // declare move constructor
+    IdlValue(IdlValue &&o) noexcept;
+    // declare move assignment
+    IdlValue& operator=(IdlValue &&o) noexcept;
+
     // Create IdlValues from types
     IdlValue(IDLValue *ptr);
     IdlValue();
