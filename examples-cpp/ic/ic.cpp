@@ -30,7 +30,7 @@ int main() {
     // Canister info from hello world deploy example
     std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
     // path is relative to binary location, not source
-    std::string did_file = "examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     std::string url = "https://ic0.app";
 
     std::vector<char> buffer;
