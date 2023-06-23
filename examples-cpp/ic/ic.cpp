@@ -64,7 +64,7 @@ int main() {
     auto args = IdlArgs(std::move(values));
 
     //Make Query call to canister, pass args using move semantics
-    auto out = std::get<Agent>(agent).Query("lookup", std::move(args));
+    auto out = std::get<Agent>(agent).Query("lookup", args);
 
 
     //Get text representation and print

@@ -80,7 +80,7 @@ std::variant<Agent, std::string> Agent::create_agent(std::string url, zondax::id
 }
 
 std::variant<IdlArgs, std::string> Agent::Query(std::string service,
-                                        zondax::idl_args::IdlArgs args) {
+                                        zondax::idl_args::IdlArgs &args) {
 
     CText *arg = idl_args_to_text(args.getPtr());
 

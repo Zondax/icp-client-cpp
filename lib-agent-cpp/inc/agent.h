@@ -60,7 +60,7 @@ class Agent {
 
         ~Agent();
 
-        std::variant<IdlArgs, std::string> Query(std::string service, zondax::idl_args::IdlArgs args);
+        std::variant<IdlArgs, std::string> Query(std::string service, zondax::idl_args::IdlArgs &args);
 
         std::variant<IdlArgs, std::string> Update(std::string service, zondax::idl_args::IdlArgs args);
 };
