@@ -18,9 +18,6 @@
 #include "agent.h"
 #include "idl_value.h"
 
-extern "C" {
-#include "helper_c.h"
-}
 #include "helper.h"
 
 using namespace zondax::agent;
@@ -32,19 +29,17 @@ using namespace zondax::idl_value;
 int main() {
     // Canister info from hello world deploy example
     std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    // path is relative to binary location, not source
+    std::string did_file = "examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     std::string url = "https://ic0.app";
 
-    // Get did file content
-    long file_size = did_file_size(did_file);
-    std::vector<char> buffer(file_size + 1);
-    int result = did_file_content(did_file, file_size, buffer.data());
+    std::vector<char> buffer;
+    auto bytes_read = did_file_content(did_file, buffer);
 
     //Get principal form text
     auto principal = Principal::FromText(id_text);
 
     if(std::holds_alternative<std::string>(principal)) {
-        std::cout<<"Error: "<<std::get<std::string>(principal)<<std::endl;
         return -1;
     }
     
@@ -55,7 +50,7 @@ int main() {
     auto agent = Agent::create_agent(url, std::move(anonymousIdentity), std::move(std::get<Principal>(principal)), buffer);
 
     if (std::holds_alternative<std::string>(agent)) {
-        std::cout<<"Error: "<<std::get<std::string>(agent)<<std::endl;
+        std::cerr<<"Error: "<<std::get<std::string>(agent)<<std::endl;
         return -1;
     }
 
