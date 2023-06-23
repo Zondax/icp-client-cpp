@@ -34,18 +34,14 @@ IdlValue::IdlValue(IdlValue &&o) noexcept: ptr(o.ptr)  {
 
 // declare move assignment
 IdlValue& IdlValue::operator=(IdlValue &&o) noexcept {
-    // check they are not the same object
     if (&o == this)
         return *this;
 
-    // now release our inner idl_value.
     if (ptr != nullptr)
         idl_value_destroy(ptr);
 
-    // now takes ownership of the o.agent 
     ptr = o.ptr;
 
-    // ensure o.agent is null 
     o.ptr = nullptr;
 
     return *this;

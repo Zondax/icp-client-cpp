@@ -28,6 +28,7 @@ void error_callback(const unsigned char *data, int len, void *user_data) {
 // declare move constructor
 Principal::Principal(Principal &&o) noexcept : bytes(std::move(o.bytes)) {
     cPrincipal = o.cPrincipal;
+    o.cPrincipal = nullptr;
 } 
 
 // declare move assignment
@@ -36,15 +37,12 @@ Principal& Principal::operator=(Principal &&o) noexcept {
     if (&o == this)
         return *this;
 
-    // now release our inner identity.
     if (cPrincipal != nullptr)
         principal_destroy(cPrincipal);
 
-    // now takes ownership of the values
     cPrincipal = o.cPrincipal;
     bytes = std::move(o.bytes);
 
-    // set other to null
     o.cPrincipal = nullptr;
 
     return *this;
@@ -98,16 +96,18 @@ std::variant<Principal, std::string> Principal::TryFromSlice(const std::vector<u
     CPrincipal *p = principal_try_from_slice(bytes.data(), bytes.size(), &ret);
 
     if (p == nullptr) {
-        // TODO: Why a call to destroy over a null pointer?
-        // principal_destroy(p);
         std::variant<Principal, std::string> error(data);
         return error;
     }
 
-    std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
-    auto cpp_principal = Principal(outBytes);
+    // there is not constructor variant that supports reading from pointers
+    // use tradicional loob to push_back bytes
+    std::vector<unsigned char> outBytes;
+    for(int i=0; i<p->len; ++i) {
+        outBytes.push_back(*(p->ptr + i));
+    }
 
-    std::variant<Principal, std::string> ok(std::move(cpp_principal));
+    std::variant<Principal, std::string> ok{std::in_place_type<Principal>, outBytes};
 
     return ok;
 }
@@ -131,16 +131,18 @@ std::variant<Principal, std::string> Principal::FromText(const std::string& text
     CPrincipal *p = principal_from_text(text.c_str(), &ret);
 
     if (p == nullptr) {
-        // TODO: Why calling destructor over a null ptr?
-        // principal_destroy(p);
         std::variant<Principal, std::string> error(data);
         return error;
     }
 
-    std::vector<unsigned char> outBytes(p->ptr, p->ptr + p->len);
-    auto cpp_principal = Principal(outBytes);
+    // there is not constructor variant that supports reading from pointers
+    // use tradicional loob to push_back bytes
+    std::vector<unsigned char> outBytes;
+    for(int i=0; i<p->len; ++i) {
+        outBytes.push_back(*(p->ptr + i));
+    }
 
-    std::variant<Principal, std::string> ok(std::move(cpp_principal));
+    std::variant<Principal, std::string> ok{std::in_place_type<Principal>, outBytes};
 
     return ok;
 

@@ -29,14 +29,11 @@ IdlArgs& IdlArgs::operator=(IdlArgs &&o) noexcept {
     if (&o == this)
         return *this;
 
-    // now release our inner identity.
     if (ptr != nullptr)
         idl_args_destroy(ptr);
 
-    // now takes ownership of the o.agent 
     ptr = o.ptr;
 
-    // ensure o.agent is null 
     o.ptr = nullptr;
 
     return *this;
