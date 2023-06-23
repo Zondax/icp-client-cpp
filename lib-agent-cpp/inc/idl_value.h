@@ -31,6 +31,8 @@ extern "C" {
 namespace zondax::idl_value {
 
 class IdlValue {  
+    friend class IdlArgs;
+
 private:
     IDLValue *ptr;
 
@@ -93,7 +95,19 @@ public:
     // zondax::idl_value_utils::Variant getVariant();
     zondax::idl_value_utils::Func getFunc();
 
+    // methods bellow must be use carefully
+    // the first will aliase pointer, breaking move semantics only 
+    // for this type if used wrong.
    IDLValue* getPtr() const;
+    // this will set inner pointer to null to avoid 
+    // calling destructor over it, this is useful when we 
+    // sent the original this.ptr to a c function that takes 
+    // ownership of passed value, so in order to avoid 
+    // calling the destructor after, we set it to null this.ptr = nullptr.
+    // the friend class mechanism seems to no work here 
+    // due to class forwarding, unfortunately.
+   void resetValue();
+
    ~IdlValue();
 };
 }

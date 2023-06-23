@@ -360,6 +360,10 @@ IDLValue* IdlValue::getPtr() const{
     return ptr;
 }
 
+void IdlValue::resetValue() {
+    ptr = nullptr;
+}
+
 }
 
 

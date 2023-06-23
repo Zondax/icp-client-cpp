@@ -42,16 +42,17 @@ IdlArgs& IdlArgs::operator=(IdlArgs &&o) noexcept {
 
 IdlArgs::IdlArgs(IDLArgs* argsPtr) : ptr(argsPtr) {};
 
-IdlArgs::IdlArgs(const std::vector<zondax::idl_value::IdlValue*>& values) {
+IdlArgs::IdlArgs(std::vector<zondax::idl_value::IdlValue> values) {
+    ptr = empty_idl_args();
     // Convert vector of IdlValue pointers to an array of const pointers
-    std::vector<const IDLValue*> elems;
-    elems.reserve(values.size());
-    for (const auto& value : values) {
-        elems.push_back(value->getPtr());
+    for (int i=0; i<values.size(); ++i) {
+        // pass value.ptr to rust, note that rust takes ownership of it.
+        idl_args_push_value(ptr, values[i].getPtr());
+        // set this ptr alias that now is pointed to memory owned by rust,
+        // to nullptr, so that at the end of this scope, the destructor 
+        // would see it is null, avoiding a potential double-free error.
+        values[i].resetValue();
     }
-
-    // Call idl_args_from_vec and assign the result to ptr
-    ptr = idl_args_from_vec(elems.data(), elems.size());
 }
 
 IdlArgs::IdlArgs(std::vector<uint8_t> bytes) {
@@ -93,6 +94,7 @@ std::vector<zondax::idl_value::IdlValue> IdlArgs::getVec() {
     for (uintptr_t i = 0; i < cidlval_vec_len(cVec); ++i) {
         const IDLValue* idlValue = cidlval_vec_value(cVec, i);
         vec.push_back(zondax::idl_value::IdlValue(idlValue));
+
     }
 
     // Free the allocated CIDLValuesVec
@@ -108,4 +110,5 @@ IdlArgs::~IdlArgs() {
     if (ptr != nullptr)
         idl_args_destroy(ptr);
 }
+
 }

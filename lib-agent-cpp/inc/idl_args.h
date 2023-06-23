@@ -46,7 +46,7 @@ public:
     explicit IdlArgs(IDLArgs* argsPtr);
     explicit IdlArgs(std::string text);
     explicit IdlArgs(std::vector<uint8_t> bytes);
-    explicit IdlArgs(const std::vector<zondax::idl_value::IdlValue*>& values);
+    explicit IdlArgs(const std::vector<zondax::idl_value::IdlValue> values);
 
     std::string getText();
     std::vector<uint8_t> getBytes();
@@ -55,6 +55,9 @@ public:
     // why C++ users would want to have a pointer to an opque type?
     // it is meant to be use by us?
     IDLArgs* getPtr() const;
+
+    // void resetValue(zondax::idl_value::IdlValue &value);
+
     ~IdlArgs();
 };
 }

@@ -411,6 +411,22 @@ IDLArgs *agent_update_wrap(const struct FFIAgent *agent_ptr,
 void agent_destroy(struct FFIAgent *_agent);
 
 /**
+ * @brief Creates and empty IDLArgs
+ *
+ * @return An IDLArgs object containing an empty list IDLValues
+ */
+IDLArgs *empty_idl_args(void);
+
+/**
+ * @brief Push a new IDLValue into values list
+ * @param args The IDLArgs instance where `value` would be added.
+ * @param value that is going to be pushed into
+ * the list.
+ * @note: This takes ownership of the passed value
+ */
+void idl_args_push_value(IDLArgs *args, IDLValue *value);
+
+/**
  * @brief Translate IDLArgs to text
  *
  * @param idl_args Pointer to IdlArgs
