@@ -56,14 +56,15 @@ int main() {
 
     // Create an IdlValue object with the uint64_t value (nat64 in candid)
     uint64_t nat64 = 1974211;
-    auto elem = zondax::idl_value::IdlValue(nat64);
 
     // Create a vector of IdlValue pointers
-    std::vector<zondax::idl_value::IdlValue*> values;
-    values.push_back(&elem);
+    std::vector<zondax::idl_value::IdlValue> values;
+    values.emplace_back(zondax::idl_value::IdlValue(nat64));
+
+    auto args = IdlArgs(std::move(values));
 
     //Make Query call to canister, pass args using move semantics
-    auto out = std::get<Agent>(agent).Query("lookup", IdlArgs(values));
+    auto out = std::get<Agent>(agent).Query("lookup", std::move(args));
 
 
     //Get text representation and print
