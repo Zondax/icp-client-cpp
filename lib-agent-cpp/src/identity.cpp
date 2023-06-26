@@ -33,11 +33,10 @@ Identity &Identity::operator=(Identity &&o) noexcept {
   if (&o == this) return *this;
 
   // now release our inner identity.
-  if (ptr != nullptr)
-    // identity_destroy(ptr);
+  if (ptr != nullptr) identity_destroy(ptr, type);
 
-    // now takes ownership of pointer
-    ptr = o.ptr;
+  // now takes ownership of pointer
+  ptr = o.ptr;
   type = o.type;
 
   // ensure o.ptr is null
@@ -201,6 +200,7 @@ void *Identity::getPtr() const { return ptr; }
 
 IdentityType Identity::getType() const { return type; }
 
-// TODO: what function to call for identity destruction?
-Identity::~Identity() {}
+Identity::~Identity() {
+  if (ptr != nullptr) identity_destroy(ptr, type);
+}
 }  // namespace zondax
