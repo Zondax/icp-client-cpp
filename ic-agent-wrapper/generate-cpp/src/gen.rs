@@ -386,7 +386,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                     .into_iter()
                     .map(|Field { id, ty }| {
                         path.push(TypePath::RecordField(id.to_string()));
-                        let ty = hoist_nested_type(env, path, id.clone(), ty);
+                        let ty = hoist_nested_type(env, path, ty);
                         let ty = nominalize(env, path, ty);
                         path.pop();
                         Field { id, ty }
@@ -410,7 +410,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                     .into_iter()
                     .map(|Field { id, ty }| {
                         path.push(TypePath::VariantField(id.to_string()));
-                        let ty = hoist_nested_type(env, path, id.clone(), ty);
+                        let ty = hoist_nested_type(env, path, ty);
                         let ty = nominalize(env, path, ty);
                         path.pop();
                         Field { id, ty }
@@ -480,8 +480,8 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
 }
 
 /// Hoist a nested type into a separate record to be used
-fn hoist_nested_type(env: &mut TypeEnv, path: &mut Vec<TypePath>, label: Label, ty: Type) -> Type {
-    let mut id = ident_(&path_to_var(path)).0;
+fn hoist_nested_type(env: &mut TypeEnv, path: &mut Vec<TypePath>, ty: Type) -> Type {
+    let id = ident_(&path_to_var(path)).0;
     match ty {
         Type::Null => {
             env.0.insert(id.clone(), Type::Record(vec![]));
