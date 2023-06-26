@@ -99,6 +99,7 @@ int main(void) {
     free(did_content);
     free((void *) error.ptr);
     principal_destroy(principal);
+    identity_destroy(id.ptr, id.type);
     agent_destroy(agent_1);
     idl_args_destroy(idl_args_ptr);
     idl_args_destroy(call_1);

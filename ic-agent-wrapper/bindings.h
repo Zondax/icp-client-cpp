@@ -1015,6 +1015,16 @@ struct CIdentitySign *identity_sign(const uint8_t *bytes,
                                     struct RetError *error_ret);
 
 /**
+ * @brief Free allocated Memory
+ *
+ * @param identity Identity pointer
+ * @param idType Identity Type
+ * Rust code will deal the memory allocation but the user should guarantee
+ * The memory is free when isn't needed anymore
+ */
+void identity_destroy(void *identity, enum IdentityType idType);
+
+/**
  * @brief Construct a Principal of the IC management canister
  *
  * @return Pointer to CPrincipal structure
