@@ -14,120 +14,133 @@
  *  limitations under the License.
  ********************************************************************************/
 
-#include <utility>
 #include "agent.h"
 
-using zondax::idl_args::IdlArgs;
+#include <utility>
 
-namespace zondax::agent {
+using zondax::IdlArgs;
 
-void error_callback(const unsigned char *data, int len, void *user_data) {
-    std::string error_msg((const char *)data, len);
-    *(std::string *)user_data = error_msg;
+namespace zondax {
+
+void Agent::error_callback(const unsigned char* data, int len,
+                           void* user_data) {
+  std::string error_msg((const char*)data, len);
+  *(std::string*)user_data = error_msg;
 }
 
 // declare move constructor
-Agent::Agent(Agent &&o) noexcept {
-    agent = o.agent;
-    o.agent = nullptr;
-} 
-
-// declare move assignment
-Agent& Agent::operator=(Agent &&o) noexcept {
-    // check they are not the same object
-    if (&o == this)
-        return *this;
-
-    // now release our inner agent.
-    if (agent != nullptr)
-        agent_destroy(agent);
-
-    // now takes ownership of the o.agent 
-    agent = o.agent;
-
-    // ensure o.agent is null 
-    o.agent = nullptr;
-
-    return *this;
+Agent::Agent(Agent&& o) noexcept {
+  agent = o.agent;
+  o.agent = nullptr;
 }
 
-std::variant<Agent, std::string> Agent::create_agent(std::string url, zondax::identity::Identity id, zondax::principal::Principal principal,
-                const std::vector<char>& did_content) {
+// declare move assignment
+Agent& Agent::operator=(Agent&& o) noexcept {
+  // check they are not the same object
+  if (&o == this) return *this;
 
-        // string to get error message from callback
-        std::string data;
+  // now release our inner agent.
+  if (agent != nullptr) agent_destroy(agent);
 
-        RetError ret;
-        ret.user_data = (void *)&data;
-        ret.call = error_callback;
+  // now takes ownership of the o.agent
+  agent = o.agent;
 
-        
-        FFIAgent* c_agent = agent_create_wrap(url.c_str(), id.getPtr(), id.getType(), principal.getBytes().data(), principal.getBytes().size(), did_content.data(), &ret);
+  // ensure o.agent is null
+  o.agent = nullptr;
 
-        if (c_agent == nullptr) {
-            std::variant<Agent, std::string> error(data);
-            return error;
-        }
-        
-        // here we can use private default constructor, but users can't, also if default were disabled using the delete keyboard, we 
-        // would not be able to use it here.
-        auto cpp_agent = Agent();
+  return *this;
+}
 
-        cpp_agent.agent = c_agent;
-        std::variant<Agent, std::string> ok(std::move(cpp_agent));
+std::variant<Agent, std::string> Agent::create_agent(
+    std::string url, zondax::Identity id, zondax::Principal principal,
+    const std::vector<char>& did_content) {
+  // string to get error message from callback
+  std::string data;
 
-        return ok;
+  RetError ret;
+  ret.user_data = (void*)&data;
+  ret.call = Agent::error_callback;
+
+  FFIAgent* c_agent = agent_create_wrap(
+      url.c_str(), id.getPtr(), id.getType(), principal.getBytes().data(),
+      principal.getBytes().size(), did_content.data(), &ret);
+
+  if (c_agent == nullptr) {
+    std::variant<Agent, std::string> error(data);
+    return error;
+  }
+
+  // here we can use private default constructor, but users can't, also if
+  // default were disabled using the delete keyboard, we would not be able to
+  // use it here.
+  auto cpp_agent = Agent();
+
+  cpp_agent.agent = c_agent;
+  std::variant<Agent, std::string> ok(std::move(cpp_agent));
+
+  return ok;
 }
 
 std::variant<IdlArgs, std::string> Agent::Query(std::string service,
-                                        zondax::idl_args::IdlArgs &args) {
+                                                zondax::IdlArgs& args) {
+  if (agent == nullptr) {
+    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
+                                             "Agent instance uninitialized"};
+    return error;
+  }
 
-    CText *arg = idl_args_to_text(args.getPtr());
+  CText* arg = idl_args_to_text(args.getPtr());
 
-    RetError ret;
-    std::string data;
-    ret.user_data = (void *)&data;
-    ret.call = error_callback;
+  RetError ret;
+  std::string data;
+  ret.user_data = (void*)&data;
+  ret.call = Agent::error_callback;
 
-    IDLArgs* argsPtr = agent_query_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+  IDLArgs* argsPtr =
+      agent_query_wrap(agent, service.c_str(), ctext_str(arg), &ret);
 
-    if (argsPtr == nullptr) {
-        std::variant<IdlArgs, std::string> error(data);
-        return error;
-    }
+  if (argsPtr == nullptr) {
+    std::variant<IdlArgs, std::string> error(data);
+    return error;
+  }
 
-    // IdlArgs result(argsPtr);
+  // IdlArgs result(argsPtr);
 
-    std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
+  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
 
-    return ok;
+  return ok;
 }
 
 std::variant<IdlArgs, std::string> Agent::Update(std::string service,
-                                        zondax::idl_args::IdlArgs args){
+                                                 zondax::IdlArgs& args) {
+  if (agent == nullptr) {
+    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
+                                             "Agent instance uninitialized"};
+    return error;
+  }
 
-    CText *arg = idl_args_to_text(args.getPtr());
+  CText* arg = idl_args_to_text(args.getPtr());
 
-    RetError ret;
-    std::string data;
-    ret.user_data = (void *)&data;
-    ret.call = error_callback;
+  RetError ret;
+  std::string data;
+  ret.user_data = (void*)&data;
+  ret.call = Agent::error_callback;
 
-    IDLArgs* argsPtr = agent_update_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+  IDLArgs* argsPtr =
+      agent_update_wrap(agent, service.c_str(), ctext_str(arg), &ret);
 
-    if (argsPtr == nullptr) {
-        std::variant<IdlArgs, std::string> error(data);
-        return error;
-    }
+  if (argsPtr == nullptr) {
+    std::variant<IdlArgs, std::string> error(data);
+    return error;
+  }
 
-    std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
+  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
 
-    return ok;
+  return ok;
 }
 
-Agent::~Agent(){
-    if (agent != nullptr)
-        agent_destroy(agent);
+Agent::~Agent() {
+  if (agent != nullptr) agent_destroy(agent);
 }
 
-}
+}  // namespace zondax

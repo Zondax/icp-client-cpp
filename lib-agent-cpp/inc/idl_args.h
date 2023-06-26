@@ -17,50 +17,48 @@
 #define IDL_ARGS_H
 
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 #include <vector>
-#include <cstring>
+
 #include "idl_value.h"
 
 extern "C" {
 #include "zondax_ic.h"
 }
 
-namespace zondax::idl_args {
-class IdlArgs {  
-private:
-    IDLArgs *ptr;
+namespace zondax {
+class IdlArgs {
+ private:
+  IDLArgs *ptr;
 
-public:
-    // Disable copies, just move semantics
-    IdlArgs(const IdlArgs &args) = delete;
-    void operator=(const IdlArgs&) = delete;
+ public:
+  // Disable copies, just move semantics
+  IdlArgs(const IdlArgs &args) = delete;
+  void operator=(const IdlArgs &) = delete;
 
-    // declare move constructor
-    IdlArgs(IdlArgs &&o) noexcept;
-    // declare move assignment
-    IdlArgs& operator=(IdlArgs &&o) noexcept;
+  // declare move constructor
+  IdlArgs(IdlArgs &&o) noexcept;
+  // declare move assignment
+  IdlArgs &operator=(IdlArgs &&o) noexcept;
 
-    // why this constructor?
-    // does this takes ownership of memory pointed by argsPtr?
-    explicit IdlArgs(IDLArgs* argsPtr);
-    explicit IdlArgs(std::string text);
-    explicit IdlArgs(std::vector<uint8_t> bytes);
-    explicit IdlArgs(const std::vector<zondax::idl_value::IdlValue> values);
+  // why this constructor?
+  // does this takes ownership of memory pointed by argsPtr?
+  explicit IdlArgs(IDLArgs *argsPtr);
+  explicit IdlArgs(std::string text);
+  explicit IdlArgs(std::vector<uint8_t> bytes);
+  explicit IdlArgs(const std::vector<zondax::IdlValue> values);
 
-    std::string getText();
-    std::vector<uint8_t> getBytes();
-    std::vector<zondax::idl_value::IdlValue> getVec();
-    
-    // why C++ users would want to have a pointer to an opque type?
-    // it is meant to be use by us?
-    IDLArgs* getPtr() const;
+  std::string getText();
+  std::vector<uint8_t> getBytes();
+  std::vector<zondax::IdlValue> getVec();
 
-    // void resetValue(zondax::idl_value::IdlValue &value);
+  // why C++ users would want to have a pointer to an opque type?
+  // it is meant to be use by us?
+  IDLArgs *getPtr() const;
 
-    ~IdlArgs();
+  ~IdlArgs();
 };
-}
+}  // namespace zondax
 
 #endif
-

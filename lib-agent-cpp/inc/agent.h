@@ -18,52 +18,55 @@
 
 #include <cstdint>
 #include <cstring>
-#include <iostream>
-#include <vector>
-#include <optional>
 #include <functional>
+#include <iostream>
+#include <optional>
 #include <variant>
+#include <vector>
 
 #include "identity.h"
 #include "idl_args.h"
 #include "principal.h"
 
-
 extern "C" {
 #include "zondax_ic.h"
 }
 
-using zondax::idl_args::IdlArgs;
+using zondax::IdlArgs;
 
-namespace zondax::agent {
+namespace zondax {
 
 class Agent {
-    private:
-        FFIAgent* agent;
+ private:
+  FFIAgent *agent;
 
-        Agent() noexcept{
-            agent = nullptr;
-        };
+  Agent() noexcept { agent = nullptr; };
 
-    public:
-        // Disable copies, just move semantics
-        Agent(const Agent &args) = delete;
-        void operator=(const Agent&) = delete;
+  static void error_callback(const unsigned char *data, int len,
+                             void *user_data);
 
-        // declare move constructor
-        Agent(Agent &&o) noexcept;
-        // declare move assignment
-        Agent& operator=(Agent &&o) noexcept;
+ public:
+  // Disable copies, just move semantics
+  Agent(const Agent &args) = delete;
+  void operator=(const Agent &) = delete;
 
-        static std::variant<Agent, std::string> create_agent(std::string url, zondax::identity::Identity id,
-            zondax::principal::Principal principal, const std::vector<char>& did_content); 
+  // declare move constructor
+  Agent(Agent &&o) noexcept;
+  // declare move assignment
+  Agent &operator=(Agent &&o) noexcept;
 
-        ~Agent();
+  static std::variant<Agent, std::string> create_agent(
+      std::string url, zondax::Identity id, zondax::Principal principal,
+      const std::vector<char> &did_content);
 
-        std::variant<IdlArgs, std::string> Query(std::string service, zondax::idl_args::IdlArgs &args);
+  ~Agent();
 
-        std::variant<IdlArgs, std::string> Update(std::string service, zondax::idl_args::IdlArgs args);
+  std::variant<IdlArgs, std::string> Query(std::string service,
+                                           zondax::IdlArgs &args);
+
+  std::variant<IdlArgs, std::string> Update(std::string service,
+                                            zondax::IdlArgs &args);
 };
-}  // namespace zondax::agent
+}  // namespace zondax
 
 #endif  // IDENTITY_H

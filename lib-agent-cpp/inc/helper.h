@@ -21,6 +21,7 @@
 #define ERR -1
 #define OK 0
 
-std::uintmax_t did_file_content(const std::string& didFilePath, std::vector<char> &buffer);
+std::uintmax_t did_file_content(const std::string& didFilePath,
+                                std::vector<char>& buffer);
 std::uintmax_t did_file_size(const std::string& didFilePath);
 #endif

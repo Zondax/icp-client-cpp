@@ -17,43 +17,47 @@
 #define PRINCIPAL_H
 
 #include <cstdint>
-#include <iostream>
-#include <vector>
 #include <cstring>
+#include <iostream>
 #include <variant>
-
+#include <vector>
 
 extern "C" {
 #include "zondax_ic.h"
 }
 
-namespace zondax::principal {
+namespace zondax {
 class Principal {
-private:
-    std::vector<unsigned char> bytes;
-    CPrincipal* cPrincipal;
+ private:
+  std::vector<unsigned char> bytes;
+  CPrincipal *cPrincipal;
 
-public:
-    // Disable copies, just move semantics
-    Principal(const Principal &args) = delete;
-    void operator=(const Principal&) = delete;
+  static void error_callback(const unsigned char *data, int len,
+                             void *user_data);
 
-    // declare move constructor
-    Principal(Principal &&o) noexcept;
-    // declare move assignment
-    Principal& operator=(Principal &&o) noexcept;
+ public:
+  // Disable copies, just move semantics
+  Principal(const Principal &args) = delete;
+  void operator=(const Principal &) = delete;
 
-    explicit Principal(bool anonym = true);
-    explicit Principal(const std::vector<uint8_t> &bytes);
+  // declare move constructor
+  Principal(Principal &&o) noexcept;
+  // declare move assignment
+  Principal &operator=(Principal &&o) noexcept;
 
-    static Principal SelfAuthenticating(const std::vector<uint8_t> &public_key);
-    static std::variant<Principal, std::string>  TryFromSlice(const std::vector<uint8_t> &bytes);
-    static std::variant<Principal, std::string>   FromText(const std::string& text);
-    static std::string ToText(const std::vector<uint8_t> &bytes);
+  explicit Principal(bool anonym = true);
+  explicit Principal(const std::vector<uint8_t> &bytes);
 
-    std::vector<unsigned char> getBytes() const;
-    ~Principal();
+  ~Principal();
+
+  static Principal SelfAuthenticating(const std::vector<uint8_t> &public_key);
+  static std::variant<Principal, std::string> TryFromSlice(
+      const std::vector<uint8_t> &bytes);
+  static std::variant<Principal, std::string> FromText(const std::string &text);
+  static std::string ToText(const std::vector<uint8_t> &bytes);
+
+  std::vector<unsigned char> getBytes() const;
 };
 
-}
+}  // namespace zondax
 #endif  // PRINCIPAL_H

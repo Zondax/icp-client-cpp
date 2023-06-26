@@ -15,61 +15,58 @@
  ********************************************************************************/
 #include <iostream>
 #include <variant>
+
 #include "agent.h"
+#include "helper.h"
 #include "idl_value.h"
 
-#include "helper.h"
-
-using namespace zondax::agent;
-using namespace zondax::principal;
-using namespace zondax::identity;
-using namespace zondax::idl_args;
-using namespace zondax::idl_value;
+using namespace zondax;
 
 int main() {
-    // Canister info from hello world deploy example
-    std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    // path is relative to binary location, not source
-    std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
-    std::string url = "https://ic0.app";
+  // Canister info from hello world deploy example
+  std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
+  // path is relative to binary location, not source
+  std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+  std::string url = "https://ic0.app";
 
-    std::vector<char> buffer;
-    auto bytes_read = did_file_content(did_file, buffer);
+  std::vector<char> buffer;
+  auto bytes_read = did_file_content(did_file, buffer);
 
-    //Get principal form text
-    auto principal = Principal::FromText(id_text);
+  // Get principal form text
+  auto principal = Principal::FromText(id_text);
 
-    if(std::holds_alternative<std::string>(principal)) {
-        return -1;
-    }
-    
-    //Construct anonymoous id
-    Identity anonymousIdentity;
-    
-    //Create agent with agent constructor
-    auto agent = Agent::create_agent(url, std::move(anonymousIdentity), std::move(std::get<Principal>(principal)), buffer);
+  if (std::holds_alternative<std::string>(principal)) {
+    return -1;
+  }
 
-    if (std::holds_alternative<std::string>(agent)) {
-        std::cerr<<"Error: "<<std::get<std::string>(agent)<<std::endl;
-        return -1;
-    }
+  // Construct anonymoous id
+  Identity anonymousIdentity;
 
-    // Create an IdlValue object with the uint64_t value (nat64 in candid)
-    uint64_t nat64 = 1974211;
+  // Create agent with agent constructor
+  auto agent =
+      Agent::create_agent(url, std::move(anonymousIdentity),
+                          std::move(std::get<Principal>(principal)), buffer);
 
-    // Create a vector of IdlValue pointers
-    std::vector<zondax::idl_value::IdlValue> values;
-    values.emplace_back(zondax::idl_value::IdlValue(nat64));
+  if (std::holds_alternative<std::string>(agent)) {
+    std::cerr << "Error: " << std::get<std::string>(agent) << std::endl;
+    return -1;
+  }
 
-    auto args = IdlArgs(std::move(values));
+  // Create an IdlValue object with the uint64_t value (nat64 in candid)
+  uint64_t nat64 = 1974211;
 
-    //Make Query call to canister, pass args using move semantics
-    auto out = std::get<Agent>(agent).Query("lookup", args);
+  // Create a vector of IdlValue pointers
+  std::vector<IdlValue> values;
+  values.emplace_back(IdlValue(nat64));
 
+  auto args = IdlArgs(std::move(values));
 
-    //Get text representation and print
-    std::string out_text = std::get<IdlArgs>(out).getText();
-    std::cout << out_text << std::endl;
+  // Make Query call to canister, pass args using move semantics
+  auto out = std::get<Agent>(agent).Query("lookup", args);
 
-    return 0;
+  // Get text representation and print
+  std::string out_text = std::get<IdlArgs>(out).getText();
+  std::cout << out_text << std::endl;
+
+  return 0;
 }

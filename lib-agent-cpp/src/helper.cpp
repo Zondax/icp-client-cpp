@@ -13,36 +13,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#include <iostream>
-#include <fstream>
-#include <filesystem>
-
 #include "helper.h"
 
-std::uintmax_t did_file_content(const std::string& didFilePath, std::vector<char> &outBuf) {
-    auto file_size = did_file_size(didFilePath);
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 
-    if ( file_size > 0 ) {
-        outBuf.resize(file_size);
-    }
+std::uintmax_t did_file_content(const std::string& didFilePath,
+                                std::vector<char>& outBuf) {
+  auto file_size = did_file_size(didFilePath);
 
-    std::ifstream file(didFilePath, std::ios::binary);
+  if (file_size > 0) {
+    outBuf.resize(file_size);
+  }
 
-    file.read(&outBuf[0], file_size);
+  std::ifstream file(didFilePath, std::ios::binary);
 
-    if(!file) {
-        std::cerr << "Error reading file: "<<didFilePath << " \ncould only read: " << file.gcount() << " bytes" << std::endl;
-        return 0;
-    }
-    
-    auto read = file.gcount();
+  file.read(&outBuf[0], file_size);
 
-    file.close();
+  if (!file) {
+    std::cerr << "Error reading file: " << didFilePath
+              << " \ncould only read: " << file.gcount() << " bytes"
+              << std::endl;
+    return 0;
+  }
 
-    return read; 
+  auto read = file.gcount();
+
+  file.close();
+
+  return read;
 }
 
 std::uintmax_t did_file_size(const std::string& didFilePath) {
-    std::uintmax_t filesize = std::filesystem::file_size(didFilePath);
-    return filesize;
+  std::uintmax_t filesize = std::filesystem::file_size(didFilePath);
+  return filesize;
 }
