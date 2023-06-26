@@ -1,3 +1,9 @@
+[workspace]
+members = ["generate-cpp"]
+
+[workspace.dependencies]
+candid = "0.8.4"
+
 [package]
 name = "ic-agent-wrapper"
 version = "0.0.1"
@@ -33,7 +39,7 @@ chrono = { version = "0.4.*", features = ["serde"] }
 garcon = { version = "0.2.3", features = ["async"] }
 # ffi
 libc = "0.2"
-candid = "0.8.4"
+candid.workspace = true
 cty = "0.2.2"
 safer-ffi = { version = "0.0.10", features = ["proc_macros"] }
 crypto_api_osrandom = "0.2.0"
