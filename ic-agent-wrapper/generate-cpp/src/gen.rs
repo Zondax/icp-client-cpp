@@ -262,17 +262,6 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
         }
     };
 
-    // let pp_mby_unit_record_constexpr = || {
-    //     if fs.is_empty() && !is_tuple(fs) {
-    //         kwd("inline constexpr")
-    //             .append(name.clone())
-    //             .append(name.clone())
-    //             .append(";")
-    //     } else {
-    //         RcDoc::line_()
-    //     }
-    // };
-
     kwd("struct")
         .append(name.clone())
         .append(enclose(
@@ -281,20 +270,11 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
             "}",
         ))
         .append(";")
-        // .append(pp_mby_unit_record_constexpr())
         .append(RcDoc::hardline())
 }
 
-fn pp_variant_field<'a, 'b>(field: &'a Field, recs: &'b RecPoints) -> RcDoc<'a> {
-    match &field.ty {
-        // Type::Null => pp_label(&field.id),
-        // Type::Record(fs) => pp_label(&field.id).append(pp_record_fields(fs, recs)),
-        _ => pp_ty(&field.ty, recs),
-    }
-}
-
 fn pp_variant_fields<'a, 'b>(fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
-    strict_concat(fs.iter().map(|f| pp_variant_field(f, recs)), ",")
+    strict_concat(fs.iter().map(|Field { ty, .. }| pp_ty(ty, recs)), ",")
 }
 
 fn pp_defs<'a>(env: &'a TypeEnv, def_list: &'a [&'a str], recs: &'a RecPoints) -> RcDoc<'a> {

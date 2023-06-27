@@ -45,6 +45,9 @@ fn main() -> io::Result<()> {
         }
     };
 
+    // make sure the folder exists
+    std::fs::create_dir_all(output_did_cpp_path.parent().unwrap())?;
+
     // Write content to output path
     fs::write(&output_did_cpp_path, content).map_err(|err| {
         io::Error::new(
