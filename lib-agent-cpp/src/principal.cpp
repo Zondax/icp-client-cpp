@@ -47,13 +47,6 @@ Principal &Principal::operator=(Principal &&o) noexcept {
   return *this;
 }
 
-/**
- * @brief Constructs a Principal object from a vector of bytes.
- * @param data The vector of bytes to initialize the Principal.
- *
- * This constructor initializes a Principal object with the provided vector of
- * bytes. The bytes parameter contains the data used to construct the Principal.
- */
 Principal::Principal(const std::vector<unsigned char> &data) : bytes(data) {
   cPrincipal = principal_from_slice(data.data(), data.size());
 
@@ -80,13 +73,6 @@ Principal Principal::SelfAuthenticating(
   return Principal(outBytes);
 }
 
-/**
- * @brief
- *
- * @param bytes
- * @param errorCallback
- * @return std::optional<Principal>
- */
 std::variant<Principal, std::string> Principal::TryFromSlice(
     const std::vector<uint8_t> &bytes) {
   std::string data;
@@ -116,13 +102,6 @@ std::variant<Principal, std::string> Principal::TryFromSlice(
   return ok;
 }
 
-/**
- * @brief
- *
- * @param text
- * @param errorCallback
- * @return std::optional<Principal>
- */
 std::variant<Principal, std::string> Principal::FromText(
     const std::string &text) {
   std::string data;
@@ -152,13 +131,6 @@ std::variant<Principal, std::string> Principal::FromText(
   return ok;
 }
 
-/**
- * @brief
- *
- * @param data
- * @param errorCallback
- * @return std::string
- */
 std::string Principal::ToText(const std::vector<unsigned char> &data) {
   // get error from error_ret here and send it on string of result
   CPrincipal *p = principal_to_text(data.data(), data.size(), nullptr);
