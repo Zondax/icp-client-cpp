@@ -48,7 +48,7 @@ int main(void) {
 
     // Canister info from hello world deploy example
     const char *id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    const char *did_file = "../examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    const char *did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     const char *url = "https://ic0.app";
 
     // Get did file content
