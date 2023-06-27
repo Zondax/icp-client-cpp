@@ -23,10 +23,9 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
     let defs = pp_defs(&env, &def_list, &recs);
     let doc = match &actor {
         None => defs,
-        Some(_actor) => {
-            // let actor = pp_actor(&env, actor);
-            // defs.append(actor)
-            defs
+        Some(actor) => {
+            let actor = pp_actor(&env, actor);
+            defs.append(actor)
         }
     };
     let doc = RcDoc::text(header).append(RcDoc::line()).append(doc);
@@ -332,6 +331,66 @@ fn pp_defs<'a>(env: &'a TypeEnv, def_list: &'a [&'a str], recs: &'a RecPoints) -
             }
         }
     }))
+}
+
+fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
+    let name = ident(id);
+    let empty = BTreeSet::new();
+    let args = strict_concat(
+        func.args
+            .iter()
+            .enumerate()
+            .map(|(i, ty)| pp_ty(ty, &empty).append(RcDoc::text(format!(" arg{}", i)))),
+        ",",
+    );
+    let rets = match func.rets.as_slice() {
+        [] => str("std::monostate"),
+        [ty] => pp_ty(ty, &empty),
+        rets @ [..] => enclose(
+            "std::tuple<",
+            strict_concat(rets.iter().map(|ty| pp_ty(ty, &empty)), ","),
+            ">",
+        ),
+    };
+    let sig = enclose("std::variant<", rets, ", std::string> ")
+        .append(name)
+        .append(enclose("(", args, ")"));
+    let args = RcDoc::concat((0..func.args.len()).map(|i| RcDoc::text(format!(", arg{}", i))));
+    let method = id.escape_debug().to_string();
+
+    let is_query = func.is_query();
+    let agent_method = if is_query { "Query" } else { "Update" };
+
+    let call = RcDoc::text(format!(r#"auto result = agent.{agent_method}("{method}""#))
+        .append(args)
+        .append(");");
+
+    let body = call.append("return result;");
+
+    sig.append(enclose_space("{", body, "}"))
+}
+
+fn pp_actor<'a>(env: &'a TypeEnv, actor: &'a Type) -> RcDoc<'a> {
+    // TODO trace to service before we figure out what canister means in C++
+    let serv = env.as_service(actor).unwrap();
+    let body = RcDoc::intersperse(
+        serv.iter().map(|(id, func)| {
+            let func = env.as_func(func).unwrap();
+            pp_function(id, func)
+        }),
+        RcDoc::hardline(),
+    );
+    RcDoc::text("class SERVICE {")
+        .append(RcDoc::hardline())
+        .append("private:")
+        .append(RcDoc::hardline())
+        .append("Agent agent;")
+        .append(RcDoc::hardline())
+        .append("public:")
+        .append(RcDoc::hardline())
+        .append(body)
+        .append(RcDoc::hardline())
+        .append("};")
 }
 
 /// The definition of tuple is language specific.
