@@ -388,6 +388,8 @@ fn pp_actor<'a>(env: &'a TypeEnv, actor: &'a Type) -> RcDoc<'a> {
         .append(RcDoc::hardline())
         .append("public:")
         .append(RcDoc::hardline())
+        .append("SERVICE(Agent agent): agent(agent) {}")
+        .append(RcDoc::hardline())
         .append(body)
         .append(RcDoc::hardline())
         .append("};")
