@@ -48,7 +48,7 @@ int main(void) {
 
     // Canister info from hello world deploy example
     const char *id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-    const char *did_file = "../examples/icp-app/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
+    const char *did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
     const char *url = "https://ic0.app";
 
     // Get did file content
@@ -99,6 +99,7 @@ int main(void) {
     free(did_content);
     free((void *) error.ptr);
     principal_destroy(principal);
+    identity_destroy(id.ptr, id.type);
     agent_destroy(agent_1);
     idl_args_destroy(idl_args_ptr);
     idl_args_destroy(call_1);

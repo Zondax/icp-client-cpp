@@ -17,10 +17,10 @@
 #define IDENTITY_H
 
 #include <cstdint>
-#include <iostream>
-#include <vector>
 #include <cstring>
+#include <iostream>
 #include <variant>
+#include <vector>
 
 #include "principal.h"
 
@@ -28,33 +28,46 @@ extern "C" {
 #include "zondax_ic.h"
 }
 struct IdentitySign {
-    std::vector<uint8_t> pubkey;
-    std::vector<uint8_t> signature;
+  std::vector<uint8_t> pubkey;
+  std::vector<uint8_t> signature;
 };
 
-namespace zondax::identity {
+namespace zondax {
 class Identity {
+ private:
+  void* ptr;
+  IdentityType type;
+  explicit Identity(void* ptr, IdentityType type);
 
-private:
-    void* ptr;
-    IdentityType type;
-    explicit Identity(void* ptr, IdentityType type);
+ public:
+  ~Identity();
+  Identity();
 
-public:
-    ~Identity();
-    Identity();
-    static Identity Anonymous();
-    static std::variant<Identity, std::string> BasicFromPem(const std::string& pemData);
-    static std::variant<Identity, std::string> BasicFromKeyPair(const std::vector<uint8_t>& publicKey,
-                                    const std::vector<uint8_t>& privateKeySeed);
-    static std::variant<Identity, std::string> Secp256k1FromPem(const std::string& pemData);
-    static Identity Secp256k1FromPrivateKey(const std::vector<char>& privateKey);
-    std::variant<zondax::principal::Principal, std::string> Sender();
-    std::variant<IdentitySign, std::string> Sign(const std::vector<uint8_t>& bytes);
+  // Disable copies, just move semantics
+  Identity(const Identity& args) = delete;
+  void operator=(const Identity&) = delete;
 
-    void* getPtr() const;
-    IdentityType getType() const;
+  // declare move constructor
+  Identity(Identity&& o) noexcept;
+  // declare move assignment
+  Identity& operator=(Identity&& o) noexcept;
+
+  static Identity Anonymous();
+  static std::variant<Identity, std::string> BasicFromPem(
+      const std::string& pemData);
+  static std::variant<Identity, std::string> BasicFromKeyPair(
+      const std::vector<uint8_t>& publicKey,
+      const std::vector<uint8_t>& privateKeySeed);
+  static std::variant<Identity, std::string> Secp256k1FromPem(
+      const std::string& pemData);
+  static Identity Secp256k1FromPrivateKey(const std::vector<char>& privateKey);
+  std::variant<zondax::Principal, std::string> Sender();
+  std::variant<IdentitySign, std::string> Sign(
+      const std::vector<uint8_t>& bytes);
+
+  void* getPtr() const;
+  IdentityType getType() const;
 };
 
-}
+}  // namespace zondax
 #endif  // IDENTITY_H

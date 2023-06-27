@@ -13,36 +13,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  ********************************************************************************/
-#include <iostream>
-#include <fstream>
-#include <vector>
 #include "helper.h"
 
-int did_file_content(const std::string& didFilePath, long file_size, char* buffer) {
-    std::ifstream file(didFilePath, std::ios::binary);
-    if (!file) {
-        return -1;  // error opening file
-    }
+#include <fstream>
+#include <iostream>
 
-    // Read the file contents into the buffer
-    file.read(buffer, file_size);
-    buffer[file_size] = '\0';
+std::uintmax_t did_file_content(const std::string& didFilePath,
+                                std::vector<char>& outBuf) {
+  auto file_size = did_file_size(didFilePath);
 
-    // Close the file and return the buffer
-    file.close();
+  if (file_size > 0) {
+    outBuf.resize(file_size);
+  }
+
+  std::ifstream file(didFilePath, std::ios::binary);
+
+  file.read(&outBuf[0], file_size);
+
+  if (!file) {
+    std::cerr << "Error reading file: " << didFilePath
+              << " \ncould only read: " << file.gcount() << " bytes"
+              << std::endl;
     return 0;
+  }
+
+  auto read = file.gcount();
+
+  file.close();
+
+  return read;
 }
 
-long did_file_size(const std::string& didFilePath) {
-    std::ifstream file(didFilePath, std::ios::binary | std::ios::ate);
-    if (!file) {
-        return 0;  // error opening file
-    }
-
-    // Get the file size
-    long file_size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    file.close();
-    return file_size + 1;
+std::uintmax_t did_file_size(const std::string& didFilePath) {
+  std::uintmax_t filesize = std::filesystem::file_size(didFilePath);
+  return filesize;
 }

@@ -14,29 +14,13 @@
  *  limitations under the License.
  ********************************************************************************/
 #include <iostream>
-#include "helper.h"
+
 #include "agent.h"
+#include "helper.h"
 extern "C" {
 #include "helper_c.h"
 }
 
-using namespace zondax::agent;
-using namespace zondax::principal;
-using namespace zondax::identity;
-using namespace zondax::idl_args;
-using namespace zondax::idl_value;
+using namespace zondax;
 
-Error error_cpp;
-
-void error_cb_cpp(const uint8_t* p, int len) {
-    if (error_cpp.ptr != nullptr) {
-         free((void*)error_cpp.ptr);
-    }
-    error_cpp.ptr = static_cast<const uint8_t*>(malloc(len));
-    error_cpp.len = len;
-    memcpy((void*)error_cpp.ptr, p, len);
-}
-
-int main() {
-
-}
+int main() {}

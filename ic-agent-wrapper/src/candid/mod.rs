@@ -34,6 +34,27 @@ use crate::{
 * Candid Args
 ********************************************************************************/
 
+/// @brief Creates and empty IDLArgs
+///
+/// @return An IDLArgs object containing an empty list IDLValues
+#[no_mangle]
+pub extern "C" fn empty_idl_args() -> Box<IDLArgs> {
+    // use dummy idl_value
+    let values = [IDLValue::Bool(false); 0];
+    let args = IDLArgs::new(values.as_slice());
+    Box::new(args)
+}
+
+/// @brief Push a new IDLValue into values list 
+/// @param args The IDLArgs instance where `value` would be added. 
+/// @param value that is going to be pushed into 
+/// the list.
+/// @note: This takes ownership of the passed value
+#[no_mangle]
+pub extern "C" fn idl_args_push_value(args: &mut IDLArgs, value: Box<IDLValue> ) {
+    args.args.push(*value);
+}
+
 /// @brief Translate IDLArgs to text
 ///
 /// @param idl_args Pointer to IdlArgs

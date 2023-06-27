@@ -396,6 +396,29 @@ pub extern "C" fn identity_sign(
     }
 }
 
+/// @brief Free allocated Memory
+///
+/// @param identity Identity pointer 
+/// @param idType Identity Type
+/// Rust code will deal the memory allocation but the user should guarantee
+/// The memory is free when isn't needed anymore
+#[no_mangle]
+pub extern "C" fn identity_destroy(identity: *mut c_void, idType: IdentityType ) {
+    if !identity.is_null() {
+            match idType {
+                IdentityType::Anonym => {
+                    let _id = unsafe { Box::from_raw(identity as *mut AnonymousIdentity) };
+                }
+                IdentityType::Basic => {
+                    let _id = unsafe { Box::from_raw(identity as *mut BasicIdentity) };
+                }
+                IdentityType::Secp256k1 => {
+                    let _id = unsafe { Box::from_raw(identity as *mut Secp256k1Identity) };
+                }
+            }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use candid::Principal;

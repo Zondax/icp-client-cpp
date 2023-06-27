@@ -17,35 +17,33 @@
 #define IDL_VALUE_UTILS_H
 
 #include <cstdint>
-#include <iostream>
-#include <vector>
 #include <cstring>
+#include <iostream>
 #include <memory>
+#include <vector>
 
 #include "principal.h"
-// #include "idl_value.h"
+
+namespace zondax {
 
 class IdlValue;
 
-namespace zondax::idl_value_utils {
-
-
 struct Func {
-    std::string s;
-    zondax::principal::Principal p;
+  std::string s;
+  zondax::Principal p;
 };
 
 struct Record {
-    std::vector<std::string> keys;
-    std::vector<std::unique_ptr<IdlValue *>> vals;
+  std::vector<std::string> keys;
+  std::vector<std::unique_ptr<IdlValue *>> vals;
 };
 
 struct Variant {
-    std::vector<uint8_t> id;
-    IdlValue *val;
-    uint64_t code;
+  std::vector<uint8_t> id;
+  IdlValue *val;
+  uint64_t code;
 };
 
-}// namespace
+}  // namespace zondax
 
 #endif

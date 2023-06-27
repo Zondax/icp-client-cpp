@@ -16,9 +16,13 @@
 #ifndef HELPER_H
 #define HELPER_H
 
+#include <filesystem>
+#include <vector>
+
 #define ERR -1
 #define OK 0
 
-int did_file_content(const std::string& didFilePath, long file_size, char* buffer);
-long did_file_size(const std::string& didFilePath);
+std::uintmax_t did_file_content(const std::string& didFilePath,
+                                std::vector<char>& buffer);
+std::uintmax_t did_file_size(const std::string& didFilePath);
 #endif
