@@ -90,8 +90,6 @@ class IdlValue {
 
   // Specific constructors
   explicit IdlValue() : ptr(nullptr) {}
-  explicit IdlValue(zondax::Principal,
-                    bool = true);  // true create principal false: service
 
   static IdlValue null();
   static IdlValue reserved();

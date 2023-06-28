@@ -183,17 +183,23 @@ IdlValue::IdlValue(const std::variant<Args...> &variant) {
 template <>
 IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr){};
 
-IdlValue::IdlValue(zondax::Principal principal, bool is_principal) {
+template <>
+IdlValue::IdlValue(zondax::Principal principal) {
   // TODO: Use RetError
   // RetPtr_u8 error;
 
-  auto p = is_principal
-               ? idl_value_with_principal(principal.getBytes().data(),
-                                          principal.getBytes().size(), nullptr)
-               : idl_value_with_service(principal.getBytes().data(),
-                                        principal.getBytes().size(), nullptr);
+  ptr.reset(idl_value_with_principal(principal.getBytes().data(),
+                                     principal.getBytes().size(), nullptr));
+}
 
-  ptr.reset(p);
+template <>
+IdlValue::IdlValue(zondax::Service service) {
+  // TODO: Use RetError
+  // RetPtr_u8 error;
+
+  auto principal = service.principal_take();
+  ptr.reset(idl_value_with_service(principal.getBytes().data(),
+                                   principal.getBytes().size(), nullptr));
 }
 
 IdlValue IdlValue::null(void) {
