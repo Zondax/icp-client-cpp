@@ -31,6 +31,10 @@ extern "C" {
 
 namespace zondax {
 
+struct Number {
+  std::string value;
+};
+
 class IdlValue {
   friend class IdlArgs;
 
@@ -82,26 +86,14 @@ class IdlValue {
   IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 
   // Get types
-  bool getInt8(int8_t *val);
-  bool getInt16(int16_t *val);
-  bool getInt32(int32_t *val);
-  bool getInt64(int64_t *val);
-  bool getNat8(uint8_t *val);
-  bool getNat16(uint16_t *val);
-  bool getNat32(uint32_t *val);
-  bool getNat64(uint64_t *val);
-  bool getFloat32(float *val);
-  bool getFloat64(double *val);
-  bool getBool(bool *val);
-  std::string getText();
-  std::optional<zondax::Principal> getPrincipal();
+  template <typename T>
+  std::optional<T> get();
+
   std::optional<zondax::Principal> getService();
-  std::string getNumber();
   std::optional<IdlValue> getOpt();
   std::vector<IdlValue> getVec();
   // zondax::idl_value_utils::Record getRecord();
   // zondax::idl_value_utils::Variant getVariant();
-  std::optional<zondax::Func> getFunc();
 
   // methods bellow must be use carefully
   // the first will aliase pointer, breaking move semantics only

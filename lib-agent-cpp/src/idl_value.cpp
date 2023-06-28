@@ -19,6 +19,18 @@
 
 namespace zondax {
 
+#define PRIMITIVE_TYPES_GETTER(name, type)         \
+  template <>                                      \
+  std::optional<type> zondax::IdlValue::get() {    \
+    if (ptr == nullptr) {                          \
+      return std::nullopt;                         \
+    }                                              \
+    type value;                                    \
+    bool ret = name##_from_idl_value(ptr, &value); \
+    if (!ret) return std::nullopt;                 \
+    return std::make_optional<type>(value);        \
+  }  // namespace zondax
+
 IdlValue::~IdlValue() {
   if (ptr != nullptr) {
     idl_value_destroy(ptr);  // Call the destroy function
@@ -149,114 +161,37 @@ IdlValue IdlValue::FromFunc(std::vector<uint8_t> vector,
   ptr = idl_value_with_func(vector.data(), vector.size(), func_name.c_str());
   return IdlValue(ptr);
 }
+PRIMITIVE_TYPES_GETTER(int8, int8_t)
+PRIMITIVE_TYPES_GETTER(int16, int16_t)
+PRIMITIVE_TYPES_GETTER(int32, int32_t)
+PRIMITIVE_TYPES_GETTER(int64, int64_t)
+PRIMITIVE_TYPES_GETTER(nat8, uint8_t)
+PRIMITIVE_TYPES_GETTER(nat16, uint16_t)
+PRIMITIVE_TYPES_GETTER(nat32, uint32_t)
+PRIMITIVE_TYPES_GETTER(nat64, uint64_t)
+PRIMITIVE_TYPES_GETTER(float32, float)
+PRIMITIVE_TYPES_GETTER(float64, double)
+PRIMITIVE_TYPES_GETTER(bool, bool)
 
-bool IdlValue::getInt8(int8_t *val) {
+template <>
+std::optional<std::string> IdlValue::get() {
   if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return int8_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getInt16(int16_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return int16_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getInt32(int32_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return int32_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getInt64(int64_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return int64_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getNat8(uint8_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return nat8_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getNat16(uint16_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return nat16_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getNat32(uint32_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return nat32_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getNat64(uint64_t *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return nat64_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getFloat32(float *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return float32_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getFloat64(double *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return float64_from_idl_value(ptr, val);
-}
-
-bool IdlValue::getBool(bool *val) {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return false;
-  }
-  return bool_from_idl_value(ptr, val);
-}
-
-std::string IdlValue::getText() {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return "";
+    return std::nullopt;
   }
   CText *ctext = text_from_idl_value(ptr);
   const char *str = ctext_str(ctext);
   uintptr_t len = ctext_len(ctext);
 
-  std::string text(str, len);
+  std::string s(str, len);
 
   ctext_destroy(ctext);
 
-  return text;
+  return std::make_optional<std::string>(s);
 }
 
-std::optional<zondax::Principal> IdlValue::getPrincipal() {
+template <>
+std::optional<zondax::Principal> IdlValue::get() {
   if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
     return std::nullopt;
   }
   CPrincipal *p = principal_from_idl_value(ptr);
@@ -267,6 +202,77 @@ std::optional<zondax::Principal> IdlValue::getPrincipal() {
   principal_destroy(p);
 
   return std::make_optional(std::move(principal));
+}
+
+template <>
+std::optional<Number> IdlValue::get() {
+  if (ptr == nullptr) {
+    return std::nullopt;
+  }
+  CText *ctext = text_from_idl_value(ptr);
+  const char *str = ctext_str(ctext);
+  uintptr_t len = ctext_len(ctext);
+
+  std::string text(str, len);
+
+  ctext_destroy(ctext);
+  Number number;
+  number.value = text;
+
+  return std::make_optional(number);
+}
+
+template <>
+std::optional<zondax::Func> IdlValue::get() {
+  if (ptr == nullptr) {
+    return std::nullopt;
+  }
+  struct CFunc *cFunc = func_from_idl_value(ptr);
+  zondax::Func result;
+
+  // Extract string
+  result.s = std::string(cfunc_string(cFunc),
+                         cfunc_string(cFunc) + cfunc_string_len(cFunc));
+
+  // Extract principal
+  struct CPrincipal *cPrincipal = cfunc_principal(cFunc);
+  std::vector<uint8_t> vec =
+      std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
+  result.p = zondax::Principal(vec);
+
+  // Free the allocated CFunc
+  cfunc_destroy(cFunc);
+
+  return std::optional<zondax::Func>(std::move(result));
+}
+
+template <>
+std::optional<std::vector<IdlValue> > IdlValue::get() {
+  if (ptr == nullptr) {
+    return std::nullopt;
+  }
+
+  // call bellow creates a new IDLValue::Vec,
+  // this means it "clones" from this.ptr
+  struct CIDLValuesVec *cVec = vec_from_idl_value(ptr);
+  uintptr_t length = cidlval_vec_len(cVec);
+
+  std::vector<IdlValue> result;
+  result.reserve(length);
+
+  // then it should take out each value from the vector
+  // and give ownership to the caller.
+  for (uintptr_t i = 0; i < length; ++i) {
+    // the take variant leave the value in the vector in a null state
+    // this is valid as inner value belongs now to result
+    const IDLValue *valuePtr = cidlval_vec_value_take(cVec, i);
+    result.emplace_back(valuePtr);
+  }
+
+  // Free the allocated CIDLValuesVec
+  cidlval_vec_destroy(cVec);
+
+  return std::make_optional(std::move(result));
 }
 
 std::optional<zondax::Principal> IdlValue::getService() {
@@ -284,22 +290,6 @@ std::optional<zondax::Principal> IdlValue::getService() {
   return std::make_optional(std::move(principal));
 }
 
-std::string IdlValue::getNumber() {
-  if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
-    return "";
-  }
-  CText *ctext = text_from_idl_value(ptr);
-  const char *str = ctext_str(ctext);
-  uintptr_t len = ctext_len(ctext);
-
-  std::string text(str, len);
-
-  ctext_destroy(ctext);
-
-  return text;
-}
-
 std::optional<IdlValue> IdlValue::getOpt() {
   if (ptr == nullptr) {
     return std::nullopt;
@@ -312,27 +302,6 @@ std::optional<IdlValue> IdlValue::getOpt() {
   }
 
   return IdlValue(result);
-}
-
-std::vector<IdlValue> IdlValue::getVec() {
-  if (ptr == nullptr) {
-    return std::vector<IdlValue>();
-  }
-  struct CIDLValuesVec *cVec = vec_from_idl_value(ptr);
-  uintptr_t length = cidlval_vec_len(cVec);
-
-  std::vector<IdlValue> result;
-  result.reserve(length);
-
-  for (uintptr_t i = 0; i < length; ++i) {
-    const IDLValue *valuePtr = cidlval_vec_value(cVec, i);
-    result.emplace_back(valuePtr);
-  }
-
-  // Free the allocated CIDLValuesVec
-  cidlval_vec_destroy(cVec);
-
-  return result;
 }
 
 // TODO: Enable later forward declaration is tricky here,
@@ -388,29 +357,6 @@ std::vector<IdlValue> IdlValue::getVec() {
 //
 //     return result;
 // }
-
-std::optional<zondax::Func> IdlValue::getFunc() {
-  if (ptr == nullptr) {
-    return std::nullopt;
-  }
-  struct CFunc *cFunc = func_from_idl_value(ptr);
-  zondax::Func result;
-
-  // Extract string
-  result.s = std::string(cfunc_string(cFunc),
-                         cfunc_string(cFunc) + cfunc_string_len(cFunc));
-
-  // Extract principal
-  struct CPrincipal *cPrincipal = cfunc_principal(cFunc);
-  std::vector<uint8_t> vec =
-      std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
-  result.p = zondax::Principal(vec);
-
-  // Free the allocated CFunc
-  cfunc_destroy(cFunc);
-
-  return std::optional<zondax::Func>(std::move(result));
-}
 
 IDLValue *IdlValue::getPtr() const { return ptr; }
 
