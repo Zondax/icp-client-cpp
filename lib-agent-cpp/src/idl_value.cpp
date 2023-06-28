@@ -20,6 +20,10 @@
 #include <optional>
 #include <variant>
 
+#include "func.h"
+#include "idl_value_utils.h"
+#include "service.h"
+
 namespace zondax {
 
 #define PRIMITIVE_TYPES_GETTER(name, type)               \
@@ -209,6 +213,14 @@ IdlValue::IdlValue(zondax::Service service) {
                                    principal.getBytes().size(), nullptr));
 }
 
+template <>
+IdlValue::IdlValue(zondax::Func func) {
+  auto princ = func.principal().getBytes();
+
+  ptr.reset(idl_value_with_func(princ.data(), princ.size(),
+                                func.method_name().c_str()));
+}
+
 IdlValue IdlValue::null(void) {
   IdlValue val;
   val.ptr.reset(idl_value_with_null());
@@ -220,8 +232,6 @@ IdlValue IdlValue::reserved(void) {
   val.ptr.reset(idl_value_with_reserved());
   return val;
 }
-
-// TODO: improve the constructors below
 
 IdlValue IdlValue::FromRecord(
     std::vector<std::pair<std::string, IdlValue>> &fields) {
@@ -240,14 +250,10 @@ IdlValue IdlValue::FromRecord(
   return IdlValue(p);
 }
 
+// TODO: improve the constructors below
+
 IdlValue IdlValue::FromVariant(std::string key, IdlValue *val, uint64_t code) {
   auto p = idl_value_with_variant(key.c_str(), val->ptr.release(), code);
-  return IdlValue(p);
-}
-
-IdlValue IdlValue::FromFunc(std::vector<uint8_t> vector,
-                            std::string func_name) {
-  auto p = idl_value_with_func(vector.data(), vector.size(), func_name.c_str());
   return IdlValue(p);
 }
 

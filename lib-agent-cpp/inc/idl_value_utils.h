@@ -28,11 +28,6 @@ namespace zondax {
 
 class IdlValue;
 
-struct Func {
-  std::string s;
-  zondax::Principal p;
-};
-
 struct Record {
   std::vector<std::string> keys;
   std::vector<std::unique_ptr<IdlValue *>> vals;
