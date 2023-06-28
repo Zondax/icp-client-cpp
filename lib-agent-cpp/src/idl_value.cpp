@@ -189,13 +189,12 @@ IdlValue IdlValue::reserved(void) {
   return val;
 }
 
-IdlValue IdlValue::BigNum(std::string number) {
+template <>
+IdlValue::IdlValue(Number number) {
   // TODO: Use RetError
   // RetPtr_u8 error;
-  IdlValue val;
 
-  val.ptr = idl_value_with_number(number.c_str(), nullptr);
-  return val;
+  ptr = idl_value_with_number(number.value.c_str(), nullptr);
 }
 
 template <typename T, typename>

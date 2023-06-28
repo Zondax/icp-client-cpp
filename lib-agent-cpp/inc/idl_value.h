@@ -92,7 +92,6 @@ class IdlValue {
 
   static IdlValue null();
   static IdlValue reserved();
-  static IdlValue BigNum(std::string number);
 
   IdlValue FromRecord(const std::vector<std::string> &keys,
                       const std::vector<const IdlValue *> &elems);
@@ -103,7 +102,6 @@ class IdlValue {
   template <typename T>
   std::optional<T> get();
 
-  std::optional<zondax::Principal> getService();
   std::optional<IdlValue> getOpt();
   std::vector<IdlValue> getVec();
   // zondax::idl_value_utils::Record getRecord();
