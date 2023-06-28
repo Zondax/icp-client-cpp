@@ -209,7 +209,7 @@ std::optional<Number> IdlValue::get() {
   if (ptr == nullptr) {
     return std::nullopt;
   }
-  CText *ctext = text_from_idl_value(ptr);
+  CText *ctext = number_from_idl_value(ptr);
   const char *str = ctext_str(ctext);
   uintptr_t len = ctext_len(ctext);
 
