@@ -119,8 +119,13 @@ pub struct CIDLValuesVec {
 #[no_mangle]
 pub unsafe extern "C" fn cidlval_vec_destroy(ptr: Option<Box<CIDLValuesVec>>) {
     if let Some(cidlval_vec) = ptr {
-        for idlval_ptr in cidlval_vec.data.iter() {
-            let idlval = *idlval_ptr as *mut IDLValue;
+        for ptr in cidlval_vec.data.iter() {
+            // check if inner value is null,
+            // that means it could have been move or changed owner
+            let idlval = *ptr as *mut IDLValue;
+            if idlval.is_null() {
+                continue;
+            }
             idl_value_destroy(Some(Box::from_raw(idlval)));
         }
     }
@@ -145,6 +150,24 @@ pub extern "C" fn cidlval_vec(ptr: &CIDLValuesVec) -> *const IDLValue {
 pub extern "C" fn cidlval_vec_value(ptr: &CIDLValuesVec, index: usize) -> *const IDLValue {
     if index < ptr.data.len() {
         ptr.data[index]
+    } else {
+        std::ptr::null()
+    }
+}
+
+/// @brief Get pointer to IDLValue at specific index
+///
+/// @param ptr CIDLValuesVec structure pointer
+/// @param index to specific index
+/// @return Pointer to IDLValue
+/// @note This gives ownership of the requested value to the caller, who is in charge
+/// of free the memory.
+#[no_mangle]
+pub extern "C" fn cidlval_vec_value_take(ptr: &mut CIDLValuesVec, index: usize) -> *const IDLValue {
+    if index < ptr.data.len() {
+        let owned_ptr = ptr.data[index];
+        ptr.data[index] = std::ptr::null();
+        owned_ptr
     } else {
         std::ptr::null()
     }

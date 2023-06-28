@@ -159,6 +159,17 @@ const IDLValue *cidlval_vec(const struct CIDLValuesVec *ptr);
 const IDLValue *cidlval_vec_value(const struct CIDLValuesVec *ptr, uintptr_t index);
 
 /**
+ * @brief Get pointer to IDLValue at specific index
+ *
+ * @param ptr CIDLValuesVec structure pointer
+ * @param index to specific index
+ * @return Pointer to IDLValue
+ * @note This gives ownership of the requested value to the caller, who is in charge
+ * of free the memory.
+ */
+const IDLValue *cidlval_vec_value_take(struct CIDLValuesVec *ptr, uintptr_t index);
+
+/**
  * @brief Get CIDLValuesVec length
  *
  * @param ptr CIDLValuesVec structure pointer
