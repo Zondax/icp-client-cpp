@@ -48,6 +48,11 @@ class IdlValue {
   // errors by reset value to nullptr
   void resetValue();
 
+  // Helper to initialize .ptr from an std::tuple-like set of items
+  // used by IdlValue(std::tuple<Args...>) constructor
+  template <typename Tuple, size_t... Indices>
+  void initializeFromTuple(const Tuple &tuple, std::index_sequence<Indices...>);
+
  public:
   // Disable copies, just move semantics
   IdlValue(const IdlValue &args) = delete;
@@ -58,29 +63,30 @@ class IdlValue {
   // declare move assignment
   IdlValue &operator=(IdlValue &&o) noexcept;
 
-  // Create IdlValues from types
-  IdlValue(IDLValue *ptr);
-  IdlValue();
-  explicit IdlValue(uint8_t val);
-  explicit IdlValue(uint16_t val);
-  explicit IdlValue(uint32_t val);
-  explicit IdlValue(uint64_t val);
-  explicit IdlValue(int8_t val);
-  explicit IdlValue(int16_t val);
-  explicit IdlValue(int32_t val);
-  explicit IdlValue(int64_t val);
-  explicit IdlValue(float val);
-  explicit IdlValue(double val);
-  explicit IdlValue(bool val);
-  explicit IdlValue(std::string text);
-  explicit IdlValue(zondax::Principal principal,
-                    bool type = true);  // true create principal false: service
-  IdlValue FromNull(void);
-  IdlValue FromNone(void);
-  IdlValue FromReserved(void);
-  IdlValue FromNumber(std::string number);
-  IdlValue FromOpt(IdlValue *value);
-  IdlValue FromVec(const std::vector<const IdlValue *> &elems);
+  // Templated IdlValues constructors
+  template <typename T>
+  explicit IdlValue(T);
+  template <typename T>
+  explicit IdlValue(std::optional<T>);
+
+  template <typename T>
+  explicit IdlValue(const std::vector<T> &);
+
+  template <typename... Args>
+  explicit IdlValue(const std::tuple<Args...> &);
+
+  template <typename... Args>
+  explicit IdlValue(const std::variant<Args...> &);
+
+  // Specific constructors
+  explicit IdlValue() : ptr(nullptr) {}
+  explicit IdlValue(zondax::Principal,
+                    bool = true);  // true create principal false: service
+
+  static IdlValue null();
+  static IdlValue reserved();
+  static IdlValue BigNum(std::string number);
+
   IdlValue FromRecord(const std::vector<std::string> &keys,
                       const std::vector<const IdlValue *> &elems);
   IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
