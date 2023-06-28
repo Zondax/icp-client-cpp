@@ -59,12 +59,13 @@ class IdlValue {
   IdlValue(const IdlValue &args) = delete;
   void operator=(const IdlValue &) = delete;
 
-  // declare move constructor
+  // declare move constructor & assignment
   IdlValue(IdlValue &&o) noexcept;
-  // declare move assignment
   IdlValue &operator=(IdlValue &&o) noexcept;
 
-  // Templated IdlValues constructors
+  ~IdlValue();
+
+  /******************** Constructors ***********************/
   template <typename T>
   explicit IdlValue(T);
   template <typename T,
@@ -98,7 +99,7 @@ class IdlValue {
   IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
   IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 
-  // Get types
+  /******************** Getters ***********************/
   template <typename T>
   std::optional<T> get();
 
@@ -111,8 +112,6 @@ class IdlValue {
   // the first will aliase pointer, breaking move semantics only
   // for this type if used wrong.
   IDLValue *getPtr() const;
-
-  ~IdlValue();
 };
 }  // namespace zondax
 

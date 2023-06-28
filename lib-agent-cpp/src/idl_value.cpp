@@ -30,19 +30,43 @@ namespace zondax {
     bool ret = name##_from_idl_value(ptr, &value); \
     if (!ret) return std::nullopt;                 \
     return std::make_optional<type>(value);        \
-  }  // namespace zondax
-
-IdlValue::~IdlValue() {
-  if (ptr != nullptr) {
-    idl_value_destroy(ptr);  // Call the destroy function
-    ptr = nullptr;
   }
+
+/******************** Private ***********************/
+
+void IdlValue::resetValue() { ptr = nullptr; }
+
+template <typename Tuple, size_t... Indices>
+void IdlValue::initializeFromTuple(const Tuple &tuple,
+                                   std::index_sequence<Indices...>) {
+  std::vector<IDLValue *> values;
+  // TODO: use uint32_t directly
+  std::vector<const char *> indices;
+
+  (
+      [&](size_t index) {
+        IdlValue val(std::get<index>(tuple));
+        values.push_back(val.ptr);
+        val.ptr = nullptr;
+
+        // TODO: don't convert to string, but use directly
+        auto key = std::to_string(static_cast<uint32_t>(index));
+        char *copiedKey = new char[key.length() + 1];
+        key.copy(copiedKey, key.length());
+
+        indices.push_back(copiedKey);
+      }(Indices),
+      ...);
+
+  // TODO: replace with `idl_value_with_tuple` to use Label::Unnamed
+  ptr = idl_value_with_record(indices.data(), indices.size(), values.data(),
+                              values.size());
 }
 
-// declare move constructor
+/******************** Public ***********************/
+
 IdlValue::IdlValue(IdlValue &&o) noexcept : ptr(o.ptr) { o.ptr = nullptr; }
 
-// declare move assignment
 IdlValue &IdlValue::operator=(IdlValue &&o) noexcept {
   if (&o == this) return *this;
 
@@ -55,8 +79,14 @@ IdlValue &IdlValue::operator=(IdlValue &&o) noexcept {
   return *this;
 }
 
-template <>
-IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr){};
+IdlValue::~IdlValue() {
+  if (ptr != nullptr) {
+    idl_value_destroy(ptr);  // Call the destroy function
+    ptr = nullptr;
+  }
+}
+
+/******************** T -> IdlValue ***********************/
 
 template <>
 IdlValue::IdlValue(uint8_t value) {
@@ -119,15 +149,12 @@ IdlValue::IdlValue(std::string text) {
   ptr = idl_value_with_text(text.c_str(), nullptr);
 }
 
-IdlValue::IdlValue(zondax::Principal principal, bool is_principal) {
+template <>
+IdlValue::IdlValue(Number number) {
   // TODO: Use RetError
   // RetPtr_u8 error;
 
-  ptr = is_principal
-            ? idl_value_with_principal(principal.getBytes().data(),
-                                       principal.getBytes().size(), nullptr)
-            : idl_value_with_service(principal.getBytes().data(),
-                                     principal.getBytes().size(), nullptr);
+  ptr = idl_value_with_number(number.value.c_str(), nullptr);
 }
 
 template <typename T, typename>
@@ -138,63 +165,6 @@ IdlValue::IdlValue(std::optional<T> val) {
   } else {
     ptr = idl_value_with_none();
   }
-}
-
-template <typename Tuple, size_t... Indices>
-void IdlValue::initializeFromTuple(const Tuple &tuple,
-                                   std::index_sequence<Indices...>) {
-  std::vector<IDLValue *> values;
-  // TODO: use uint32_t directly
-  std::vector<const char *> indices;
-
-  (
-      [&](size_t index) {
-        IdlValue val(std::get<index>(tuple));
-        values.push_back(val.ptr);
-        val.ptr = nullptr;
-
-        // TODO: don't convert to string, but use directly
-        auto key = std::to_string(static_cast<uint32_t>(index));
-        char *copiedKey = new char[key.length() + 1];
-        key.copy(copiedKey, key.length());
-
-        indices.push_back(copiedKey);
-      }(Indices),
-      ...);
-
-  // TODO: replace with `idl_value_with_tuple` to use Label::Unnamed
-  ptr = idl_value_with_record(indices.data(), indices.size(), values.data(),
-                              values.size());
-}
-
-template <typename... Args, typename>
-IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
-  initializeFromTuple(tuple, std::index_sequence_for<Args...>());
-}
-
-template <typename... Args, typename>
-IdlValue::IdlValue(const std::variant<Args...> &variant) {
-  std::visit([this](const auto &value) { *this = IdlValue(value); }, variant);
-}
-
-IdlValue IdlValue::null(void) {
-  IdlValue val;
-  val.ptr = idl_value_with_null();
-  return val;
-}
-
-IdlValue IdlValue::reserved(void) {
-  IdlValue val;
-  val.ptr = idl_value_with_reserved();
-  return val;
-}
-
-template <>
-IdlValue::IdlValue(Number number) {
-  // TODO: Use RetError
-  // RetPtr_u8 error;
-
-  ptr = idl_value_with_number(number.value.c_str(), nullptr);
 }
 
 template <typename T, typename>
@@ -209,6 +179,45 @@ IdlValue::IdlValue(const std::vector<T> &elems) {
   }
 
   ptr = idl_value_with_vec(cElems.data(), cElems.size());
+}
+
+template <typename... Args, typename>
+IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
+  initializeFromTuple(tuple, std::index_sequence_for<Args...>());
+}
+
+template <typename... Args, typename>
+IdlValue::IdlValue(const std::variant<Args...> &variant) {
+  // TODO: use FromVariant
+  //  1. recover variant name
+  //  2. recover variant index
+  std::visit([this](const auto &value) { *this = IdlValue(value); }, variant);
+}
+
+template <>
+IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr){};
+
+IdlValue::IdlValue(zondax::Principal principal, bool is_principal) {
+  // TODO: Use RetError
+  // RetPtr_u8 error;
+
+  ptr = is_principal
+            ? idl_value_with_principal(principal.getBytes().data(),
+                                       principal.getBytes().size(), nullptr)
+            : idl_value_with_service(principal.getBytes().data(),
+                                     principal.getBytes().size(), nullptr);
+}
+
+IdlValue IdlValue::null(void) {
+  IdlValue val;
+  val.ptr = idl_value_with_null();
+  return val;
+}
+
+IdlValue IdlValue::reserved(void) {
+  IdlValue val;
+  val.ptr = idl_value_with_reserved();
+  return val;
 }
 
 // TODO: improve the constructors below
@@ -242,6 +251,9 @@ IdlValue IdlValue::FromFunc(std::vector<uint8_t> vector,
   ptr = idl_value_with_func(vector.data(), vector.size(), func_name.c_str());
   return IdlValue(ptr);
 }
+
+/******************** IdlValue -> T ************************/
+
 PRIMITIVE_TYPES_GETTER(int8, int8_t)
 PRIMITIVE_TYPES_GETTER(int16, int16_t)
 PRIMITIVE_TYPES_GETTER(int32, int32_t)
@@ -442,7 +454,4 @@ std::optional<IdlValue> IdlValue::getOpt() {
 // }
 
 IDLValue *IdlValue::getPtr() const { return ptr; }
-
-void IdlValue::resetValue() { ptr = nullptr; }
-
 }  // namespace zondax
