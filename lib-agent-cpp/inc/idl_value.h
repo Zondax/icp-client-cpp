@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <type_traits>
 #include <vector>
@@ -31,6 +32,15 @@ extern "C" {
 #include "zondax_ic.h"
 }
 
+namespace std {
+template <>
+struct default_delete<IDLValue> {
+  void operator()(IDLValue *ptr) const {
+    if (ptr != nullptr) idl_value_destroy(ptr);
+  }
+};
+}  // namespace std
+
 namespace zondax {
 
 struct Number {
@@ -41,13 +51,7 @@ class IdlValue {
   friend class IdlArgs;
 
  private:
-  IDLValue *ptr;
-  // this will set inner pointer to null to avoid
-  // calling destructor over it, this is useful when we
-  // sent the original this.ptr to a c function that takes
-  // ownership of passed value, so that we avoid double-free
-  // errors by reset value to nullptr
-  void resetValue();
+  std::unique_ptr<IDLValue> ptr;
 
   // Helper to initialize .ptr from an std::tuple-like set of items
   // used by IdlValue(std::tuple<Args...>) constructor
@@ -62,8 +66,6 @@ class IdlValue {
   // declare move constructor & assignment
   IdlValue(IdlValue &&o) noexcept;
   IdlValue &operator=(IdlValue &&o) noexcept;
-
-  ~IdlValue();
 
   /******************** Constructors ***********************/
   template <typename T>
@@ -94,10 +96,10 @@ class IdlValue {
   static IdlValue null();
   static IdlValue reserved();
 
-  IdlValue FromRecord(const std::vector<std::string> &keys,
-                      const std::vector<const IdlValue *> &elems);
-  IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
-  IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
+  static IdlValue FromRecord(const std::vector<std::string> &keys,
+                             const std::vector<IdlValue *> &elems);
+  static IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
+  static IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 
   /******************** Getters ***********************/
   template <typename T>
@@ -108,10 +110,7 @@ class IdlValue {
   // zondax::idl_value_utils::Record getRecord();
   // zondax::idl_value_utils::Variant getVariant();
 
-  // methods bellow must be use carefully
-  // the first will aliase pointer, breaking move semantics only
-  // for this type if used wrong.
-  IDLValue *getPtr() const;
+  std::unique_ptr<IDLValue> getPtr();
 };
 }  // namespace zondax
 
