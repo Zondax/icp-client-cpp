@@ -223,18 +223,16 @@ IdlValue IdlValue::reserved(void) {
 
 // TODO: improve the constructors below
 
-IdlValue IdlValue::FromRecord(const std::vector<std::string> &keys,
-                              const std::vector<IdlValue *> &elems) {
-  std::vector<const IDLValue *> cElems;
-  cElems.reserve(elems.size());
-  for (IdlValue *elem : elems) {
-    cElems.push_back(elem->ptr.release());
-  }
-
+IdlValue IdlValue::FromRecord(
+    std::vector<std::pair<std::string, IdlValue>> &fields) {
   std::vector<const char *> cKeys;
-  cKeys.reserve(keys.size());
-  for (const std::string &key : keys) {
+  cKeys.reserve(fields.size());
+  std::vector<const IDLValue *> cElems;
+  cElems.reserve(fields.size());
+
+  for (auto &[key, value] : fields) {
     cKeys.push_back(key.c_str());
+    cElems.push_back(value.ptr.release());
   }
 
   auto p = idl_value_with_record(cKeys.data(), cKeys.size(), cElems.data(),
