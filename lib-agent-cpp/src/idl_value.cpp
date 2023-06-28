@@ -179,6 +179,8 @@ std::optional<std::string> IdlValue::get() {
     return std::nullopt;
   }
   CText *ctext = text_from_idl_value(ptr);
+  if (ctext == nullptr) return std::nullopt;
+
   const char *str = ctext_str(ctext);
   uintptr_t len = ctext_len(ctext);
 
@@ -191,10 +193,10 @@ std::optional<std::string> IdlValue::get() {
 
 template <>
 std::optional<zondax::Principal> IdlValue::get() {
-  if (ptr == nullptr) {
-    return std::nullopt;
-  }
+  if (ptr == nullptr) return std::nullopt;
+
   CPrincipal *p = principal_from_idl_value(ptr);
+  if (p == nullptr) return std::nullopt;
 
   std::vector<unsigned char> bytes(p->ptr, p->ptr + p->len);
   zondax::Principal principal(bytes);
@@ -210,6 +212,8 @@ std::optional<Number> IdlValue::get() {
     return std::nullopt;
   }
   CText *ctext = number_from_idl_value(ptr);
+  if (ctext == nullptr) return std::nullopt;
+
   const char *str = ctext_str(ctext);
   uintptr_t len = ctext_len(ctext);
 
@@ -228,6 +232,8 @@ std::optional<zondax::Func> IdlValue::get() {
     return std::nullopt;
   }
   struct CFunc *cFunc = func_from_idl_value(ptr);
+  if (cFunc == nullptr) return std::nullopt;
+
   zondax::Func result;
 
   // Extract string
@@ -255,6 +261,8 @@ std::optional<std::vector<IdlValue> > IdlValue::get() {
   // call bellow creates a new IDLValue::Vec,
   // this means it "clones" from this.ptr
   struct CIDLValuesVec *cVec = vec_from_idl_value(ptr);
+  if (cVec == nullptr) return std::nullopt;
+
   uintptr_t length = cidlval_vec_len(cVec);
 
   std::vector<IdlValue> result;
