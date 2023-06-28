@@ -828,7 +828,7 @@ struct CText *number_from_idl_value(const IDLValue *ptr);
 /**
  * @brief Create Opt IDLValue
  *
- * @param number Pointer to IDLValue
+ * @param number Pointer to IDLValue (ownership is taken)
  * @return Pointer to the Opt IDLValue Structure
  */
 IDLValue *idl_value_with_opt(IDLValue *value);
@@ -873,15 +873,23 @@ struct CIDLValuesVec *vec_from_idl_value(const IDLValue *ptr);
  * @param keys Pointer to array of keys
  * @param keys_len Number of Keys
  * @param vals Pointer to array of IDLValues
- * @param vals_len Number of Values, take in account rust will take
+ * @param vals_len Number of Values
+ * @param keys_are_ids If set to true, keys are expected to be [u8; 4] and will
+ * be read as LE u32 and the resulting record will have unnamed/id labels based
+ * on the value of the keys
+ *
+ * Take in account rust will take
  * ownership of the memory where this array is stored and free it once it comes out of
- * the function scope. So the user should not use this array after calling
+ * the function scope.
+ * So the user should not use this array after calling this function
+ *
  * @return Pointer to IDLValue Structure
  */
 IDLValue *idl_value_with_record(const char *const *keys,
                                 int keys_len,
                                 const IDLValue *const *vals,
-                                int vals_len);
+                                int vals_len,
+                                bool keys_are_ids);
 
 /**
  * @brief Get Record from IDLValue

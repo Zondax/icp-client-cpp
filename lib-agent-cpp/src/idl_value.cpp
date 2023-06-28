@@ -38,8 +38,7 @@ template <typename Tuple, size_t... Indices>
 void IdlValue::initializeFromTuple(const Tuple &tuple,
                                    std::index_sequence<Indices...>) {
   std::vector<IDLValue *> values;
-  // TODO: use uint32_t directly
-  std::vector<const char *> indices;
+  std::vector<uint8_t[4]> indices;
 
   (
       [&](size_t index) {
@@ -47,18 +46,26 @@ void IdlValue::initializeFromTuple(const Tuple &tuple,
         values.push_back(val.ptr.release());
         val.ptr = nullptr;
 
-        // TODO: don't convert to string, but use directly
-        auto key = std::to_string(static_cast<uint32_t>(index));
-        char *copiedKey = new char[key.length() + 1];
-        key.copy(copiedKey, key.length());
+        uint8_t bytes[4];  // Array to store the resulting bytes
+        auto value = static_cast<uint32_t>(index);
 
-        indices.push_back(copiedKey);
+        bytes[0] = value & 0xFF;
+        bytes[1] = (value >> 8) & 0xFF;
+        bytes[2] = (value >> 16) & 0xFF;
+        bytes[3] = (value >> 24) & 0xFF;
+
+// If the platform is big endian, swap the byte order
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        std::swap(bytes[0], bytes[3]);
+        std::swap(bytes[1], bytes[2]);
+#endif
+        indices.push_back(bytes);
       }(Indices),
       ...);
 
-  // TODO: replace with `idl_value_with_tuple` to use Label::Unnamed
-  ptr.reset(idl_value_with_record(indices.data(), indices.size(), values.data(),
-                                  values.size()));
+  ptr.reset(idl_value_with_record(
+      reinterpret_cast<const char *const *>(indices.data()), indices.size(),
+      values.data(), values.size(), true));
 }
 
 /******************** Public ***********************/
@@ -147,8 +154,8 @@ IdlValue::IdlValue(Number number) {
 template <typename T, typename>
 IdlValue::IdlValue(std::optional<T> val) {
   if (val.has_value()) {
-    *this = IdlValue(val.value());
-    // TOOD: ptr = idl_value_with_opt(value->ptr);
+    auto value = IdlValue(val.value());
+    ptr.reset(idl_value_with_opt(value.ptr.release()));
   } else {
     ptr.reset(idl_value_with_none());
   }
@@ -231,7 +238,7 @@ IdlValue IdlValue::FromRecord(const std::vector<std::string> &keys,
   }
 
   auto p = idl_value_with_record(cKeys.data(), cKeys.size(), cElems.data(),
-                                 cElems.size());
+                                 cElems.size(), false);
   return IdlValue(p);
 }
 
