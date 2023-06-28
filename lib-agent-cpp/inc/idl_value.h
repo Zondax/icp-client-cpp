@@ -20,6 +20,7 @@
 #include <cstring>
 #include <iostream>
 #include <optional>
+#include <type_traits>
 #include <vector>
 
 #include "idl_value_utils.h"
@@ -66,16 +67,22 @@ class IdlValue {
   // Templated IdlValues constructors
   template <typename T>
   explicit IdlValue(T);
-  template <typename T>
+  template <typename T,
+            typename = std::enable_if_t<std::is_constructible_v<IdlValue, T>>>
   explicit IdlValue(std::optional<T>);
 
-  template <typename T>
+  template <typename T,
+            typename = std::enable_if_t<std::is_constructible_v<IdlValue, T>>>
   explicit IdlValue(const std::vector<T> &);
 
-  template <typename... Args>
+  template <typename... Args,
+            typename = std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(const std::tuple<Args...> &);
 
-  template <typename... Args>
+  template <typename... Args,
+            typename = std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(const std::variant<Args...> &);
 
   // Specific constructors

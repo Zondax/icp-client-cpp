@@ -130,7 +130,7 @@ IdlValue::IdlValue(zondax::Principal principal, bool is_principal) {
                                      principal.getBytes().size(), nullptr);
 }
 
-template <typename T>
+template <typename T, typename>
 IdlValue::IdlValue(std::optional<T> val) {
   if (val.has_value()) {
     *this = IdlValue(val.value());
@@ -167,12 +167,12 @@ void IdlValue::initializeFromTuple(const Tuple &tuple,
                               values.size());
 }
 
-template <typename... Args>
+template <typename... Args, typename>
 IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
   initializeFromTuple(tuple, std::index_sequence_for<Args...>());
 }
 
-template <typename... Args>
+template <typename... Args, typename>
 IdlValue::IdlValue(const std::variant<Args...> &variant) {
   std::visit([this](const auto &value) { *this = IdlValue(value); }, variant);
 }
@@ -198,7 +198,7 @@ IdlValue IdlValue::BigNum(std::string number) {
   return val;
 }
 
-template <typename T>
+template <typename T, typename>
 IdlValue::IdlValue(const std::vector<T> &elems) {
   std::vector<const IDLValue *> cElems;
   cElems.reserve(elems.size());
