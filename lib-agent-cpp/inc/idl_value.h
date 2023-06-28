@@ -24,6 +24,7 @@
 
 #include "idl_value_utils.h"
 #include "principal.h"
+#include "service.h"
 
 extern "C" {
 #include "zondax_ic.h"

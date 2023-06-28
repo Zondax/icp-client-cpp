@@ -275,19 +275,24 @@ std::optional<std::vector<IdlValue> > IdlValue::get() {
   return std::make_optional(std::move(result));
 }
 
-std::optional<zondax::Principal> IdlValue::getService() {
+template <>
+std::optional<zondax::Service> IdlValue::get() {
   if (ptr == nullptr) {
-    std::cerr << "IdlValue instance uninitialized" << std::endl;
     return std::nullopt;
   }
+
   CPrincipal *p = service_from_idl_value(ptr);
+
+  if (p == nullptr) return std::nullopt;
 
   std::vector<unsigned char> bytes(p->ptr, p->ptr + p->len);
   zondax::Principal principal(bytes);
 
+  // there is not issue in destroying raw principal
+  // because bytes makes a deep copy
   principal_destroy(p);
 
-  return std::make_optional(std::move(principal));
+  return std::make_optional(zondax::Service(std::move(principal)));
 }
 
 std::optional<IdlValue> IdlValue::getOpt() {
