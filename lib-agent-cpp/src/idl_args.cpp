@@ -18,21 +18,14 @@
 namespace zondax {
 
 // declare move constructor
-IdlArgs::IdlArgs(IdlArgs&& o) noexcept {
-  ptr = o.ptr;
-  o.ptr = nullptr;
-}
+IdlArgs::IdlArgs(IdlArgs&& o) noexcept : ptr(std::move(o.ptr)) {}
 
 // declare move assignment
 IdlArgs& IdlArgs::operator=(IdlArgs&& o) noexcept {
   // check they are not the same object
   if (&o == this) return *this;
 
-  if (ptr != nullptr) idl_args_destroy(ptr);
-
-  ptr = o.ptr;
-
-  o.ptr = nullptr;
+  ptr = std::move(o.ptr);
 
   return *this;
 }
@@ -40,28 +33,24 @@ IdlArgs& IdlArgs::operator=(IdlArgs&& o) noexcept {
 IdlArgs::IdlArgs(IDLArgs* argsPtr) : ptr(argsPtr){};
 
 IdlArgs::IdlArgs(std::vector<zondax::IdlValue> values) {
-  ptr = empty_idl_args();
+  ptr.reset(empty_idl_args());
   // Convert vector of IdlValue pointers to an array of const pointers
   for (int i = 0; i < values.size(); ++i) {
     // pass value.ptr to rust, note that rust takes ownership of it.
-    idl_args_push_value(ptr, values[i].getPtr());
-    // set this ptr alias that now is pointed to memory owned by rust,
-    // to nullptr, so that at the end of this scope, the destructor
-    // would see it is null, avoiding a potential double-free error.
-    values[i].resetValue();
+    idl_args_push_value(ptr.get(), values[i].getPtr().release());
   }
 }
 
 IdlArgs::IdlArgs(std::vector<uint8_t> bytes) {
-  ptr = idl_args_from_bytes(bytes.data(), bytes.size(), nullptr);
+  ptr.reset(idl_args_from_bytes(bytes.data(), bytes.size(), nullptr));
 }
 
 IdlArgs::IdlArgs(std::string text) {
-  ptr = idl_args_from_text(text.c_str(), nullptr);
+  ptr.reset(idl_args_from_text(text.c_str(), nullptr));
 }
 
 std::string IdlArgs::getText() {
-  CText* cText = idl_args_to_text(ptr);
+  CText* cText = idl_args_to_text(ptr.get());
   const char* str = ctext_str(cText);
   uintptr_t len = ctext_len(cText);
 
@@ -78,7 +67,7 @@ std::vector<uint8_t> IdlArgs::getBytes() {
   }
 
   // TODO: Remove null and use proper callback if needed
-  CBytes* cBytes = idl_args_to_bytes(ptr, nullptr);
+  CBytes* cBytes = idl_args_to_bytes(ptr.get(), nullptr);
   const uint8_t* byte = cbytes_ptr(cBytes);
   uintptr_t len = cbytes_len(cBytes);
 
@@ -94,7 +83,7 @@ std::vector<zondax::IdlValue> IdlArgs::getVec() {
     return std::vector<zondax::IdlValue>();
   }
 
-  CIDLValuesVec* cVec = idl_args_to_vec(ptr);
+  CIDLValuesVec* cVec = idl_args_to_vec(ptr.get());
   std::vector<zondax::IdlValue> vec;
 
   for (uintptr_t i = 0; i < cidlval_vec_len(cVec); ++i) {
@@ -107,10 +96,5 @@ std::vector<zondax::IdlValue> IdlArgs::getVec() {
   return vec;
 }
 
-IDLArgs* IdlArgs::getPtr() const { return ptr; }
-
-IdlArgs::~IdlArgs() {
-  if (ptr != nullptr) idl_args_destroy(ptr);
-}
-
+std::unique_ptr<IDLArgs> IdlArgs::getPtr() { return std::move(ptr); }
 }  // namespace zondax

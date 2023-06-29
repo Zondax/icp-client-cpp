@@ -27,10 +27,19 @@ extern "C" {
 #include "zondax_ic.h"
 }
 
+namespace std {
+template <>
+struct default_delete<IDLArgs> {
+  void operator()(IDLArgs *ptr) const {
+    if (ptr != nullptr) idl_args_destroy(ptr);
+  }
+};
+}  // namespace std
+
 namespace zondax {
 class IdlArgs {
  private:
-  IDLArgs *ptr;
+  std::unique_ptr<IDLArgs> ptr;
 
  public:
   // Disable copies, just move semantics
@@ -53,11 +62,7 @@ class IdlArgs {
   std::vector<uint8_t> getBytes();
   std::vector<zondax::IdlValue> getVec();
 
-  // why C++ users would want to have a pointer to an opque type?
-  // it is meant to be use by us?
-  IDLArgs *getPtr() const;
-
-  ~IdlArgs();
+  std::unique_ptr<IDLArgs> getPtr();
 };
 }  // namespace zondax
 

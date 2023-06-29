@@ -45,13 +45,13 @@ pub extern "C" fn empty_idl_args() -> Box<IDLArgs> {
     Box::new(args)
 }
 
-/// @brief Push a new IDLValue into values list 
-/// @param args The IDLArgs instance where `value` would be added. 
-/// @param value that is going to be pushed into 
+/// @brief Push a new IDLValue into values list
+/// @param args The IDLArgs instance where `value` would be added.
+/// @param value that is going to be pushed into
 /// the list.
 /// @note: This takes ownership of the passed value
 #[no_mangle]
-pub extern "C" fn idl_args_push_value(args: &mut IDLArgs, value: Box<IDLValue> ) {
+pub extern "C" fn idl_args_push_value(args: &mut IDLArgs, value: Box<IDLValue>) {
     args.args.push(*value);
 }
 
@@ -93,7 +93,11 @@ pub extern "C" fn idl_args_from_text(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -109,7 +113,7 @@ pub extern "C" fn idl_args_from_text(
 #[no_mangle]
 pub extern "C" fn idl_args_to_bytes(
     idl_args: &IDLArgs,
-    error_ret: Option<&mut RetError >,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<CBytes>> {
     let idl_bytes = idl_args.to_bytes();
 
@@ -122,7 +126,11 @@ pub extern "C" fn idl_args_to_bytes(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -141,7 +149,7 @@ pub extern "C" fn idl_args_to_bytes(
 pub extern "C" fn idl_args_from_bytes(
     bytes: *const u8,
     bytes_len: c_int,
-    error_ret: Option<&mut RetError >,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<IDLArgs>> {
     let slice = unsafe { std::slice::from_raw_parts(bytes, bytes_len as usize) };
 
@@ -156,7 +164,11 @@ pub extern "C" fn idl_args_from_bytes(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -251,7 +263,11 @@ pub extern "C" fn idl_value_format_text(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -293,7 +309,11 @@ pub extern "C" fn idl_value_with_nat(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -662,7 +682,11 @@ pub extern "C" fn idl_value_with_text(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -714,7 +738,11 @@ pub extern "C" fn idl_value_with_principal(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -769,7 +797,11 @@ pub extern "C" fn idl_value_with_service(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -791,7 +823,6 @@ pub extern "C" fn service_from_idl_value(ptr: &IDLValue) -> Option<Box<CPrincipa
 
     let ptr = Box::into_raw(arr.into_boxed_slice()) as *mut u8;
     Some(Box::new(CPrincipal { ptr, len }))
-
 }
 
 /// @brief Create IDLValue with Service
@@ -819,7 +850,11 @@ pub extern "C" fn idl_value_with_number(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             None
@@ -847,11 +882,11 @@ pub extern "C" fn number_from_idl_value(ptr: &IDLValue) -> Option<Box<CText>> {
 
 /// @brief Create Opt IDLValue
 ///
-/// @param number Pointer to IDLValue
+/// @param number Pointer to IDLValue (ownership is taken)
 /// @return Pointer to the Opt IDLValue Structure
 #[no_mangle]
 pub extern "C" fn idl_value_with_opt(value: Box<IDLValue>) -> Box<IDLValue> {
-    let idl = IDLValue::Opt(value.clone());
+    let idl = IDLValue::Opt(value);
 
     Box::new(idl)
 }
@@ -944,10 +979,16 @@ pub extern "C" fn vec_from_idl_value(ptr: &IDLValue) -> Option<Box<CIDLValuesVec
 /// @param keys Pointer to array of keys
 /// @param keys_len Number of Keys
 /// @param vals Pointer to array of IDLValues
-/// @param vals_len Number of Values, take in account rust will take
+/// @param vals_len Number of Values
+/// @param keys_are_ids If set to true, keys are expected to be [u8; 4] and will
+/// be read as LE u32 and the resulting record will have unnamed/id labels based
+/// on the value of the keys
+///
+/// Take in account rust will take
 /// ownership of the memory where this array is stored and free it once it comes out of
-/// the function scope. So the user should not use this array after calling
-// this function
+/// the function scope.
+/// So the user should not use this array after calling this function
+///
 /// @return Pointer to IDLValue Structure
 #[no_mangle]
 pub extern "C" fn idl_value_with_record(
@@ -955,25 +996,14 @@ pub extern "C" fn idl_value_with_record(
     keys_len: c_int,
     vals: *const *const IDLValue,
     vals_len: c_int,
+    keys_are_ids: bool,
 ) -> Option<Box<IDLValue>> {
     let once = || {
         if keys_len != vals_len {
             return Err(anyhow!("The length of keys and vals are not matched"));
         }
 
-        let mut rkeys = Vec::new();
         let mut rvals = Vec::new();
-
-        for i in 0..keys_len as usize {
-            unsafe {
-                let key_ptr = *keys.add(i);
-
-                let c_str = CStr::from_ptr(key_ptr as *const c_char);
-                let str = c_str.to_str()?;
-
-                rkeys.push(str.to_string());
-            }
-        }
 
         for i in 0..vals_len as usize {
             unsafe {
@@ -981,18 +1011,54 @@ pub extern "C" fn idl_value_with_record(
                 let boxed = Box::from_raw(val_ptr as *mut IDLValue);
 
                 rvals.push(*boxed);
-
             }
         }
 
-        let fields: Vec<IDLField> = rkeys
-            .drain(..)
-            .zip(rvals.drain(..))
-            .map(|(key, val)| IDLField {
-                id: Label::Named(key),
-                val,
-            })
-            .collect();
+        let fields: Vec<_> = if keys_are_ids {
+            let keys = keys.cast::<*const *const u8>();
+            let mut rkeys = Vec::new();
+            for i in 0..keys_len as usize {
+                unsafe {
+                    let key_ptr = *keys.add(i);
+
+                    let key_slice = std::slice::from_raw_parts(key_ptr as *const u8, 4);
+                    let key_bytes = arrayref::array_ref!(key_slice, 0, 4);
+                    let key = u32::from_le_bytes(*key_bytes);
+
+                    rkeys.push(key);
+                }
+            }
+
+            rkeys
+                .into_iter()
+                .zip(rvals.into_iter())
+                .map(|(key, val)| IDLField {
+                    id: Label::Id(key),
+                    val,
+                })
+                .collect()
+        } else {
+            let mut rkeys = Vec::new();
+            for i in 0..keys_len as usize {
+                unsafe {
+                    let key_ptr = *keys.add(i);
+
+                    let c_str = CStr::from_ptr(key_ptr as *const c_char);
+                    let str = c_str.to_str()?;
+
+                    rkeys.push(str.to_string());
+                }
+            }
+
+            rkeys
+                .into_iter()
+                .zip(rvals.into_iter())
+                .map(|(key, val)| IDLField {
+                    id: Label::Named(key),
+                    val,
+                })
+                .collect()
+        };
 
         Ok(IDLValue::Record(fields))
     };
@@ -1171,7 +1237,6 @@ mod tests {
 
     #[test]
     fn idl_args_from_text_test() {
-
         let result = idl_args_from_text(IDL_ARGS_TEXT_C.as_ptr() as *const c_char, None);
         let result = result.unwrap();
         assert_eq!(IDLArgs::new(&IDL_VALUES), *result);
@@ -1186,24 +1251,16 @@ mod tests {
 
     #[test]
     fn idl_args_from_bytes_test() {
-
-        let result = idl_args_from_bytes(
-            IDL_ARGS_BYTES.as_ptr(),
-            IDL_ARGS_BYTES.len() as c_int,
-            None,
-        );
+        let result =
+            idl_args_from_bytes(IDL_ARGS_BYTES.as_ptr(), IDL_ARGS_BYTES.len() as c_int, None);
         let result = result.unwrap();
         assert_eq!(IDLArgs::new(&IDL_VALUES), *result);
     }
 
     #[test]
     fn idl_args_from_vec_test() {
-
-        let result = idl_args_from_bytes(
-            IDL_ARGS_BYTES.as_ptr(),
-            IDL_ARGS_BYTES.len() as c_int,
-            None,
-        );
+        let result =
+            idl_args_from_bytes(IDL_ARGS_BYTES.as_ptr(), IDL_ARGS_BYTES.len() as c_int, None);
         let result = result.unwrap();
         assert_eq!(IDLArgs::new(&IDL_VALUES), *result);
     }
@@ -1412,9 +1469,7 @@ mod tests {
             Box::into_raw(value_bool.clone()),
             Box::into_raw(value_null.clone()),
             Box::into_raw(value_principal.clone()),
-
         ];
-
 
         let expected = IDLValue::Record(vec![
             IDLField {
@@ -1436,6 +1491,7 @@ mod tests {
             KEYS.len() as c_int,
             idl_value_list.as_ptr(),
             idl_value_list.len() as c_int,
+            false,
         );
         let result = result.unwrap();
         assert_eq!(&expected, result.deref());
