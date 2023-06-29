@@ -21,12 +21,15 @@
 #include <functional>
 #include <iostream>
 #include <optional>
+#include <type_traits>
 #include <variant>
 #include <vector>
 
 #include "identity.h"
 #include "idl_args.h"
+#include "idl_value.h"
 #include "principal.h"
+#include "service.h"
 
 extern "C" {
 #include "zondax_ic.h"
@@ -61,11 +64,23 @@ class Agent {
 
   ~Agent();
 
-  std::variant<IdlArgs, std::string> Query(std::string service,
-                                           zondax::IdlArgs &args);
+  template <typename... Args,
+            typename std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>,
+  std::variant<IdlArgs, std::string> Query(const std::string &method,
+                                           Args &&...);
 
-  std::variant<IdlArgs, std::string> Update(std::string service,
-                                            zondax::IdlArgs &args);
+  std::variant<IdlArgs, std::string> Query(const std::string &method,
+                                           zondax::IdlArgs &&args);
+
+  template <typename... Args,
+            typename std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  std::variant<IdlArgs, std::string> Update(const std::string &method,
+                                            Args &&...);
+
+  std::variant<IdlArgs, std::string> Update(const std::string &method,
+                                            zondax::IdlArgs &&args);
 };
 }  // namespace zondax
 

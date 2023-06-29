@@ -81,8 +81,21 @@ std::variant<Agent, std::string> Agent::create_agent(
   return ok;
 }
 
-std::variant<IdlArgs, std::string> Agent::Query(std::string service,
-                                                zondax::IdlArgs& args) {
+template <typename... Args, typename>
+std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
+                                                Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.push_back(std::move(IdlValue(std::forward(rawArgs)))));
+
+  IdlArgs args(v);
+
+  return Query(method, std::move(args));
+}
+
+std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
+                                                zondax::IdlArgs&& args) {
   if (agent == nullptr) {
     std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
                                              "Agent instance uninitialized"};
@@ -97,7 +110,7 @@ std::variant<IdlArgs, std::string> Agent::Query(std::string service,
   ret.call = Agent::error_callback;
 
   IDLArgs* argsPtr =
-      agent_query_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+      agent_query_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
   if (argsPtr == nullptr) {
     std::variant<IdlArgs, std::string> error(data);
@@ -111,8 +124,21 @@ std::variant<IdlArgs, std::string> Agent::Query(std::string service,
   return ok;
 }
 
-std::variant<IdlArgs, std::string> Agent::Update(std::string service,
-                                                 zondax::IdlArgs& args) {
+template <typename... Args, typename>
+std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
+                                                 Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.push_back(std::move(IdlValue(std::forward(rawArgs)))));
+
+  IdlArgs args(v);
+
+  return Update(method, std::move(args));
+}
+
+std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
+                                                 IdlArgs&& args) {
   if (agent == nullptr) {
     std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
                                              "Agent instance uninitialized"};
@@ -127,7 +153,7 @@ std::variant<IdlArgs, std::string> Agent::Update(std::string service,
   ret.call = Agent::error_callback;
 
   IDLArgs* argsPtr =
-      agent_update_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+      agent_update_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
   if (argsPtr == nullptr) {
     std::variant<IdlArgs, std::string> error(data);
