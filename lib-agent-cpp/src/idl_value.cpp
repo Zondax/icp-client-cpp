@@ -329,17 +329,13 @@ std::optional<zondax::Func> IdlValue::get() {
   struct CFunc *cFunc = func_from_idl_value(ptr.get());
   if (cFunc == nullptr) return std::nullopt;
 
-  zondax::Func result;
-
-  // Extract string
-  result.s = std::string(cfunc_string(cFunc),
-                         cfunc_string(cFunc) + cfunc_string_len(cFunc));
-
   // Extract principal
   struct CPrincipal *cPrincipal = cfunc_principal(cFunc);
   std::vector<uint8_t> vec =
-      std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
-  result.p = zondax::Principal(vec);
+    std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
+
+  zondax::Func result(zondax::Principal(vec), std::string(cfunc_string(cFunc),
+                         cfunc_string(cFunc) + cfunc_string_len(cFunc)));
 
   // Free the allocated CFunc
   cfunc_destroy(cFunc);
