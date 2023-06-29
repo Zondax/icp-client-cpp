@@ -35,6 +35,8 @@ Func &Func::operator=(Func &&o) noexcept {
   return *this;
 }
 
+Func::~Func() {}
+
 Func::Func(zondax::Principal &&p, std::string &&m) noexcept
     : princ(std::move(p)), method(std::move(m)) {}
 
