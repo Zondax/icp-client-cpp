@@ -21,7 +21,6 @@
 #include <variant>
 
 #include "func.h"
-#include "idl_value_utils.h"
 #include "service.h"
 
 namespace zondax {
@@ -195,6 +194,9 @@ template <>
 IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr){};
 
 template <>
+IdlValue::IdlValue(const IDLValue *ptr) : ptr((IDLValue *)ptr){};
+
+template <>
 IdlValue::IdlValue(zondax::Principal principal) {
   // TODO: Use RetError
   // RetPtr_u8 error;
@@ -329,17 +331,15 @@ std::optional<zondax::Func> IdlValue::get() {
   struct CFunc *cFunc = func_from_idl_value(ptr.get());
   if (cFunc == nullptr) return std::nullopt;
 
-  zondax::Func result;
-
-  // Extract string
-  result.s = std::string(cfunc_string(cFunc),
-                         cfunc_string(cFunc) + cfunc_string_len(cFunc));
-
   // Extract principal
   struct CPrincipal *cPrincipal = cfunc_principal(cFunc);
   std::vector<uint8_t> vec =
       std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
-  result.p = zondax::Principal(vec);
+
+  zondax::Func result(
+      zondax::Principal(vec),
+      std::string(cfunc_string(cFunc),
+                  cfunc_string(cFunc) + cfunc_string_len(cFunc)));
 
   // Free the allocated CFunc
   cfunc_destroy(cFunc);

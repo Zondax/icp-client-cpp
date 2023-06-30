@@ -241,7 +241,7 @@ int main(void) {
     };
 
     idl_value_destroy(val);
-    val = idl_value_with_record(keys, 2, vals, 2);
+    val = idl_value_with_record(keys, 2, vals, 2, false);
 
     CRecord *rec = record_from_idl_value(val);
     is_valid = nat8_from_idl_value(crecord_get_val(rec,0), &nat);

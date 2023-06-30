@@ -89,7 +89,7 @@ std::variant<IdlArgs, std::string> Agent::Query(std::string service,
     return error;
   }
 
-  CText* arg = idl_args_to_text(args.getPtr());
+  CText* arg = idl_args_to_text(args.getPtr().get());
 
   RetError ret;
   std::string data;
@@ -119,7 +119,7 @@ std::variant<IdlArgs, std::string> Agent::Update(std::string service,
     return error;
   }
 
-  CText* arg = idl_args_to_text(args.getPtr());
+  CText* arg = idl_args_to_text(args.getPtr().get());
 
   RetError ret;
   std::string data;
