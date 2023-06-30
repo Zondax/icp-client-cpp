@@ -16,7 +16,7 @@
 
 #include "agent.h"
 
-#include <bits/utility.h>
+// #include <bits/utility.h>
 
 #include <optional>
 #include <string>
@@ -107,74 +107,6 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
   return std::move(IdlArgs(argsPtr));
 }
 
-template <typename... Args, typename>
-std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
-                                                Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
-
-  IdlArgs args(v);
-
-  return Query(method, std::move(args));
-}
-
-template <typename R, typename... Args, typename, typename>
-std::variant<std::optional<R>, std::string> Agent::Query(
-    const std::string& method, Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Query(method, std::move(args));
-
-  if (result.index() == 1) return std::get<1>(result);
-
-  auto returned_values = std::move(std::get<0>(result));
-  auto value = std::move(returned_values.getVec()[0]);
-
-  return value.get<R>();
-}
-
-template <typename... RArgs, typename... Args, typename, typename, typename>
-std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
-    const std::string& method, Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Query(method, std::move(args));
-
-  if (result.index() == 1) return std::get<1>(result);
-
-  auto returned_values = std::move(std::get<0>(result));
-  std::vector<IdlValue> values = std::move(returned_values.getVec());
-
-  if (values.size() != sizeof...(RArgs)) return std::nullopt;
-
-  std::tuple<RArgs...> tuple;
-  for (std::size_t i = 0; i < values.size(); ++i) {
-    IdlValue& val = values[i];
-    auto& loc = std::get<i>(tuple);
-
-    auto mby_converted = val.get<decltype(loc)>();
-    if (mby_converted.has_value()) {
-      loc = std::move(mby_converted.value());
-    } else {
-      return std::nullopt;
-    }
-  }
-
-  return std::make_optional(std::move(tuple));
-}
-
 /* *********************** Update ************************/
 
 std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
@@ -195,70 +127,6 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
 
   return std::move(IdlArgs(argsPtr));
 }
-
-template <typename... Args, typename>
-std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
-                                                 Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
-
-  IdlArgs args(v);
-
-  return Update(method, std::move(args));
-}
-
-template <typename R, typename... Args, typename, typename>
-std::variant<std::optional<R>, std::string> Agent::Update(
-    const std::string& method, Args&&... rawArgs) {
-  auto result = Update(method, std::forward(rawArgs...));
-
-  if (result.index() == 1) return std::get<1>(result);
-
-  auto returned_values = std::move(std::get<0>(result));
-  std::vector<IdlValue> values = std::move(returned_values.getVec());
-
-  if (values.size() != 1) return std::nullopt;
-
-  return values[0].get<R>();
-}
-
-template <typename... RArgs, typename... Args, typename, typename, typename>
-std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Update(
-    const std::string& method, Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Update(method, std::move(args));
-
-  if (result.index() == 1) return std::get<1>(result);
-
-  auto returned_values = std::move(std::get<0>(result));
-  std::vector<IdlValue> values = std::move(returned_values.getVec());
-
-  if (values.size() != sizeof...(RArgs)) return std::nullopt;
-
-  std::tuple<RArgs...> tuple;
-  for (std::size_t i = 0; i < values.size(); ++i) {
-    IdlValue& val = values[i];
-    auto& loc = std::get<i>(tuple);
-
-    auto mby_converted = val.get<decltype(loc)>();
-    if (mby_converted.has_value()) {
-      loc = std::move(mby_converted.value());
-    } else {
-      return std::nullopt;
-    }
-  }
-
-  return std::make_optional(std::move(tuple));
-}
-
 Agent::~Agent() {
   if (agent != nullptr) agent_destroy(agent);
 }
