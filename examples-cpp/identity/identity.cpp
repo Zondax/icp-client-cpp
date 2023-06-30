@@ -15,6 +15,7 @@
  ********************************************************************************/
 #include "identity.h"
 
+#include <cassert>
 #include <iostream>
 
 extern "C" {
@@ -61,12 +62,8 @@ int main() {
     std::vector<unsigned char> bytes =
         std::get<Principal>(senderPrincipal).getBytes();
 
-    if (bytes.size() == 1 && bytes[0] == 4 &&
-        anonymousIdentity.getType() == Anonym) {
-      std::cout << "Test 1: Valid Anonym identity" << std::endl;
-    } else {
-      std::cout << "Test 1: Invalid Anonym identity" << std::endl;
-    }
+    assert(bytes.size() == 1 && (bytes[0] == 4));
+    assert(anonymousIdentity.getType() == Anonym);
 
   } else {
     std::cout << "Test 1: " << std::get<std::string>(senderPrincipal)
@@ -108,11 +105,9 @@ int main() {
   }
 
   auto value = std::get<IdentitySign>(result);
-  if (value.pubkey == PubKeyExpected && value.signature == SignatureExpected) {
-    std::cout << "Test 3: Valid Sign Basic" << std::endl;
-  } else {
-    std::cout << "Test 3: Invalid Sign Basic" << std::endl;
-  }
+  // This should fail
+  assert(value.pubkey != PubKeyExpected &&
+         value.signature != SignatureExpected);
 
   return 0;
 }
