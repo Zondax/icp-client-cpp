@@ -64,23 +64,148 @@ class Agent {
 
   ~Agent();
 
-  template <typename... Args,
-            typename std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>,
-  std::variant<IdlArgs, std::string> Query(const std::string &method,
-                                           Args &&...);
-
+  /**
+   * Performs a query using the specified method and arguments.
+   *
+   * @param method The method to query.
+   * @param args The arguments for the query.
+   * @return A variant that can contain either `IdlArgs` or a string error
+   * message.
+   *
+   * @remarks This function is used internally by the generic implementation and
+   * should not be called directly.
+   */
   std::variant<IdlArgs, std::string> Query(const std::string &method,
                                            zondax::IdlArgs &&args);
 
+  /**
+   * Performs a query using the specified method and arguments.
+   * The arguments `args` are forwarded to construct `IdlValue` objects.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam R The return type of the query.
+   * @param method The method to call.
+   * @param args The arguments for the call.
+   * @return A variant containing the call result or an error string.
+   */
   template <typename... Args,
-            typename std::enable_if_t<
+            typename = std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  std::variant<IdlArgs, std::string> Query(const std::string &method,
+                                           Args &&...);
+
+  /**
+   * Performs a query using the specified method and arguments.
+   * The return type `R` must be constructible from `IdlValue`.
+   * The arguments `rawArgs` are forwarded to construct `IdlValue` objects.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam R The return type of the query.
+   * @param method The method to query.
+   * @param args The arguments for the query.
+   * @return A variant containing the converted query result (if the type
+   * matches) or an error string.
+   */
+  template <typename R, typename... Args,
+            typename = std::enable_if_t<std::is_constructible_v<IdlValue, R>>,
+            typename = std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  std::variant<std::optional<R>, std::string> Query(const std::string &method,
+                                                    Args &&...args);
+  /**
+   * Performs a query using the specified method and arguments.
+   * This version is specialized for tuple return types, should be used when the
+   * method returns multiple values.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam RArgs Variadic template parameter pack for the return types
+   * of the tuple.
+   * @param method The method to query.
+   * @param args The tuple of arguments for the query.
+   * @return A variant containing the converted query result (if the types
+   * match) in the form of a tupleor an error string.
+   */
+  template <
+      typename... RArgs, typename... Args,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, RArgs> && ...)>,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
+      typename = std::enable_if_t<!std::is_same_v<RArgs..., IdlArgs>>>
+  std::variant<std::optional<std::tuple<RArgs...>>, std::string> Query(
+      const std::string &method, Args &&...args);
+
+  /**
+   * Performs an update using the specified method and arguments.
+   *
+   * @param method The method to call.
+   * @param args The arguments for the call.
+   * @return A variant that can contain either `IdlArgs` or a string error
+   * message.
+   *
+   * @remarks This function is used internally by the generic implementation and
+   * should not be called directly.
+   */
+  std::variant<IdlArgs, std::string> Update(const std::string &method,
+                                            zondax::IdlArgs &&args);
+
+  /**
+   * Performs an update using the specified method and arguments.
+   * The arguments `args` are forwarded to construct `IdlValue` objects.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam R The return type of the call.
+   * @param method The method to call.
+   * @param args The arguments for the call.
+   * @return A variant containing the call result or an error string.
+   */
+  template <typename... Args,
+            typename = std::enable_if_t<
                 (std::is_constructible_v<IdlValue, Args> && ...)>>
   std::variant<IdlArgs, std::string> Update(const std::string &method,
                                             Args &&...);
 
-  std::variant<IdlArgs, std::string> Update(const std::string &method,
-                                            zondax::IdlArgs &&args);
+  /**
+   * Performs an update using the specified method and arguments.
+   * The return type `R` must be constructible from `IdlValue`.
+   * The arguments `args` are forwarded to construct `IdlValue` objects.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam R The return type of the call.
+   * @param method The method to call.
+   * @param args The arguments for the call.
+   * @return A variant containing the converted call result (if the type
+   * matches) or an error string.
+   */
+  template <typename R, typename... Args,
+            typename = std::enable_if_t<std::is_constructible_v<IdlValue, R>>,
+            typename = std::enable_if_t<
+                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  std::variant<std::optional<R>, std::string> Update(const std::string &method,
+                                                     Args &&...);
+
+  /**
+   * Performs an update using the specified method and arguments.
+   * This version is specialized for tuple return types, should be used when the
+   * method returns multiple values.
+   *
+   * @tparam Args Variadic template parameter pack for the argument types.
+   * @tparam RArgs Variadic template parameter pack for the return types
+   * of the tuple.
+   * @param method The method to call.
+   * @param args The tuple of arguments for the call.
+   * @return A variant containing the converted call result (if the types
+   * match) in the form of a tupleor an error string.
+   */
+  template <
+      typename... RArgs, typename... Args,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, RArgs> && ...)>,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
+      typename = std::enable_if_t<!std::is_same_v<RArgs..., IdlArgs>>>
+  std::variant<std::optional<std::tuple<RArgs...>>, std::string> Update(
+      const std::string &method, Args &&...args);
 };
 }  // namespace zondax
 

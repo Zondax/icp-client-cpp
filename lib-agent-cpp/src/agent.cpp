@@ -16,7 +16,12 @@
 
 #include "agent.h"
 
+#include <bits/utility.h>
+
+#include <optional>
+#include <string>
 #include <utility>
+#include <variant>
 
 using zondax::IdlArgs;
 
@@ -81,26 +86,11 @@ std::variant<Agent, std::string> Agent::create_agent(
   return ok;
 }
 
-template <typename... Args, typename>
-std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
-                                                Args&&... rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.push_back(std::move(IdlValue(std::forward(rawArgs)))));
-
-  IdlArgs args(v);
-
-  return Query(method, std::move(args));
-}
+/* *********************** Query ************************/
 
 std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
                                                 zondax::IdlArgs&& args) {
-  if (agent == nullptr) {
-    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
-                                             "Agent instance uninitialized"};
-    return error;
-  }
+  if (agent == nullptr) return std::string("Agent instance uninitialized");
 
   CText* arg = idl_args_to_text(args.getPtr().get());
 
@@ -112,38 +102,84 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
   IDLArgs* argsPtr =
       agent_query_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
-  if (argsPtr == nullptr) {
-    std::variant<IdlArgs, std::string> error(data);
-    return error;
-  }
+  if (argsPtr == nullptr) return std::string(data);
 
-  // IdlArgs result(argsPtr);
-
-  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
-
-  return ok;
+  return std::move(IdlArgs(argsPtr));
 }
 
 template <typename... Args, typename>
-std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
-                                                 Args&&... rawArgs) {
+std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
+                                                Args&&... rawArgs) {
   std::vector<IdlValue> v;
   v.reserve(sizeof...(rawArgs));
 
-  (..., v.push_back(std::move(IdlValue(std::forward(rawArgs)))));
+  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
 
   IdlArgs args(v);
 
-  return Update(method, std::move(args));
+  return Query(method, std::move(args));
 }
+
+template <typename R, typename... Args, typename, typename>
+std::variant<std::optional<R>, std::string> Agent::Query(
+    const std::string& method, Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
+
+  IdlArgs args(v);
+
+  auto result = Query(method, std::move(args));
+
+  if (result.index() == 1) return std::get<1>(result);
+
+  auto returned_values = std::move(std::get<0>(result));
+  auto value = std::move(returned_values.getVec()[0]);
+
+  return value.get<R>();
+}
+
+template <typename... RArgs, typename... Args, typename, typename, typename>
+std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
+    const std::string& method, Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
+
+  IdlArgs args(v);
+
+  auto result = Query(method, std::move(args));
+
+  if (result.index() == 1) return std::get<1>(result);
+
+  auto returned_values = std::move(std::get<0>(result));
+  std::vector<IdlValue> values = std::move(returned_values.getVec());
+
+  if (values.size() != sizeof...(RArgs)) return std::nullopt;
+
+  std::tuple<RArgs...> tuple;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    IdlValue& val = values[i];
+    auto& loc = std::get<i>(tuple);
+
+    auto mby_converted = val.get<decltype(loc)>();
+    if (mby_converted.has_value()) {
+      loc = std::move(mby_converted.value());
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  return std::make_optional(std::move(tuple));
+}
+
+/* *********************** Update ************************/
 
 std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
                                                  IdlArgs&& args) {
-  if (agent == nullptr) {
-    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
-                                             "Agent instance uninitialized"};
-    return error;
-  }
+  if (agent == nullptr) return std::string("Agent instance uninitialized");
 
   CText* arg = idl_args_to_text(args.getPtr().get());
 
@@ -155,14 +191,72 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
   IDLArgs* argsPtr =
       agent_update_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
-  if (argsPtr == nullptr) {
-    std::variant<IdlArgs, std::string> error(data);
-    return error;
+  if (argsPtr == nullptr) return std::string(data);
+
+  return std::move(IdlArgs(argsPtr));
+}
+
+template <typename... Args, typename>
+std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
+                                                 Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
+
+  IdlArgs args(v);
+
+  return Update(method, std::move(args));
+}
+
+template <typename R, typename... Args, typename, typename>
+std::variant<std::optional<R>, std::string> Agent::Update(
+    const std::string& method, Args&&... rawArgs) {
+  auto result = Update(method, std::forward(rawArgs...));
+
+  if (result.index() == 1) return std::get<1>(result);
+
+  auto returned_values = std::move(std::get<0>(result));
+  std::vector<IdlValue> values = std::move(returned_values.getVec());
+
+  if (values.size() != 1) return std::nullopt;
+
+  return values[0].get<R>();
+}
+
+template <typename... RArgs, typename... Args, typename, typename, typename>
+std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Update(
+    const std::string& method, Args&&... rawArgs) {
+  std::vector<IdlValue> v;
+  v.reserve(sizeof...(rawArgs));
+
+  (..., v.emplace_back(IdlValue(std::forward(rawArgs))));
+
+  IdlArgs args(v);
+
+  auto result = Update(method, std::move(args));
+
+  if (result.index() == 1) return std::get<1>(result);
+
+  auto returned_values = std::move(std::get<0>(result));
+  std::vector<IdlValue> values = std::move(returned_values.getVec());
+
+  if (values.size() != sizeof...(RArgs)) return std::nullopt;
+
+  std::tuple<RArgs...> tuple;
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    IdlValue& val = values[i];
+    auto& loc = std::get<i>(tuple);
+
+    auto mby_converted = val.get<decltype(loc)>();
+    if (mby_converted.has_value()) {
+      loc = std::move(mby_converted.value());
+    } else {
+      return std::nullopt;
+    }
   }
 
-  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
-
-  return ok;
+  return std::make_optional(std::move(tuple));
 }
 
 Agent::~Agent() {
