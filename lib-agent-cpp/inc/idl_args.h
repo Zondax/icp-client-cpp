@@ -56,7 +56,7 @@ class IdlArgs {
   explicit IdlArgs(IDLArgs *argsPtr);
   explicit IdlArgs(std::string text);
   explicit IdlArgs(std::vector<uint8_t> bytes);
-  explicit IdlArgs(const std::vector<zondax::IdlValue> values);
+  explicit IdlArgs(std::vector<zondax::IdlValue> &values);
 
   std::string getText();
   std::vector<uint8_t> getBytes();

@@ -32,7 +32,7 @@ IdlArgs& IdlArgs::operator=(IdlArgs&& o) noexcept {
 
 IdlArgs::IdlArgs(IDLArgs* argsPtr) : ptr(argsPtr){};
 
-IdlArgs::IdlArgs(std::vector<zondax::IdlValue> values) {
+IdlArgs::IdlArgs(std::vector<zondax::IdlValue>& values) {
   ptr.reset(empty_idl_args());
   // Convert vector of IdlValue pointers to an array of const pointers
   for (int i = 0; i < values.size(); ++i) {
