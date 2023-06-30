@@ -48,6 +48,20 @@ class Agent {
   static void error_callback(const unsigned char *data, int len,
                              void *user_data);
 
+  /**
+   * Performs a query using the specified method and arguments.
+   *
+   * @param method The method to query.
+   * @param args The arguments for the query.
+   * @return A variant that can contain either `IdlArgs` or a string error
+   * message.
+   *
+   * @remarks This function is used internally by the generic implementation and
+   * should not be called directly.
+   */
+  std::variant<IdlArgs, std::string> Query(const std::string &method,
+                                           zondax::IdlArgs &&args);
+
  public:
   // Disable copies, just move semantics
   Agent(const Agent &args) = delete;
@@ -63,20 +77,6 @@ class Agent {
       const std::vector<char> &did_content);
 
   ~Agent();
-
-  /**
-   * Performs a query using the specified method and arguments.
-   *
-   * @param method The method to query.
-   * @param args The arguments for the query.
-   * @return A variant that can contain either `IdlArgs` or a string error
-   * message.
-   *
-   * @remarks This function is used internally by the generic implementation and
-   * should not be called directly.
-   */
-  std::variant<IdlArgs, std::string> Query(const std::string &method,
-                                           zondax::IdlArgs &&args);
 
   /**
    * Performs a query using the specified method and arguments.
