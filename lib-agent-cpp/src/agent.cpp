@@ -57,7 +57,7 @@ Agent& Agent::operator=(Agent&& o) noexcept {
 }
 
 std::variant<Agent, std::string> Agent::create_agent(
-    std::string url, zondax::Identity id, zondax::Principal principal,
+    std::string url, zondax::Identity id, zondax::Principal& principal,
     const std::vector<char>& did_content) {
   // string to get error message from callback
   std::string data;

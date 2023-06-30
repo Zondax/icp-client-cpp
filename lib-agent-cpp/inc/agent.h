@@ -59,7 +59,7 @@ class Agent {
   Agent &operator=(Agent &&o) noexcept;
 
   static std::variant<Agent, std::string> create_agent(
-      std::string url, zondax::Identity id, zondax::Principal principal,
+      std::string url, zondax::Identity id, zondax::Principal &principal,
       const std::vector<char> &did_content);
 
   ~Agent();
