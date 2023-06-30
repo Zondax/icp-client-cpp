@@ -43,9 +43,8 @@ int main() {
   Identity anonymousIdentity;
 
   // Create agent with agent constructor
-  auto agent =
-      Agent::create_agent(url, std::move(anonymousIdentity),
-                          std::move(std::get<Principal>(principal)), buffer);
+  auto agent = Agent::create_agent(url, std::move(anonymousIdentity),
+                                   std::get<Principal>(principal), buffer);
 
   if (std::holds_alternative<std::string>(agent)) {
     std::cerr << "Error: " << std::get<std::string>(agent) << std::endl;
@@ -55,14 +54,10 @@ int main() {
   // Create an IdlValue object with the uint64_t value (nat64 in candid)
   uint64_t nat64 = 1974211;
 
-  // Create a vector of IdlValue pointers
-  std::vector<IdlValue> values;
-  values.emplace_back(IdlValue(nat64));
-
-  auto args = IdlArgs(std::move(values));
-
   // Make Query call to canister, pass args using move semantics
-  auto out = std::get<Agent>(agent).Query("lookup", args);
+  auto method = std::string("lookup");
+  std::variant<IdlArgs, std::string> out =
+      std::get<Agent>(agent).Query(method, std::move(nat64));
 
   // Get text representation and print
   std::string out_text = std::get<IdlArgs>(out).getText();
