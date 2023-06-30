@@ -56,6 +56,13 @@ class IdlArgs {
   explicit IdlArgs(IDLArgs *argsPtr);
   explicit IdlArgs(std::string text);
   explicit IdlArgs(std::vector<uint8_t> bytes);
+
+  /**
+   * Constructor
+   *
+   * @tparam values a vector of IdlValues. This call does not take ownership of
+   * the vector but of each IdlValue it contains.
+   */
   explicit IdlArgs(std::vector<zondax::IdlValue> &values);
 
   std::string getText();
