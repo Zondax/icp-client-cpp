@@ -224,34 +224,23 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string &method,
 template <typename R, typename... Args, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward<Args>(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Query(method, std::move(args));
+  auto result = Query(method, std::forward<Args...>(rawArgs...));
 
   if (result.index() == 1) return std::get<1>(result);
 
   auto returned_values = std::move(std::get<0>(result));
-  auto value = std::move(returned_values.getVec()[0]);
+  std::vector<IdlValue> values = std::move(returned_values.getVec());
 
-  return value.get<R>();
+  if (values.size() != 1) return std::nullopt;
+
+  return values[0].get<R>();
 }
 
 template <typename... RArgs, typename... Args, typename, typename, typename>
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
   std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward<Args>(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Query(method, std::move(args));
+  auto result = Query(method, std::forward<Args...>(rawArgs...));
 
   if (result.index() == 1) return std::get<1>(result);
 
@@ -293,7 +282,7 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string &method,
 template <typename R, typename... Args, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
-  auto result = Update(method, std::forward<Args>(rawArgs)...);
+  auto result = Update(method, std::forward<Args...>(rawArgs...));
 
   if (result.index() == 1) return std::get<1>(result);
 
@@ -308,14 +297,7 @@ std::variant<std::optional<R>, std::string> Agent::Update(
 template <typename... RArgs, typename... Args, typename, typename, typename>
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
-  std::vector<IdlValue> v;
-  v.reserve(sizeof...(rawArgs));
-
-  (..., v.emplace_back(IdlValue(std::forward<Args>(rawArgs))));
-
-  IdlArgs args(v);
-
-  auto result = Update(method, std::move(args));
+  auto result = Update(method, std::forward<Args...>(rawArgs...));
 
   if (result.index() == 1) return std::get<1>(result);
 
