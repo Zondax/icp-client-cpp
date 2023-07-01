@@ -10,6 +10,11 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
 #include <string>
 #include <variant>
 #include <vector>
+
+//lib-agent-cpp
+#include "agent.h"
+#include "idl_value.h"
+#include "principal.h"
 "#;
 
     let (env, actor) = nominalize_all(env, actor);
@@ -198,8 +203,8 @@ fn pp_ty<'a, 'b>(ty: &'a Type, recs: &'b RecPoints) -> RcDoc<'a> {
     match *ty {
         Null => str("void"),
         Bool => str("bool"),
-        Nat => str("void* /* BigNat */"),
-        Int => str("void* /* BigInt */"),
+        Nat => str("zondax::Number"),
+        Int => str("zondax::Number"),
         Nat8 => str("uint8_t"),
         Nat16 => str("uint16_t"),
         Nat32 => str("uint32_t"),
@@ -221,13 +226,13 @@ fn pp_ty<'a, 'b>(ty: &'a Type, recs: &'b RecPoints) -> RcDoc<'a> {
                 name
             }
         }
-        Principal => str("Principal"),
+        Principal => str("zondax::Principal"),
         Opt(ref t) => str("std::optional").append(enclose("<", pp_ty(t, recs), ">")),
         Vec(ref t) => str("std::vector").append(enclose("<", pp_ty(t, recs), ">")),
         Record(ref fs) => pp_record_fields(fs, recs),
         Variant(_) => unreachable!(), // not possible after rewriting
-        Func(_) => str("void* /* candid::Func */"),
-        Service(_) => str("void* /* candid::Service */"),
+        Func(_) => str("zondax::Func"),
+        Service(_) => str("zondax::Service"),
         Class(_, _) => unreachable!(),
         Knot(_) | Unknown => unreachable!(),
     }
@@ -364,11 +369,11 @@ fn pp_actor<'a>(env: &'a TypeEnv, actor: &'a Type) -> RcDoc<'a> {
         .append(RcDoc::hardline())
         .append("private:")
         .append(RcDoc::hardline())
-        .append("Agent agent;")
+        .append("zondax::Agent agent;")
         .append(RcDoc::hardline())
         .append("public:")
         .append(RcDoc::hardline())
-        .append("SERVICE(Agent agent): agent(agent) {}")
+        .append("SERVICE(zondax::Agent&& agent): agent(std::move(agent)) {}")
         .append(RcDoc::hardline())
         .append(body)
         .append(RcDoc::hardline())
