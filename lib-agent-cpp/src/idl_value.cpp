@@ -18,10 +18,12 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <variant>
 
 #include "func.h"
 #include "service.h"
+#include "zondax_ic.h"
 
 namespace zondax {
 
@@ -417,37 +419,30 @@ std::optional<IdlValue> IdlValue::getOpt() {
   return IdlValue(result);
 }
 
+std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
+  std::unordered_map<std::string, IdlValue> fields;
+
+  struct CRecord *record = record_from_idl_value(ptr.get());
+
+  for (uintptr_t i = 0; i < crecord_keys_len(record); ++i) {
+    auto cKey = crecord_take_key(record, i);
+    auto cVal = crecord_take_val(record, i);
+
+    auto key = std::string(ctext_str(cKey));
+    auto val = IdlValue(cVal);
+
+    fields.emplace(std::make_pair(key, std::move(val)));
+  }
+
+  return std::move(fields);
+}
+
 // TODO: Enable later forward declaration is tricky here,
 // specially because it requires raw pointers, which might lead
 // to aliasing of the inner idlValue ptr, and this if doing wrong
 // could cause memory issues, double free and so on.
 // also smart pointers do not work here as types are not fully
 // qualify.
-
-// zondax::idl_value_utils::Record IdlValue::getRecord() {
-//     struct CRecord* cRecord = record_from_idl_value(ptr);
-//     zondax::idl_value_utils::Record result;
-//
-//     // Extract keys
-//     uintptr_t keysLength = crecord_keys_len(cRecord);
-//     for (uintptr_t i = 0; i < keysLength; ++i) {
-//         const char* keyPtr = reinterpret_cast<const
-//         char*>(crecord_get_key(cRecord, i));
-//         result.keys.emplace_back(keyPtr);
-//     }
-//
-//     // Extract values
-//     uintptr_t valsLength = crecord_vals_len(cRecord);
-//     for (uintptr_t i = 0; i < valsLength; ++i) {
-//         const IDLValue* valPtr = crecord_get_val(cRecord, i);
-//         result.vals.emplace_back(valPtr);
-//     }
-//
-//     // Free the allocated CRecord
-//     crecord_destroy(cRecord);
-//
-//     return result;
-// }
 
 // zondax::idl_value_utils::Variant IdlValue::getVariant(){
 //     struct CVariant* cVariant = variant_from_idl_value(ptr);

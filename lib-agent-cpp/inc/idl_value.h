@@ -21,7 +21,9 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
 #include <vector>
 
 #include "idl_value_utils.h"
@@ -102,7 +104,7 @@ class IdlValue {
 
   std::optional<IdlValue> getOpt();
   std::vector<IdlValue> getVec();
-  // zondax::idl_value_utils::Record getRecord();
+  std::unordered_map<std::string, IdlValue> getRecord();
   // zondax::idl_value_utils::Variant getVariant();
 
   std::unique_ptr<IDLValue> getPtr();
