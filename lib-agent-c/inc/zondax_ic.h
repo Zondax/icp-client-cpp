@@ -500,6 +500,14 @@ IDLArgs *idl_args_from_vec(const IDLValue *const *elems, int elems_len);
 struct CIDLValuesVec *idl_args_to_vec(const IDLArgs *ptr);
 
 /**
+ * @brief Number of elements in IDLArgs
+ *
+ * @param ptr Pointer to IDLArgs Array
+ * @return Number of IDLValues in IDLArgs
+ */
+uintptr_t idl_args_len(const IDLArgs *ptr);
+
+/**
  * @brief Free allocated memory
  *
  * @param _ptr Pointer to IDLArgs Array
@@ -735,6 +743,14 @@ bool bool_from_idl_value(const IDLValue *idl, bool *value);
  * @return Pointer to the IDLValue Structure
  */
 IDLValue *idl_value_with_null(void);
+
+/**
+ * @brief Get null from value
+ *
+ * @param idl IDLValue pointer
+ * @return boolean value that indicates if idlValue is in fact of this type
+ */
+bool idl_value_is_null(const IDLValue *idl);
 
 /**
  * @brief Create IDLValue with none

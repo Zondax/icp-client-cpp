@@ -223,6 +223,11 @@ IdlValue::IdlValue(zondax::Func func) {
                                 func.method_name().c_str()));
 }
 
+template <>
+IdlValue::IdlValue(std::monostate) {
+  ptr.reset(idl_value_with_null());
+}
+
 IdlValue IdlValue::null(void) {
   IdlValue val;
   val.ptr.reset(idl_value_with_null());
@@ -392,6 +397,14 @@ std::optional<zondax::Service> IdlValue::get() {
   principal_destroy(p);
 
   return std::make_optional(zondax::Service(std::move(principal)));
+}
+
+template <>
+std::optional<std::monostate> IdlValue::get() {
+  if (ptr == nullptr) return std::nullopt;
+
+  return idl_value_is_null(ptr.get()) ? std::make_optional<std::monostate>()
+                                      : std::nullopt;
 }
 
 std::optional<IdlValue> IdlValue::getOpt() {

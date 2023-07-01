@@ -56,8 +56,7 @@ int main() {
 
   // Make Query call to canister, pass args using move semantics
   auto method = std::string("lookup");
-  std::variant<IdlArgs, std::string> out =
-      std::get<Agent>(agent).Query(method, std::move(nat64));
+  auto out = std::get<Agent>(agent).Query(method, std::move(nat64));
 
   // Get text representation and print
   std::string out_text = std::get<IdlArgs>(out).getText();

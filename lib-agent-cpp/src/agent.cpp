@@ -104,7 +104,10 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
 
   if (argsPtr == nullptr) return std::string(data);
 
-  return std::move(IdlArgs(argsPtr));
+  auto idlArgs = IdlArgs(argsPtr);
+  idlArgs.ensureNonEmpty();
+
+  return std::move(idlArgs);
 }
 
 /* *********************** Update ************************/
@@ -125,8 +128,12 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
 
   if (argsPtr == nullptr) return std::string(data);
 
-  return std::move(IdlArgs(argsPtr));
+  auto idlArgs = IdlArgs(argsPtr);
+  idlArgs.ensureNonEmpty();
+
+  return std::move(idlArgs);
 }
+
 Agent::~Agent() {
   if (agent != nullptr) agent_destroy(agent);
 }

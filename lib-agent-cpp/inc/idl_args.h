@@ -38,8 +38,15 @@ struct default_delete<IDLArgs> {
 
 namespace zondax {
 class IdlArgs {
+  friend class Agent;
+
  private:
   std::unique_ptr<IDLArgs> ptr;
+
+  // ensure the inner IDLArgs contains at least 1 entry
+  // if not, an `IDLValue::Null` will be inserted
+  // to represent a "void" return
+  void ensureNonEmpty();
 
  public:
   // Disable copies, just move semantics

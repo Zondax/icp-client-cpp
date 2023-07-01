@@ -15,7 +15,19 @@
  ********************************************************************************/
 #include "idl_args.h"
 
+#include "idl_value.h"
+#include "zondax_ic.h"
+
 namespace zondax {
+
+void IdlArgs::ensureNonEmpty() {
+  if (ptr == nullptr) return;
+
+  auto p = ptr.get();
+  if (idl_args_len(p) == 0) {
+    idl_args_push_value(p, IdlValue::null().getPtr().release());
+  }
+}
 
 // declare move constructor
 IdlArgs::IdlArgs(IdlArgs&& o) noexcept : ptr(std::move(o.ptr)) {}

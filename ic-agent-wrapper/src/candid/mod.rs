@@ -39,10 +39,7 @@ use crate::{
 /// @return An IDLArgs object containing an empty list IDLValues
 #[no_mangle]
 pub extern "C" fn empty_idl_args() -> Box<IDLArgs> {
-    // use dummy idl_value
-    let values = [IDLValue::Bool(false); 0];
-    let args = IDLArgs::new(values.as_slice());
-    Box::new(args)
+    Box::new(IDLArgs { args: vec![] })
 }
 
 /// @brief Push a new IDLValue into values list
@@ -225,6 +222,15 @@ pub extern "C" fn idl_args_to_vec(ptr: &IDLArgs) -> Option<Box<CIDLValuesVec>> {
     };
 
     Some(Box::new(CIDLValuesVec { data: r }))
+}
+
+/// @brief Number of elements in IDLArgs
+///
+/// @param ptr Pointer to IDLArgs Array
+/// @return Number of IDLValues in IDLArgs
+#[no_mangle]
+pub extern "C" fn idl_args_len(ptr: &IDLArgs) -> usize {
+    return ptr.args.len();
 }
 
 /// @brief Free allocated memory
@@ -647,6 +653,15 @@ pub extern "C" fn bool_from_idl_value(idl: &IDLValue, value: Option<&mut bool>) 
 pub extern "C" fn idl_value_with_null() -> Box<IDLValue> {
     let idl_value = IDLValue::Null;
     Box::new(idl_value)
+}
+
+/// @brief Get null from value
+///
+/// @param idl IDLValue pointer
+/// @return boolean value that indicates if idlValue is in fact of this type
+#[no_mangle]
+pub extern "C" fn idl_value_is_null(idl: &IDLValue) -> bool {
+    matches!(idl, IDLValue::Null)
 }
 
 /// @brief Create IDLValue with none
