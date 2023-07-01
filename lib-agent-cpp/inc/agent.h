@@ -39,6 +39,35 @@ using zondax::IdlArgs;
 
 namespace zondax {
 
+namespace helper {
+/**
+ * @brief Checks if the first type in a parameter pack is the same as a
+ * specified type.
+ *
+ * @tparam First The first type in the parameter pack.
+ * @tparam Rest The remaining types in the parameter pack.
+ */
+template <typename First, typename... Rest>
+struct is_first_same {
+  static constexpr bool value =
+      std::is_same_v<First,
+                     typename std::tuple_element<0, std::tuple<Rest...>>::type>;
+};
+
+template <typename First, typename... Rest>
+inline constexpr bool is_first_same_v = is_first_same<First, Rest...>::value;
+
+/**
+ * @brief Checks if a parameter pack has at least two types.
+ *
+ * @tparam Rest Variadic template parameter pack.
+ *
+ * @return `true` if `Rest` has at least two types, `false` otherwise.
+ */
+template <typename... Rest>
+inline constexpr bool has_at_least_two_types = sizeof...(Rest) >= 2;
+}  // namespace helper
+
 class Agent {
  private:
   FFIAgent *agent;
@@ -61,6 +90,20 @@ class Agent {
    */
   std::variant<IdlArgs, std::string> Query(const std::string &method,
                                            zondax::IdlArgs &&args);
+
+  /**
+   * Performs an update using the specified method and arguments.
+   *
+   * @param method The method to call.
+   * @param args The arguments for the call.
+   * @return A variant that can contain either `IdlArgs` or a string error
+   * message.
+   *
+   * @remarks This function is used internally by the generic implementation and
+   * should not be called directly.
+   */
+  std::variant<IdlArgs, std::string> Update(const std::string &method,
+                                            zondax::IdlArgs &&args);
 
  public:
   // Disable copies, just move semantics
@@ -88,9 +131,11 @@ class Agent {
    * @param args The arguments for the call.
    * @return A variant containing the call result or an error string.
    */
-  template <typename... Args,
-            typename = std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  template <
+      typename... Args,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
+      typename = std::enable_if_t<!helper::is_first_same_v<IdlArgs, Args...>>>
   std::variant<IdlArgs, std::string> Query(const std::string &method,
                                            Args &&...);
 
@@ -109,7 +154,8 @@ class Agent {
   template <typename R, typename... Args,
             typename = std::enable_if_t<std::is_constructible_v<IdlValue, R>>,
             typename = std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>>
+                (std::is_constructible_v<IdlValue, Args> && ...)>,
+            typename = std::enable_if_t<!std::is_same_v<R, IdlArgs>>>
   std::variant<std::optional<R>, std::string> Query(const std::string &method,
                                                     Args &&...args);
   /**
@@ -131,23 +177,10 @@ class Agent {
           std::enable_if_t<(std::is_constructible_v<IdlValue, RArgs> && ...)>,
       typename =
           std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
-      typename = std::enable_if_t<!std::is_same_v<RArgs..., IdlArgs>>>
+      typename = std::enable_if_t<!std::is_same_v<IdlArgs, RArgs...>>,
+      typename = std::enable_if_t<helper::has_at_least_two_types<RArgs...>>>
   std::variant<std::optional<std::tuple<RArgs...>>, std::string> Query(
       const std::string &method, Args &&...args);
-
-  /**
-   * Performs an update using the specified method and arguments.
-   *
-   * @param method The method to call.
-   * @param args The arguments for the call.
-   * @return A variant that can contain either `IdlArgs` or a string error
-   * message.
-   *
-   * @remarks This function is used internally by the generic implementation and
-   * should not be called directly.
-   */
-  std::variant<IdlArgs, std::string> Update(const std::string &method,
-                                            zondax::IdlArgs &&args);
 
   /**
    * Performs an update using the specified method and arguments.
@@ -159,9 +192,11 @@ class Agent {
    * @param args The arguments for the call.
    * @return A variant containing the call result or an error string.
    */
-  template <typename... Args,
-            typename = std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  template <
+      typename... Args,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
+      typename = std::enable_if_t<!helper::is_first_same_v<IdlArgs, Args...>>>
   std::variant<IdlArgs, std::string> Update(const std::string &method,
                                             Args &&...);
 
@@ -180,7 +215,8 @@ class Agent {
   template <typename R, typename... Args,
             typename = std::enable_if_t<std::is_constructible_v<IdlValue, R>>,
             typename = std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>>
+                (std::is_constructible_v<IdlValue, Args> && ...)>,
+            typename = std::enable_if_t<!std::is_same_v<R, IdlArgs>>>
   std::variant<std::optional<R>, std::string> Update(const std::string &method,
                                                      Args &&...);
 
@@ -203,12 +239,13 @@ class Agent {
           std::enable_if_t<(std::is_constructible_v<IdlValue, RArgs> && ...)>,
       typename =
           std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>,
-      typename = std::enable_if_t<!std::is_same_v<RArgs..., IdlArgs>>>
+      typename = std::enable_if_t<!std::is_same_v<IdlArgs, RArgs...>>,
+      typename = std::enable_if_t<helper::has_at_least_two_types<RArgs...>>>
   std::variant<std::optional<std::tuple<RArgs...>>, std::string> Update(
       const std::string &method, Args &&...args);
 };
 
-template <typename... Args, typename>
+template <typename... Args, typename, typename>
 std::variant<IdlArgs, std::string> Agent::Query(const std::string &method,
                                                 Args &&...rawArgs) {
   std::vector<IdlValue> v;
@@ -221,7 +258,7 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string &method,
   return Query(method, std::move(args));
 }
 
-template <typename R, typename... Args, typename, typename>
+template <typename R, typename... Args, typename, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
   auto result = Query(method, std::forward<Args...>(rawArgs...));
@@ -236,7 +273,8 @@ std::variant<std::optional<R>, std::string> Agent::Query(
   return values[0].get<R>();
 }
 
-template <typename... RArgs, typename... Args, typename, typename, typename>
+template <typename... RArgs, typename... Args, typename, typename, typename,
+          typename>
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
   std::vector<IdlValue> v;
@@ -266,7 +304,7 @@ std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
 }
 /* *********************** Update ************************/
 
-template <typename... Args, typename>
+template <typename... Args, typename, typename>
 std::variant<IdlArgs, std::string> Agent::Update(const std::string &method,
                                                  Args &&...rawArgs) {
   std::vector<IdlValue> v;
@@ -279,7 +317,7 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string &method,
   return Update(method, std::move(args));
 }
 
-template <typename R, typename... Args, typename, typename>
+template <typename R, typename... Args, typename, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
   auto result = Update(method, std::forward<Args...>(rawArgs...));
@@ -294,7 +332,8 @@ std::variant<std::optional<R>, std::string> Agent::Update(
   return values[0].get<R>();
 }
 
-template <typename... RArgs, typename... Args, typename, typename, typename>
+template <typename... RArgs, typename... Args, typename, typename, typename,
+          typename>
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
   auto result = Update(method, std::forward<Args...>(rawArgs...));
