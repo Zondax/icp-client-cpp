@@ -200,8 +200,10 @@ const uint8_t *crecord_keys(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Key
+ *
+ * @note Ownership is transfered to the caller
  */
-const uint8_t *crecord_get_key(const struct CRecord *ptr, uintptr_t index);
+struct CText *crecord_take_key(struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Key Vector length
@@ -225,8 +227,10 @@ const IDLValue *crecord_vals(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Value
+ *
+ * @note Ownership is trasfered to the caller
  */
-const IDLValue *crecord_get_val(const struct CRecord *ptr, uintptr_t index);
+IDLValue *crecord_take_val(struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Values Vector length

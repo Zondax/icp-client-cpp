@@ -241,23 +241,28 @@ int main(void) {
     };
 
     idl_value_destroy(val);
-    val = idl_value_with_record(keys, 2, vals, 2, false);
+  val = idl_value_with_record(keys, 2, vals, 2, false);
 
-    CRecord *rec = record_from_idl_value(val);
-    is_valid = nat8_from_idl_value(crecord_get_val(rec,0), &nat);
-    if (is_valid && nat == 2 && !strcmp("key2", (const char *)crecord_get_key(rec,1))) {
-        printf(" Test 11: Valid Record\n");
-    } else {
-        printf(" Test 11: Error.\n");
-    }
+  CRecord *rec = record_from_idl_value(val);
+  IDLValue *rec_value = crecord_take_val(rec, 0);
+  is_valid = nat8_from_idl_value(crecord_take_val(rec, 0), &nat);
+  idl_value_destroy(rec_value);
 
-    idl_value_destroy(val);
-    ctext_destroy(t);
-    principal_destroy(id);
-    cvariant_destroy(var);
-    idl_value_destroy((IDLValue *)var_val);
-    cfunc_destroy(func);
-    crecord_destroy(rec);
+  CText *rec_field = crecord_take_key(rec, 1);
+  if (is_valid && nat == 2 && !strcmp("key2", ctext_str(rec_field))) {
+    printf(" Test 11: Valid Record\n");
+  } else {
+    printf(" Test 11: Error.\n");
+  }
+  ctext_destroy(rec_field);
 
-    return 0;
+  idl_value_destroy(val);
+  ctext_destroy(t);
+  principal_destroy(id);
+  cvariant_destroy(var);
+  idl_value_destroy((IDLValue *)var_val);
+  cfunc_destroy(func);
+  crecord_destroy(rec);
+
+  return 0;
 }

@@ -211,12 +211,23 @@ pub extern "C" fn crecord_keys(ptr: &CRecord) -> *const u8 {
 /// @param ptr CRecord structure pointer
 /// @param index to specific index
 /// @return Pointer to CRecord Key
+///
+/// @note Ownership is transfered to the caller
 #[no_mangle]
-pub extern "C" fn crecord_get_key(ptr: &CRecord, index: usize) -> *const u8 {
-    if index < ptr.keys.len() {
-        ptr.keys[index].data.as_ptr() as _
+pub extern "C" fn crecord_take_key(ptr: *mut CRecord, index: usize) -> *mut CText {
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let keys = unsafe { &mut (*ptr).keys };
+
+    if index < keys.len() {
+        let mut key = CText { data: vec![0] };
+        std::mem::swap(&mut keys[index], &mut key);
+
+        Box::into_raw(Box::new(key))
     } else {
-        std::ptr::null()
+        std::ptr::null_mut()
     }
 }
 
@@ -243,12 +254,23 @@ pub extern "C" fn crecord_vals(ptr: &CRecord) -> *const IDLValue {
 /// @param ptr CRecord structure pointer
 /// @param index to specific index
 /// @return Pointer to CRecord Value
+///
+/// @note Ownership is trasfered to the caller
 #[no_mangle]
-pub extern "C" fn crecord_get_val(ptr: &CRecord, index: usize) -> *const IDLValue {
-    if index < ptr.vals.len() {
-        &ptr.vals[index] as *const IDLValue
+pub extern "C" fn crecord_take_val(ptr: *mut CRecord, index: usize) -> *mut IDLValue {
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let vals = unsafe { &mut (*ptr).vals };
+
+    if index < vals.len() {
+        let mut val = IDLValue::Null;
+        std::mem::swap(&mut vals[index], &mut val);
+
+        Box::into_raw(Box::new(val))
     } else {
-        std::ptr::null()
+        std::ptr::null_mut()
     }
 }
 
