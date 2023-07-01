@@ -254,6 +254,73 @@ fn pp_record_fields<'a, 'b>(fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
     }
 }
 
+fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
+    let convert_field = |id| {
+        RcDoc::text(format!(
+            r#"auto name = std::string("{id}");
+        auto val = IdlValue(arg.{id});
+        fields.emplace_back(std::make_pair(name, std::move(val)));"#
+        ))
+    };
+
+    let all_fields = RcDoc::concat(
+        fs.iter()
+            .map(|Field { id, .. }| enclose_space("{", convert_field(id), "}")),
+    );
+
+    let body = enclose(
+        "std::vector<std::pair<std::string, IdlValue>> fields;\n",
+        all_fields,
+        "\n     *this = std::move(IdlValue::FromRecord(fields));",
+    );
+    let body = enclose_space("{", body, "}");
+
+    let ctor = str("template <> IdlValue::IdlValue")
+        .append(enclose("(", str(name), " arg)"))
+        .append(body);
+
+    let get_field = |id, ty| {
+        RcDoc::text(format!(
+            r#"auto field = std::move(fields["{id}"]);
+        auto val = field.get"#
+        ))
+        .append(enclose("<", ty, ">();"))
+        .append(RcDoc::hardline())
+        .append(RcDoc::text(format!(
+            r#"if (val.has_value()) {{
+            result.{id} = val.value();
+        }} else {{
+            return std::nullopt;
+        }}"#
+        )))
+    };
+
+    let all_fields = RcDoc::concat(fs.iter().map(|Field { id, ty }| {
+        enclose_space("{", get_field(id, pp_ty(ty, &BTreeSet::new())), "}")
+    }));
+
+    let body = str(name)
+        .append(" result;")
+        .append(RcDoc::hardline())
+        .append("auto fields = this->getRecord();")
+        .append(RcDoc::hardline())
+        .append(all_fields)
+        .append(RcDoc::hardline())
+        .append("\treturn std::make_optional(result);");
+    let getter = str("template <> std::optional")
+        .append(enclose("<", str(name), ">"))
+        .append(str(" IdlValue::get() "))
+        .append(enclose("{", body, "}"));
+
+    enclose_space(
+        "namespace zondax {",
+        ctor.append(RcDoc::hardline())
+            .append(RcDoc::hardline())
+            .append(getter),
+        "}",
+    )
+}
+
 fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
     let name = str(id).append(" ");
 
@@ -267,6 +334,37 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
         }
     };
 
+    let pp_mby_record_conversion = || {
+        if is_tuple(fs) {
+            RcDoc::nil()
+        } else if fs.is_empty() {
+            let constructor = str("template <> IdlValue::IdlValue").append(enclose(
+                "(",
+                name.clone(),
+                " arg): IdlValue(std::move(IdlValue::null())) {}",
+            ));
+
+            let getter = str("template <> std::optional")
+                .append(enclose("<", str(id), ">"))
+                .append(str(" IdlValue::get() "))
+                .append(enclose(
+                    "{",
+                    str("return this->get<std::monostate>().has_value() ? std::make_optional")
+                        .append(enclose("<", str(id), ">() "))
+                        .append(": std::nullopt;"),
+                    "}",
+                ));
+
+            enclose_space(
+                "namespace zondax {",
+                constructor.append(RcDoc::hardline()).append(getter),
+                "}",
+            )
+        } else {
+            pp_record_conversion(id, fs)
+        }
+    };
+
     kwd("struct")
         .append(name.clone())
         .append(enclose(
@@ -276,9 +374,14 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
         ))
         .append(";")
         .append(RcDoc::hardline())
+        .append(pp_mby_record_conversion())
+        .append(RcDoc::hardline())
 }
 
 fn pp_variant_fields<'a, 'b>(fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
+    //TODO: generate name + code for variants
+    //   static constexpr std::string_view name{"unknown"};
+    //  static constexpr std::size_t code = 0;
     strict_concat(fs.iter().map(|Field { ty, .. }| pp_ty(ty, recs)), ",")
 }
 
@@ -346,11 +449,11 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
     let is_query = func.is_query();
     let agent_method = if is_query { "Query" } else { "Update" };
 
-    let call = RcDoc::text(format!(r#"auto result = agent.{agent_method}("{method}""#))
+    let body = RcDoc::text(format!(r#"return agent.{agent_method}("{method}""#))
         .append(args)
         .append(");");
 
-    let body = call.append("return result;");
+    // let body = call.append("return result;");
 
     sig.append(enclose_space("{", body, "}"))
 }
