@@ -207,14 +207,14 @@ pub extern "C" fn identity_secp256k1_from_private_key(
 /// @return Void pointer to CPrincipal structure
 #[no_mangle]
 pub extern "C" fn identity_sender(
-    id_ptr: *mut c_void,
+    id_ptr: *const c_void,
     idType: IdentityType,
     error_ret: Option<&mut RetError>,
 ) -> Option<Box<CPrincipal>> {
     unsafe {
         match idType {
             IdentityType::Anonym => {
-                let id = id_ptr as *mut AnonymousIdentity;
+                let id = id_ptr as *const AnonymousIdentity;
                 let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
@@ -242,7 +242,7 @@ pub extern "C" fn identity_sender(
                 }
             }
             IdentityType::Basic => {
-                let id = id_ptr as *mut BasicIdentity;
+                let id = id_ptr as *const BasicIdentity;
                 let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
@@ -270,7 +270,7 @@ pub extern "C" fn identity_sender(
                 }
             }
             IdentityType::Secp256k1 => {
-                let id = id_ptr as *mut Secp256k1Identity;
+                let id = id_ptr as *const Secp256k1Identity;
                 let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
@@ -322,7 +322,7 @@ pub extern "C" fn identity_sign(
     unsafe {
         match idType {
             IdentityType::Anonym => {
-                let id = id_ptr as *mut AnonymousIdentity;
+                let id = id_ptr as *const AnonymousIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
                 let signature = (&*id).sign(blob);
 
@@ -357,7 +357,7 @@ pub extern "C" fn identity_sign(
                 }
             }
             IdentityType::Basic => {
-                let id = id_ptr as *mut BasicIdentity;
+                let id = id_ptr as *const BasicIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
                 let signature = (&*id).sign(blob);
 
@@ -392,7 +392,7 @@ pub extern "C" fn identity_sign(
                 }
             }
             IdentityType::Secp256k1 => {
-                let id = id_ptr as *mut Secp256k1Identity;
+                let id = id_ptr as *const Secp256k1Identity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
                 let signature = (&*id).sign(blob);
 

@@ -1029,7 +1029,7 @@ void *identity_secp256k1_from_private_key(const char *private_key, uintptr_t pk_
  * @param error_ret CallBack to get error
  * @return Void pointer to CPrincipal structure
  */
-struct CPrincipal *identity_sender(void *id_ptr,
+struct CPrincipal *identity_sender(const void *id_ptr,
                                    enum IdentityType idType,
                                    struct RetError *error_ret);
 
