@@ -13,6 +13,7 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
 
 //lib-agent-cpp
 #include "agent.h"
+#include "func.h"
 #include "idl_value.h"
 #include "principal.h"
 "#;
@@ -258,7 +259,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     let convert_field = |id| {
         RcDoc::text(format!(
             r#"auto name = std::string("{id}");
-        auto val = IdlValue(arg.{id});
+        auto val = IdlValue(std::move(arg.{id}));
         fields.emplace_back(std::make_pair(name, std::move(val)));"#
         ))
     };
@@ -288,7 +289,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
         .append(RcDoc::hardline())
         .append(RcDoc::text(format!(
             r#"if (val.has_value()) {{
-            result.{id} = val.value();
+            result.{id} = std::move(val.value());
         }} else {{
             return std::nullopt;
         }}"#
@@ -306,7 +307,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
         .append(RcDoc::hardline())
         .append(all_fields)
         .append(RcDoc::hardline())
-        .append("\treturn std::make_optional(result);");
+        .append("\treturn std::make_optional(std::move(result));");
     let getter = str("template <> std::optional")
         .append(enclose("<", str(name), ">"))
         .append(str(" IdlValue::get() "))
@@ -440,7 +441,7 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
             ">",
         ),
     };
-    let sig = enclose("std::variant<", rets, ", std::string> ")
+    let sig = enclose("std::variant<", rets.clone(), ", std::string> ")
         .append(name)
         .append(enclose("(", args, ")"));
     let args = RcDoc::concat((0..func.args.len()).map(|i| RcDoc::text(format!(", arg{}", i))));
@@ -449,11 +450,16 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
     let is_query = func.is_query();
     let agent_method = if is_query { "Query" } else { "Update" };
 
-    let body = RcDoc::text(format!(r#"return agent.{agent_method}("{method}""#))
+    let body = RcDoc::text(format!("auto result = agent.{agent_method}"))
+        .append(enclose("<", rets, ">"))
+        .append(RcDoc::text(format!(r#"("{method}""#)))
         .append(args)
         .append(");");
 
-    // let body = call.append("return result;");
+    let body = body
+        .append(RcDoc::hardline())
+        .append(str(
+        "if (result.index() == 0) {\n\t\treturn std::move(std::get<0>(result).value());\n\t} else {\n\t\treturn std::get<1>(result);\n\t}"));
 
     sig.append(enclose_space("{", body, "}"))
 }
