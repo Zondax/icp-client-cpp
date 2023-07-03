@@ -1003,14 +1003,13 @@ void *identity_secp256k1_from_private_key(const char *private_key, uintptr_t pk_
  * @brief Returns a sender, ie. the Principal ID that is used to sign a request.
  * Only one sender can be used per request.
  *
- * @param id_ptr Pointer to identity. Since is rust doing the memory management
- * Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
- * to unexpected behavior
+ * @param id_ptr Pointer to identity. This function does not take ownership
+ * of the passed identity.
  * @param idType Identity Type
  * @param error_ret CallBack to get error
  * @return Void pointer to CPrincipal structure
  */
-struct CPrincipal *identity_sender(void *id_ptr,
+struct CPrincipal *identity_sender(const void *id_ptr,
                                    enum IdentityType idType,
                                    struct RetError *error_ret);
 
@@ -1020,16 +1019,15 @@ struct CPrincipal *identity_sender(void *id_ptr,
  *
  * @param bytes Pointer to blob content
  * @param bytes_len Length of blob
- * @param id_ptr Pointer to identity. Since is rust doing the memory management
- * Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
- * to unexpected behavior
+ * @param id_ptr Pointer to identity. This function does not take ownership of the passed
+ * identity.
  * @param idType Identity Type
  * @param error_ret CallBack to get error
- * @return Void pointer to CPrincipal structure
+ * @return Pointer to the signature
  */
 struct CIdentitySign *identity_sign(const uint8_t *bytes,
                                     int bytes_len,
-                                    void *id_ptr,
+                                    const void *id_ptr,
                                     enum IdentityType idType,
                                     struct RetError *error_ret);
 

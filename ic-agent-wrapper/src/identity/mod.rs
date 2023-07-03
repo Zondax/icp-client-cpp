@@ -79,7 +79,11 @@ pub extern "C" fn identity_basic_from_pem(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             std::ptr::null_mut()
@@ -119,7 +123,11 @@ pub extern "C" fn identity_basic_from_key_pair(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             std::ptr::null_mut()
@@ -158,7 +166,11 @@ pub extern "C" fn identity_secp256k1_from_pem(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             std::ptr::null_mut()
@@ -188,23 +200,22 @@ pub extern "C" fn identity_secp256k1_from_private_key(
 /// @brief Returns a sender, ie. the Principal ID that is used to sign a request.
 /// Only one sender can be used per request.
 ///
-/// @param id_ptr Pointer to identity. Since is rust doing the memory management
-/// Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
-/// to unexpected behavior
+/// @param id_ptr Pointer to identity. This function does not take ownership
+/// of the passed identity.
 /// @param idType Identity Type
 /// @param error_ret CallBack to get error
 /// @return Void pointer to CPrincipal structure
 #[no_mangle]
 pub extern "C" fn identity_sender(
-    id_ptr: *mut c_void,
+    id_ptr: *const c_void,
     idType: IdentityType,
     error_ret: Option<&mut RetError>,
 ) -> Option<Box<CPrincipal>> {
     unsafe {
         match idType {
             IdentityType::Anonym => {
-                let boxed = Box::from_raw(id_ptr as *mut AnonymousIdentity);
-                let principal = boxed.sender();
+                let id = id_ptr as *const AnonymousIdentity;
+                let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
                         let arr = principal.as_ref();
@@ -220,15 +231,19 @@ pub extern "C" fn identity_sender(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
                         None
                     }
                 }
             }
             IdentityType::Basic => {
-                let boxed = Box::from_raw(id_ptr as *mut BasicIdentity);
-                let principal = boxed.sender();
+                let id = id_ptr as *const BasicIdentity;
+                let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
                         let arr = principal.as_ref();
@@ -244,15 +259,19 @@ pub extern "C" fn identity_sender(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
                         None
                     }
                 }
             }
             IdentityType::Secp256k1 => {
-                let boxed = Box::from_raw(id_ptr as *mut Secp256k1Identity);
-                let principal = boxed.sender();
+                let id = id_ptr as *const Secp256k1Identity;
+                let principal = (&*id).sender();
                 match principal {
                     Ok(principal) => {
                         let arr = principal.as_ref();
@@ -268,7 +287,11 @@ pub extern "C" fn identity_sender(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
                         None
                     }
@@ -283,26 +306,25 @@ pub extern "C" fn identity_sender(
 ///
 /// @param bytes Pointer to blob content
 /// @param bytes_len Length of blob
-/// @param id_ptr Pointer to identity. Since is rust doing the memory management
-/// Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
-/// to unexpected behavior
+/// @param id_ptr Pointer to identity. This function does not take ownership of the passed
+/// identity.
 /// @param idType Identity Type
 /// @param error_ret CallBack to get error
-/// @return Void pointer to CPrincipal structure
+/// @return Pointer to the signature
 #[no_mangle]
 pub extern "C" fn identity_sign(
     bytes: *const u8,
     bytes_len: c_int,
-    id_ptr: *mut c_void,
+    id_ptr: *const c_void,
     idType: IdentityType,
     error_ret: Option<&mut RetError>,
 ) -> Option<Box<CIdentitySign>> {
     unsafe {
         match idType {
             IdentityType::Anonym => {
-                let boxed = Box::from_raw(id_ptr as *mut AnonymousIdentity);
+                let id = id_ptr as *const AnonymousIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = boxed.sign(blob);
+                let signature = (&*id).sign(blob);
 
                 match signature {
                     Ok(Signature {
@@ -323,7 +345,11 @@ pub extern "C" fn identity_sign(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
 
                         None
@@ -331,9 +357,9 @@ pub extern "C" fn identity_sign(
                 }
             }
             IdentityType::Basic => {
-                let boxed = Box::from_raw(id_ptr as *mut BasicIdentity);
+                let id = id_ptr as *const BasicIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = boxed.sign(blob);
+                let signature = (&*id).sign(blob);
 
                 match signature {
                     Ok(Signature {
@@ -354,7 +380,11 @@ pub extern "C" fn identity_sign(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
 
                         None
@@ -362,9 +392,9 @@ pub extern "C" fn identity_sign(
                 }
             }
             IdentityType::Secp256k1 => {
-                let boxed = Box::from_raw(id_ptr as *mut Secp256k1Identity);
+                let id = id_ptr as *const Secp256k1Identity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = boxed.sign(blob);
+                let signature = (&*id).sign(blob);
 
                 match signature {
                     Ok(Signature {
@@ -385,7 +415,11 @@ pub extern "C" fn identity_sign(
                             CString::new(fallback_error).expect("Fallback error message is invalid")
                         });
                         if let Some(error_ret) = error_ret {
-                            (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                            (error_ret.call)(
+                                c_string.as_ptr() as _,
+                                c_string.as_bytes().len() as _,
+                                error_ret.user_data,
+                            );
                         }
 
                         None
@@ -398,24 +432,24 @@ pub extern "C" fn identity_sign(
 
 /// @brief Free allocated Memory
 ///
-/// @param identity Identity pointer 
+/// @param identity Identity pointer
 /// @param idType Identity Type
 /// Rust code will deal the memory allocation but the user should guarantee
 /// The memory is free when isn't needed anymore
 #[no_mangle]
-pub extern "C" fn identity_destroy(identity: *mut c_void, idType: IdentityType ) {
+pub extern "C" fn identity_destroy(identity: *mut c_void, idType: IdentityType) {
     if !identity.is_null() {
-            match idType {
-                IdentityType::Anonym => {
-                    let _id = unsafe { Box::from_raw(identity as *mut AnonymousIdentity) };
-                }
-                IdentityType::Basic => {
-                    let _id = unsafe { Box::from_raw(identity as *mut BasicIdentity) };
-                }
-                IdentityType::Secp256k1 => {
-                    let _id = unsafe { Box::from_raw(identity as *mut Secp256k1Identity) };
-                }
+        match idType {
+            IdentityType::Anonym => {
+                let _id = unsafe { Box::from_raw(identity as *mut AnonymousIdentity) };
             }
+            IdentityType::Basic => {
+                let _id = unsafe { Box::from_raw(identity as *mut BasicIdentity) };
+            }
+            IdentityType::Secp256k1 => {
+                let _id = unsafe { Box::from_raw(identity as *mut Secp256k1Identity) };
+            }
+        }
     }
 }
 
@@ -481,8 +515,7 @@ N3d26cRxD99TPtm8uo2OuzKhSiq6EQ==
 
     #[test]
     fn test_identity_secp256k1_from_pem() {
-        let id =
-            identity_secp256k1_from_pem(SECP256K1_ID_FILE.as_ptr() as *const c_char, None);
+        let id = identity_secp256k1_from_pem(SECP256K1_ID_FILE.as_ptr() as *const c_char, None);
 
         unsafe {
             let boxed = Box::from_raw(id as *mut Secp256k1Identity);
