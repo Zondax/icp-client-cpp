@@ -54,6 +54,11 @@ struct is_first_same {
                      typename std::tuple_element<0, std::tuple<Rest...>>::type>;
 };
 
+template <typename First>
+struct is_first_same<First> {
+  static constexpr bool value = false;
+};
+
 template <typename First, typename... Rest>
 inline constexpr bool is_first_same_v = is_first_same<First, Rest...>::value;
 
@@ -261,7 +266,7 @@ std::variant<IdlArgs, std::string> Agent::Query(const std::string &method,
 template <typename R, typename... Args, typename, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
-  auto result = Query(method, std::forward<Args...>(rawArgs...));
+  auto result = Query(method, std::forward<Args>(rawArgs)...);
 
   if (result.index() == 1) return std::get<1>(result);
 
@@ -278,7 +283,7 @@ template <typename... RArgs, typename... Args, typename, typename, typename,
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Query(
     const std::string &method, Args &&...rawArgs) {
   std::vector<IdlValue> v;
-  auto result = Query(method, std::forward<Args...>(rawArgs...));
+  auto result = Query(method, std::forward<Args>(rawArgs)...);
 
   if (result.index() == 1) return std::get<1>(result);
 
@@ -320,7 +325,7 @@ std::variant<IdlArgs, std::string> Agent::Update(const std::string &method,
 template <typename R, typename... Args, typename, typename, typename>
 std::variant<std::optional<R>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
-  auto result = Update(method, std::forward<Args...>(rawArgs...));
+  auto result = Update(method, std::forward<Args>(rawArgs)...);
 
   if (result.index() == 1) return std::get<1>(result);
 
@@ -336,7 +341,7 @@ template <typename... RArgs, typename... Args, typename, typename, typename,
           typename>
 std::variant<std::optional<std::tuple<RArgs...>>, std::string> Agent::Update(
     const std::string &method, Args &&...rawArgs) {
-  auto result = Update(method, std::forward<Args...>(rawArgs...));
+  auto result = Update(method, std::forward<Args>(rawArgs)...);
 
   if (result.index() == 1) return std::get<1>(result);
 
