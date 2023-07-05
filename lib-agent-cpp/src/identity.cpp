@@ -15,6 +15,8 @@
  ********************************************************************************/
 #include "identity.h"
 
+#include "doctest.h"
+
 namespace zondax {
 
 void error_callback(const unsigned char *data, int len, void *user_data) {
@@ -204,3 +206,60 @@ Identity::~Identity() {
   if (ptr != nullptr) identity_destroy(ptr, type);
 }
 }  // namespace zondax
+
+// ****************************** Tests
+using namespace zondax;
+
+TEST_CASE("Identity_from_pem") {
+  std::string BasicIdentityFile =
+      "-----BEGIN PRIVATE KEY-----\n"
+      "MFMCAQEwBQYDK2VwBCIEIL9r4XBKsg4pquYBHY6rgfzuBsvCy89tgqDfDpofXRBP\n"
+      "oSMDIQBCkE1NL4X43clXS1LFauiceiiKW9NhjVTEpU6LpH9Qcw==\n"
+      "-----END PRIVATE KEY-----";
+
+  std::vector<uint8_t> PubKeyExpected = {
+      0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21,
+      0x00, 0x42, 0x90, 0x4d, 0x4d, 0x2f, 0x85, 0xf8, 0xdd, 0xc9, 0x57,
+      0x4b, 0x52, 0xc5, 0x6a, 0xe8, 0x9c, 0x7a, 0x28, 0x8a, 0x5b, 0xd3,
+      0x61, 0x8d, 0x54, 0xc4, 0xa5, 0x4e, 0x8b, 0xa4, 0x7f, 0x50, 0x73};
+
+  std::vector<uint8_t> SignatureExpected = {
+      0x6d, 0x7a, 0x2f, 0x85, 0xeb, 0x6c, 0xc2, 0x18, 0x80, 0xc8, 0x3d,
+      0x9b, 0xb1, 0x70, 0xe2, 0x4b, 0xf5, 0xd8, 0x9a, 0xa9, 0x96, 0x92,
+      0xb6, 0x89, 0xac, 0x9d, 0xe9, 0x5c, 0x1e, 0x3e, 0x50, 0xdc, 0x98,
+      0x12, 0x2f, 0x94, 0x11, 0x2f, 0x6c, 0xc6, 0x6a, 0x0b, 0xbf, 0xc0,
+      0x56, 0x5b, 0xdb, 0x87, 0xa9, 0xe2, 0x2c, 0x8e, 0x56, 0x94, 0x56,
+      0x12, 0xde, 0xbf, 0x22, 0x4a, 0x3f, 0xdb, 0xf1, 0x03};
+
+  // Creating an Basic Identity
+  auto basic = Identity::BasicFromPem(BasicIdentityFile);
+
+  REQUIRE(std::holds_alternative<Identity>(basic));
+
+  SUBCASE("SignIdentity") {
+    // identitySign
+    auto result = std::get<Identity>(basic).Sign({});
+    REQUIRE(std::holds_alternative<IdentitySign>(result));
+    auto value = std::get<IdentitySign>(result);
+
+    REQUIRE(std::equal(value.pubkey.begin(), value.pubkey.end(),
+                       std::begin(PubKeyExpected)));
+    REQUIRE(std::equal(value.signature.begin(), value.signature.end(),
+                       std::begin(SignatureExpected)));
+  }
+}
+
+TEST_CASE("Anonymous Identity") {
+  // Creating an anonymous identity
+  Identity anonymousIdentity;
+
+  // Getting the sender principal
+  auto senderPrincipal = anonymousIdentity.Sender();
+  REQUIRE(std::holds_alternative<zondax::Principal>(senderPrincipal));
+
+  auto bytes = std::get<Principal>(senderPrincipal).getBytes();
+
+  REQUIRE(bytes.size() == 1);
+  REQUIRE(bytes[0] == 4);
+  REQUIRE(anonymousIdentity.getType() == Anonym);
+}
