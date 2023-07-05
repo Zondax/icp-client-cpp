@@ -5,6 +5,8 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
     let header = r#"// This is an experimental feature to generate C++ bindings from Candid.
 // You may want to manually adjust some of the types.
 
+#pragma once
+
 #include <optional>
 #include <stdint.h>
 #include <string>
@@ -451,15 +453,22 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
     let agent_method = if is_query { "Query" } else { "Update" };
 
     let body = RcDoc::text(format!("auto result = agent.{agent_method}"))
-        .append(enclose("<", rets, ">"))
+        .append(enclose("<", rets.clone(), ">"))
         .append(RcDoc::text(format!(r#"("{method}""#)))
         .append(args)
         .append(");");
 
     let body = body
         .append(RcDoc::hardline())
-        .append(str(
-        "if (result.index() == 0) {\n\t\treturn std::move(std::get<0>(result).value());\n\t} else {\n\t\treturn std::get<1>(result);\n\t}"));
+        .append(enclose_space("std::variant<", rets, ", std::string> ret;"))
+        .append(str(r#"
+if (result.index() == 0) {
+    ret.emplace<0>(std::move(std::get<0>(result).value()));
+} else {
+    ret.emplace<1>(std::get<1>(result));
+}
+return ret;
+"#));
 
     sig.append(enclose_space("{", body, "}"))
 }
