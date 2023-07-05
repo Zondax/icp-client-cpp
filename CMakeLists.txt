@@ -54,9 +54,36 @@ configure_file(${BINDING_FILE} ${OUT_BINDING_FILE} COPYONLY)
 
 # Compile every C++ file in lib-agent-cpp/src into a static library
 include_directories("lib-agent-cpp/inc")
-file(GLOB LIB_AGENT_CPP_SRC "lib-agent-cpp/src/*.cpp")
+# Using file(GLOB) causes linkage errors as it includes the tests.cpp file 
+# leading to duplicated symbols. So now we need to add any other new source here 
+# manually.
+# file(GLOB LIB_AGENT_CPP_SRC "lib-agent-cpp/src/*.cpp")
+set(LIB_AGENT_CPP_SRC
+    lib-agent-cpp/src/agent.cpp
+    lib-agent-cpp/src/func.cpp
+    lib-agent-cpp/src/helper.cpp
+    lib-agent-cpp/src/identity.cpp
+    lib-agent-cpp/src/identity.cpp
+    lib-agent-cpp/src/idl_args.cpp
+    lib-agent-cpp/src/idl_value.cpp
+    lib-agent-cpp/src/principal.cpp
+    lib-agent-cpp/src/service.cpp
+)
 add_library(agent_cpp STATIC ${LIB_AGENT_CPP_SRC})
 target_link_libraries(agent_cpp ic_agent_wrapper agent_c)
+# We do not want to include in the final binary the testing machinery
+target_compile_definitions(agent_cpp PRIVATE DOCTEST_CONFIG_DISABLE)
+
+# Artifact for testing, this makes possible to run unit-test using 
+# only one test target
+add_library(agent_cpp_tests OBJECT ${LIB_AGENT_CPP_SRC})
+target_link_libraries(agent_cpp_tests ic_agent_wrapper agent_c)
+
+add_custom_target(tests)
+add_executable(test "lib-agent-cpp/src/tests.cpp")
+target_link_libraries(test agent_cpp_tests ic_agent_wrapper agent_c)
+target_compile_features(test PRIVATE cxx_std_17)
+add_dependencies(tests test)
 
 # Compile every example in examples/
 file(GLOB EXAMPLE_DIRS "examples/*")
@@ -71,7 +98,7 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     endif()
 endforeach()
 
-# Compile every example in examples-cpp/
+add_custom_target(examples)
 file(GLOB EXAMPLE_DIRS "examples-cpp/*")
 foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
     if(IS_DIRECTORY ${EXAMPLE_DIR})
@@ -79,8 +106,8 @@ foreach(EXAMPLE_DIR ${EXAMPLE_DIRS})
         file(GLOB EXAMPLE_SRC "${EXAMPLE_DIR}/*.cpp")
         add_executable(${EXAMPLE_NAME} ${EXAMPLE_SRC})
         add_dependencies(${EXAMPLE_NAME} ic_agent_wrapper agent_c)
+        add_dependencies(examples ${EXAMPLE_NAME})
         target_link_libraries(${EXAMPLE_NAME} agent_cpp ${EXTRA_LIBS})
         target_include_directories(${EXAMPLE_NAME} PRIVATE "lib-agent-cpp/inc")
     endif()
 endforeach()
-
