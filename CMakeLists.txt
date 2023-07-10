@@ -54,24 +54,10 @@ configure_file(${BINDING_FILE} ${OUT_BINDING_FILE} COPYONLY)
 
 # Compile every C++ file in lib-agent-cpp/src into a static library
 include_directories("lib-agent-cpp/inc")
-# Using file(GLOB) causes linkage errors as it includes the tests.cpp file 
-# leading to duplicated symbols. So now we need to add any other new source here 
-# manually.
-# file(GLOB LIB_AGENT_CPP_SRC "lib-agent-cpp/src/*.cpp")
-set(LIB_AGENT_CPP_SRC
-    lib-agent-cpp/src/agent.cpp
-    lib-agent-cpp/src/func.cpp
-    lib-agent-cpp/src/helper.cpp
-    lib-agent-cpp/src/identity.cpp
-    lib-agent-cpp/src/identity.cpp
-    lib-agent-cpp/src/idl_args.cpp
-    lib-agent-cpp/src/idl_value.cpp
-    lib-agent-cpp/src/principal.cpp
-    lib-agent-cpp/src/service.cpp
-)
+file(GLOB LIB_AGENT_CPP_SRC "lib-agent-cpp/src/*.cpp")
 add_library(agent_cpp STATIC ${LIB_AGENT_CPP_SRC})
 target_link_libraries(agent_cpp ic_agent_wrapper agent_c)
-# We do not want to include in the final binary the testing machinery
+# The testing machinery out of final executable
 target_compile_definitions(agent_cpp PRIVATE DOCTEST_CONFIG_DISABLE)
 
 # Artifact for testing, this makes possible to run unit-test using 
@@ -80,7 +66,7 @@ add_library(agent_cpp_tests OBJECT ${LIB_AGENT_CPP_SRC})
 target_link_libraries(agent_cpp_tests ic_agent_wrapper agent_c)
 
 add_custom_target(tests)
-add_executable(test "lib-agent-cpp/src/tests.cpp")
+add_executable(test "lib-agent-cpp/tests.cpp")
 target_link_libraries(test agent_cpp_tests ic_agent_wrapper agent_c)
 target_compile_features(test PRIVATE cxx_std_17)
 add_dependencies(tests test)
