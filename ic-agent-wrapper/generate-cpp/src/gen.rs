@@ -443,7 +443,11 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
             ">",
         ),
     };
-    let sig = enclose("std::variant<", rets.clone(), ", std::string> ")
+
+    let inner_ret_ty = enclose("std::variant<", rets.clone(), ", std::string>");
+
+    let sig = inner_ret_ty
+        .clone()
         .append(name)
         .append(enclose("(", args, ")"));
     let args = RcDoc::concat((0..func.args.len()).map(|i| RcDoc::text(format!(", arg{}", i))));
@@ -458,17 +462,20 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
         .append(args)
         .append(");");
 
-    let body = body
-        .append(RcDoc::hardline())
-        .append(enclose_space("std::variant<", rets, ", std::string> ret;"))
-        .append(str(r#"
-if (result.index() == 0) {
-    ret.emplace<0>(std::move(std::get<0>(result).value()));
-} else {
-    ret.emplace<1>(std::get<1>(result));
-}
-return ret;
-"#));
+    let index_0 = kwd("return").append(inner_ret_ty.clone()).append(str(
+        "(std::in_place_index<0>, std::move(std::get<0>(result).value()));",
+    ));
+    let index_1 = kwd("return")
+        .append(inner_ret_ty.clone())
+        .append(str("(std::in_place_index<1>, std::get<1>(result));"));
+
+    let clause = str("if (result.index() == 0)").append(
+        enclose("{", index_0, "}")
+            .append(kwd("else"))
+            .append(enclose("{", index_1, "}")),
+    );
+
+    let body = body.append(RcDoc::hardline()).append(clause);
 
     sig.append(enclose_space("{", body, "}"))
 }
