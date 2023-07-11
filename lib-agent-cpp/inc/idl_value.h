@@ -26,7 +26,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "func.h"
 #include "idl_value_utils.h"
+#include "service.h"
 
 extern "C" {
 #include "zondax_ic.h"
@@ -124,12 +126,48 @@ class IdlValue {
   std::optional<T> get();
 
   std::optional<IdlValue> getOpt();
-  std::vector<IdlValue> getVec();
   std::unordered_map<std::string, IdlValue> getRecord();
   // zondax::idl_value_utils::Variant getVariant();
 
   std::unique_ptr<IDLValue> getPtr();
 };
+
+/******************** Private ***********************/
+
+template <typename Tuple, size_t... Indices>
+void IdlValue::initializeFromTuple(const Tuple &tuple,
+                                   std::index_sequence<Indices...>) {
+  std::vector<IDLValue *> values;
+  std::vector<uint8_t[4]> indices;
+
+  (
+      [&](size_t index) {
+        IdlValue val(std::get<index>(tuple));
+        values.push_back(val.ptr.release());
+        val.ptr = nullptr;
+
+        uint8_t bytes[4];  // Array to store the resulting bytes
+        auto value = static_cast<uint32_t>(index);
+
+        bytes[0] = value & 0xFF;
+        bytes[1] = (value >> 8) & 0xFF;
+        bytes[2] = (value >> 16) & 0xFF;
+        bytes[3] = (value >> 24) & 0xFF;
+
+// If the platform is big endian, swap the byte order
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        std::swap(bytes[0], bytes[3]);
+        std::swap(bytes[1], bytes[2]);
+#endif
+        indices.push_back(bytes);
+      }(Indices),
+      ...);
+
+  ptr.reset(idl_value_with_record(
+      reinterpret_cast<const char *const *>(indices.data()), indices.size(),
+      values.data(), values.size(), true));
+}
+
 }  // namespace zondax
 
 #endif

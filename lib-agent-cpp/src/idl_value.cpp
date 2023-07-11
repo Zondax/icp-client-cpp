@@ -21,9 +21,7 @@
 #include <unordered_map>
 #include <variant>
 
-#include "func.h"
-#include "service.h"
-#include "zondax_ic.h"
+#include "doctest.h"
 
 namespace zondax {
 
@@ -37,41 +35,23 @@ namespace zondax {
     return std::make_optional<type>(value);              \
   }
 
-/******************** Private ***********************/
-
-template <typename Tuple, size_t... Indices>
-void IdlValue::initializeFromTuple(const Tuple &tuple,
-                                   std::index_sequence<Indices...>) {
-  std::vector<IDLValue *> values;
-  std::vector<uint8_t[4]> indices;
-
-  (
-      [&](size_t index) {
-        IdlValue val(std::get<index>(tuple));
-        values.push_back(val.ptr.release());
-        val.ptr = nullptr;
-
-        uint8_t bytes[4];  // Array to store the resulting bytes
-        auto value = static_cast<uint32_t>(index);
-
-        bytes[0] = value & 0xFF;
-        bytes[1] = (value >> 8) & 0xFF;
-        bytes[2] = (value >> 16) & 0xFF;
-        bytes[3] = (value >> 24) & 0xFF;
-
-// If the platform is big endian, swap the byte order
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        std::swap(bytes[0], bytes[3]);
-        std::swap(bytes[1], bytes[2]);
-#endif
-        indices.push_back(bytes);
-      }(Indices),
-      ...);
-
-  ptr.reset(idl_value_with_record(
-      reinterpret_cast<const char *const *>(indices.data()), indices.size(),
-      values.data(), values.size(), true));
-}
+#define VEC_PRIMITIVE_TYPES_GETTER(type)                     \
+  template <>                                                \
+  std::optional<std::vector<type>> zondax::IdlValue::get() { \
+    auto values_vec = vec_from_idl_value(ptr.get());         \
+    if (values_vec == nullptr) return std::nullopt;          \
+    auto vec_len = cidlval_vec_len(values_vec);              \
+    std::vector<type> ret;                                   \
+    for (int i = 0; i < vec_len; ++i) {                      \
+      auto p = cidlval_vec_value_take(values_vec, i);        \
+      if (p == nullptr) return std::nullopt;                 \
+      IdlValue value(p);                                     \
+      std::optional<type> val = value.get<type>();           \
+      if (!val.has_value()) return std::nullopt;             \
+      ret.push_back(val.value());                            \
+    }                                                        \
+    return std::make_optional<std::vector<type>>(ret);       \
+  }
 
 /******************** Public ***********************/
 
@@ -269,7 +249,7 @@ IdlValue IdlValue::FromVariant(std::string key, IdlValue *val, uint64_t code) {
   return IdlValue(p);
 }
 
-/******************** IdlValue -> T ************************/
+// ---------------------- IdlValue::get() specializations ---
 
 PRIMITIVE_TYPES_GETTER(int8, int8_t)
 PRIMITIVE_TYPES_GETTER(int16, int16_t)
@@ -440,6 +420,18 @@ std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
   return std::move(fields);
 }
 
+VEC_PRIMITIVE_TYPES_GETTER(int8_t)
+VEC_PRIMITIVE_TYPES_GETTER(int16_t)
+VEC_PRIMITIVE_TYPES_GETTER(int32_t)
+VEC_PRIMITIVE_TYPES_GETTER(int64_t)
+VEC_PRIMITIVE_TYPES_GETTER(uint8_t)
+VEC_PRIMITIVE_TYPES_GETTER(uint16_t)
+VEC_PRIMITIVE_TYPES_GETTER(uint32_t)
+VEC_PRIMITIVE_TYPES_GETTER(uint64_t)
+VEC_PRIMITIVE_TYPES_GETTER(float)
+VEC_PRIMITIVE_TYPES_GETTER(double)
+VEC_PRIMITIVE_TYPES_GETTER(bool)
+
 // TODO: Enable later forward declaration is tricky here,
 // specially because it requires raw pointers, which might lead
 // to aliasing of the inner idlValue ptr, and this if doing wrong
@@ -471,3 +463,67 @@ std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
 
 std::unique_ptr<IDLValue> IdlValue::getPtr() { return std::move(ptr); }
 }  // namespace zondax
+//
+using namespace zondax;
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to ints", T, test_id) {
+  T integer = 100;
+  IdlValue value(integer);
+  auto back = value.get<T>();
+
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == integer);
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id, uint8_t, uint16_t, uint32_t, uint64_t,
+                          int8_t, int16_t, int32_t, int64_t);
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to float/double", T, test_id_floats) {
+  T val = 1.5;
+  IdlValue value(val);
+  auto back = value.get<T>();
+
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == val);
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id_floats, float, double);
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of ints", T,
+                          test_id_vector) {
+  std::vector<T> val{1, 2, 4, 5};
+  IdlValue value(val);
+  auto back = value.get<std::vector<T>>();
+
+  REQUIRE(back.has_value());
+  auto vec = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
+
+  // check that it fails if comparing with another vector with different values
+  std::vector<T> val2{6, 7, 8, 9};
+  REQUIRE(!std::equal(vec.begin(), vec.end(), std::begin(val2)));
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id_vector, uint8_t, uint16_t, uint32_t, uint64_t,
+                          int8_t, int16_t, int32_t, int64_t);
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of floats", T,
+                          test_id_vector_floats) {
+  std::vector<T> val{1.0, 2.04, 4.555, 5.89};
+  IdlValue value(val);
+  auto back = value.get<std::vector<T>>();
+
+  REQUIRE(back.has_value());
+  auto vec = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
+}
+TEST_CASE_TEMPLATE_INVOKE(test_id_vector_floats, float, double);
+
+TEST_CASE("IdlValue from/to string") {
+  std::string str("Zondax");
+  IdlValue value(str);
+
+  // REQUIRE(bytes.size() == 0);
+}
