@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Compile the given type declarations into C++ bindings
 pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
@@ -20,7 +20,7 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
 #include "principal.h"
 "#;
 
-    let (env, actor) = nominalize_all(env, actor);
+    let (env, actor, variant_info) = nominalize_all(env, actor);
     let def_list: Vec<_> = if let Some(actor) = &actor {
         chase_actor(&env, actor).unwrap()
     } else {
@@ -28,7 +28,7 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
     };
 
     let recs = infer_rec(&env, &def_list).unwrap();
-    let defs = pp_defs(&env, &def_list, &recs);
+    let defs = pp_defs(&env, &def_list, &recs, &variant_info);
     let doc = match &actor {
         None => defs,
         Some(actor) => {
@@ -312,7 +312,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
         .append("\treturn std::make_optional(std::move(result));");
     let getter = str("template <> std::optional")
         .append(enclose("<", str(name), ">"))
-        .append(str(" IdlValue::get() "))
+        .append(" IdlValue::get() ")
         .append(enclose("{", body, "}"));
 
     enclose_space(
@@ -324,14 +324,22 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     )
 }
 
-fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
+fn pp_record<'a, 'b>(
+    id: &'a str,
+    fs: &'a [Field],
+    recs: &'b RecPoints,
+    variant_info: Option<&'a VariantInfo>,
+) -> RcDoc<'a> {
     let name = str(id).append(" ");
 
     let pp_mby_unit_record_constructor = || {
         if fs.is_empty() && !is_tuple(fs) {
             // avoids `{}` being a valid value of the struct
             // so instead you should use Name{}
-            kwd("explicit").append(id).append("() = default;")
+            kwd("explicit")
+                .append(id)
+                .append("() = default;")
+                .append(RcDoc::hardline())
         } else {
             RcDoc::nil()
         }
@@ -349,7 +357,7 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
 
             let getter = str("template <> std::optional")
                 .append(enclose("<", str(id), ">"))
-                .append(str(" IdlValue::get() "))
+                .append(" IdlValue::get() ")
                 .append(enclose(
                     "{",
                     str("return this->get<std::monostate>().has_value() ? std::make_optional")
@@ -363,8 +371,34 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
                 constructor.append(RcDoc::hardline()).append(getter),
                 "}",
             )
+            .append(RcDoc::hardline())
         } else {
             pp_record_conversion(id, fs)
+        }
+    };
+
+    //  static constexpr std::string_view __CANDID_NAME{"unknown"};
+    //  static constexpr std::size_t __CANDID_CODE = 0;
+    let pp_mby_variant_info = || {
+        if let Some((name, code)) = variant_info {
+            let keywords = kwd("static").append(kwd("constexpr"));
+
+            let name = keywords
+                .clone()
+                .append(kwd("std::string_view"))
+                .append("__CANDID_VARIANT_NAME")
+                .append(enclose("{\"", RcDoc::text(name.to_string()), "\"};"));
+
+            let code = keywords
+                .append(kwd("std::size_t"))
+                .append("__CANDID_VARIANT_CODE")
+                .append(enclose("{", RcDoc::text(code.to_string()), "};"));
+
+            name.append(RcDoc::hardline())
+                .append(code)
+                .append(RcDoc::hardline())
+        } else {
+            RcDoc::nil()
         }
     };
 
@@ -372,7 +406,9 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
         .append(name.clone())
         .append(enclose(
             "{",
-            pp_mby_unit_record_constructor().append(pp_record_fields(fs, recs)),
+            pp_mby_unit_record_constructor()
+                .append(pp_mby_variant_info())
+                .append(pp_record_fields(fs, recs)),
             "}",
         ))
         .append(";")
@@ -382,13 +418,15 @@ fn pp_record<'a, 'b>(id: &'a str, fs: &'a [Field], recs: &'b RecPoints) -> RcDoc
 }
 
 fn pp_variant_fields<'a, 'b>(fs: &'a [Field], recs: &'b RecPoints) -> RcDoc<'a> {
-    //TODO: generate name + code for variants
-    //   static constexpr std::string_view name{"unknown"};
-    //  static constexpr std::size_t code = 0;
     strict_concat(fs.iter().map(|Field { ty, .. }| pp_ty(ty, recs)), ",")
 }
 
-fn pp_defs<'a>(env: &'a TypeEnv, def_list: &'a [&'a str], recs: &'a RecPoints) -> RcDoc<'a> {
+fn pp_defs<'a>(
+    env: &'a TypeEnv,
+    def_list: &'a [&'a str],
+    recs: &'a RecPoints,
+    variant_info: &'a VariantInfoMap,
+) -> RcDoc<'a> {
     lines(def_list.iter().map(|id| {
         let ty = env.find_type(id).unwrap();
         let name = ident(id).append(" ");
@@ -398,7 +436,7 @@ fn pp_defs<'a>(env: &'a TypeEnv, def_list: &'a [&'a str], recs: &'a RecPoints) -
                 .append("= std::tuple")
                 .append(enclose("<", pp_record_fields(fs, recs), ">;"))
                 .append(RcDoc::hardline()),
-            Type::Record(fs) => pp_record(id, fs, recs),
+            Type::Record(fs) => pp_record(id, fs, recs, variant_info.get(*id)),
             Type::Variant(fs) => kwd("using")
                 .append(name)
                 .append("= std::variant")
@@ -462,12 +500,12 @@ fn pp_function<'a>(id: &'a str, func: &'a Function) -> RcDoc<'a> {
         .append(args)
         .append(");");
 
-    let index_0 = kwd("return").append(inner_ret_ty.clone()).append(str(
-        "(std::in_place_index<0>, std::move(std::get<0>(result).value()));",
-    ));
+    let index_0 = kwd("return")
+        .append(inner_ret_ty.clone())
+        .append("(std::in_place_index<0>, std::move(std::get<0>(result).value()));");
     let index_1 = kwd("return")
         .append(inner_ret_ty.clone())
-        .append(str("(std::in_place_index<1>, std::get<1>(result));"));
+        .append("(std::in_place_index<1>, std::get<1>(result));");
 
     let clause = str("if (result.index() == 0)").append(
         enclose("{", index_0, "}")
@@ -532,18 +570,28 @@ fn path_to_var(path: &[TypePath]) -> String {
     name.join("_")
 }
 
+type VariantInfo = (String, usize);
+type VariantInfoMap = BTreeMap<String, VariantInfo>;
+
 /// Convert structural typing to nominal typing to fit C++'s type system
-fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
+///
+/// Additionally, collect extra information for variant type generations
+fn nominalize(
+    env: &mut TypeEnv,
+    path: &mut Vec<TypePath>,
+    t: Type,
+    variants: &mut VariantInfoMap,
+) -> Type {
     match t {
         Type::Opt(ty) => {
             path.push(TypePath::Opt);
-            let ty = nominalize(env, path, *ty);
+            let ty = nominalize(env, path, *ty, variants);
             path.pop();
             Type::Opt(Box::new(ty))
         }
         Type::Vec(ty) => {
             path.push(TypePath::Opt);
-            let ty = nominalize(env, path, *ty);
+            let ty = nominalize(env, path, *ty, variants);
             path.pop();
             Type::Vec(Box::new(ty))
         }
@@ -558,7 +606,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                     .map(|Field { id, ty }| {
                         path.push(TypePath::RecordField(id.to_string()));
                         let ty = hoist_nested_type(env, path, ty);
-                        let ty = nominalize(env, path, ty);
+                        let ty = nominalize(env, path, ty, variants);
                         path.pop();
                         Field { id, ty }
                     })
@@ -570,6 +618,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                     env,
                     &mut vec![TypePath::Id(new_var.clone())],
                     Type::Record(fs),
+                    variants,
                 );
                 env.0.insert(new_var.clone(), ty);
                 Type::Var(new_var)
@@ -579,10 +628,12 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
             None | Some(TypePath::Id(_)) => {
                 let fs: Vec<_> = fs
                     .into_iter()
-                    .map(|Field { id, ty }| {
+                    .enumerate()
+                    .map(|(i, Field { id, ty })| {
                         path.push(TypePath::VariantField(id.to_string()));
                         let ty = hoist_nested_type(env, path, ty);
-                        let ty = nominalize(env, path, ty);
+                        let ty = nominalize(env, path, ty, variants);
+                        variants.insert(ty.to_string(), (id.to_string(), i));
                         path.pop();
                         Field { id, ty }
                     })
@@ -595,6 +646,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                     env,
                     &mut vec![TypePath::Id(new_var.clone())],
                     Type::Variant(fs),
+                    variants,
                 );
                 env.0.insert(new_var.clone(), ty);
                 Type::Var(new_var)
@@ -608,7 +660,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                 .enumerate()
                 .map(|(i, ty)| {
                     path.push(TypePath::Func(format!("arg{}", i)));
-                    let ty = nominalize(env, path, ty);
+                    let ty = nominalize(env, path, ty, variants);
                     path.pop();
                     ty
                 })
@@ -619,7 +671,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
                 .enumerate()
                 .map(|(i, ty)| {
                     path.push(TypePath::Func(format!("ret{}", i)));
-                    let ty = nominalize(env, path, ty);
+                    let ty = nominalize(env, path, ty, variants);
                     path.pop();
                     ty
                 })
@@ -629,7 +681,7 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
             serv.into_iter()
                 .map(|(meth, ty)| {
                     path.push(TypePath::Id(meth.to_string()));
-                    let ty = nominalize(env, path, ty);
+                    let ty = nominalize(env, path, ty, variants);
                     path.pop();
                     (meth, ty)
                 })
@@ -639,12 +691,12 @@ fn nominalize(env: &mut TypeEnv, path: &mut Vec<TypePath>, t: Type) -> Type {
             args.into_iter()
                 .map(|ty| {
                     path.push(TypePath::Init);
-                    let ty = nominalize(env, path, ty);
+                    let ty = nominalize(env, path, ty, variants);
                     path.pop();
                     ty
                 })
                 .collect(),
-            Box::new(nominalize(env, path, *ty)),
+            Box::new(nominalize(env, path, *ty, variants)),
         ),
         _ => t,
     }
@@ -671,16 +723,22 @@ fn hoist_nested_type(env: &mut TypeEnv, path: &mut Vec<TypePath>, ty: Type) -> T
 }
 
 /// Nominalize an entire environment and actor (if provided)
-fn nominalize_all(env: &TypeEnv, actor: &Option<Type>) -> (TypeEnv, Option<Type>) {
+fn nominalize_all(env: &TypeEnv, actor: &Option<Type>) -> (TypeEnv, Option<Type>, VariantInfoMap) {
     let mut res = TypeEnv(Default::default());
+    let mut variant_info = Default::default();
     for (id, ty) in env.0.iter() {
-        let ty = nominalize(&mut res, &mut vec![TypePath::Id(id.clone())], ty.clone());
+        let ty = nominalize(
+            &mut res,
+            &mut vec![TypePath::Id(id.clone())],
+            ty.clone(),
+            &mut variant_info,
+        );
         res.0.insert(id.to_string(), ty);
     }
 
     let actor = actor
         .as_ref()
-        .map(|ty| nominalize(&mut res, &mut vec![], ty.clone()));
+        .map(|ty| nominalize(&mut res, &mut vec![], ty.clone(), &mut variant_info));
 
-    (res, actor)
+    (res, actor, variant_info)
 }
