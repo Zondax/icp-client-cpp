@@ -43,6 +43,25 @@ struct default_delete<IDLValue> {
 
 namespace zondax {
 
+namespace helper {
+template <typename T>
+struct is_candid_variant {
+  template <typename C>
+  static constexpr auto test(int)
+      -> decltype(std::declval<C>().__CANDID_VARIANT_NAME,
+                  std::declval<C>().__CANDID_VARIANT_CODE, std::true_type{});
+
+  template <typename>
+  static constexpr std::false_type test(...);
+
+  using type = decltype(test<T>(0));
+  static constexpr bool value = test<T>(0);
+};
+
+template <typename T>
+inline constexpr bool is_candid_variant_v = is_candid_variant<T>::value;
+}  // namespace helper
+
 struct Number {
   std::string value;
 };
@@ -83,9 +102,11 @@ class IdlValue {
                 (std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(const std::tuple<Args...> &);
 
-  template <typename... Args,
-            typename = std::enable_if_t<
-                (std::is_constructible_v<IdlValue, Args> && ...)>>
+  template <
+      typename... Args,
+      typename = std::enable_if_t<(helper::is_candid_variant_v<Args> && ...)>,
+      typename =
+          std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(const std::variant<Args...> &);
 
   // Specific constructors

@@ -184,12 +184,15 @@ IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
   initializeFromTuple(tuple, std::index_sequence_for<Args...>());
 }
 
-template <typename... Args, typename>
+template <typename... Args, typename, typename>
 IdlValue::IdlValue(const std::variant<Args...> &variant) {
-  // TODO: use FromVariant
-  //  1. recover variant name
-  //  2. recover variant index
-  std::visit([this](const auto &value) { *this = IdlValue(value); }, variant);
+  std::visit(
+      [this](const auto &value) {
+        auto val = IdlValue(value);
+        *this = IdlValue::FromVariant(value.__CANDID_VARIANT_NAME, val,
+                                      value.__CANDID_VARIANT_CODE);
+      },
+      variant);
 }
 
 template <>
