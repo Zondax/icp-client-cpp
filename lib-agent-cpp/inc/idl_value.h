@@ -22,6 +22,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +30,7 @@
 #include "func.h"
 #include "idl_value_utils.h"
 #include "service.h"
+#include "zondax_ic.h"
 
 extern "C" {
 #include "zondax_ic.h"
@@ -57,11 +59,53 @@ struct is_candid_variant {
   static constexpr std::false_type test(...);
 
   using type = decltype(test<T>(0));
-  static constexpr bool value = test<T>(0);
+  static constexpr bool value = type::value;
 };
 
 template <typename T>
 inline constexpr bool is_candid_variant_v = is_candid_variant<T>::value;
+
+// Helper to specialize IdlValue::get() method
+template <typename... Args>
+struct tag_type {};
+
+// Helper struct to check whether a type is a specialization of std::variant
+template <typename T>
+struct is_variant : std::false_type {};
+
+template <typename... T>
+struct is_variant<std::variant<T...>> : std::true_type {};
+
+// Helper struct to check whether a type is a specialization of std::tuple
+template <typename T>
+struct is_tuple : std::false_type {};
+
+template <typename... T>
+struct is_tuple<std::tuple<T...>> : std::true_type {};
+
+// This is a helper for to use for checking that our
+// variant field is valid for the expected return type
+// when processing variants from idlValue in the
+// getVariant method.
+template <std::size_t I = 0, typename V, typename T>
+constexpr bool static_for() {
+  if constexpr (I < std::variant_size_v<V>) {
+    // the field at I in the variant
+    using VariantType = std::variant_alternative_t<I, V>;
+
+    // VariantType value that we compute at runtime should be
+    // at positiong I?
+    // TODO: mmm we need to fix due to the shift the generator does?
+    if (T::__CANDID_VARIANT_CODE == VariantType::__CANDID_VARIANT_CODE) {
+      return true;
+    } else {
+      return static_for<I + 1, V, T>();
+    }
+  } else {
+    return false;
+  }
+}
+
 }  // namespace helper
 
 struct Number {
@@ -78,6 +122,90 @@ class IdlValue {
   // used by IdlValue(std::tuple<Args...>) constructor
   template <typename Tuple, size_t... Indices>
   void initializeFromTuple(const Tuple &tuple, std::index_sequence<Indices...>);
+
+  template <typename T>
+  std::optional<T> getImpl(helper::tag_type<T> t) {
+    // Your default implementation here
+    return std::nullopt;
+  }
+
+  // Fallback function for non-variant, non-tuples, non-map-like
+  // types
+  template <typename T>
+  std::optional<T> getHelper(std::false_type, std::false_type) {
+    return getImpl<T>(helper::tag_type<T>{});
+  }
+
+  // Specialization for variant
+  template <typename T>
+  auto getHelper(std::true_type, std::false_type) {
+    return getVariant<T>();
+  }
+
+  // Specialization for tuple
+  template <typename T>
+  std::optional<T> getHelper(std::false_type, std::true_type) {
+    auto optTuple = getTuple<T>();
+    if (!optTuple.has_value()) return std::nullopt;
+
+    auto tup = std::move(optTuple.value());
+    return std::optional<T>{std::get<0>(tup)};
+  }
+
+  template <typename... Ts>
+  std::optional<std::tuple<Ts...>> getTuple() {
+    // tuples are in reality a list or records, we have an specialization
+    // for auto r = obj.get<unordered_map<string, idlValue>>();
+    // so lets use that here;
+    auto records = get<std::unordered_map<std::string, IdlValue>>();
+    if (!records.has_value()) return std::nullopt;
+    // now we need to iterate over the records and "push" each value at its
+    // corresponding index in the tuple, this index is define by the key in the
+    // map but this is imposible due to how tuple is designed
+    return std::optional<std::tuple<Ts...>>{};  // Return an empty std::optional
+  }
+
+  template <typename V>
+  std::optional<V> getVariant() {
+    if (ptr == nullptr) return std::nullopt;
+
+    CVariant *cvariant = variant_from_idl_value(ptr.get());
+    if (cvariant == nullptr) return std::nullopt;
+    // start with the key.
+    auto id_ptr = cvariant_id(cvariant);
+    auto id_len = cvariant_id_len(cvariant);
+
+    auto value = cvariant_idlvalue(cvariant);
+    auto code = cvariant_code(cvariant);
+    if (id_ptr == nullptr || value == nullptr) return std::nullopt;
+
+    auto key = std::string(id_ptr, id_ptr + id_len);
+    IdlValue idl_value(value);
+
+    // variant;
+    V variant;
+    bool success = false;
+    std::visit(
+        [&](auto &&arg) -> std::optional<V> {
+          using T = std::decay_t<decltype(arg)>;
+
+          if (T::__CANDID_VARIANT_CODE == code &&
+              key.compare(T::__CANDID_VARIANT_NAME) == 0) {
+            auto inner_value = get<T>();
+            if (inner_value.has_value()) {
+              if (helper::static_for<0, V, T>()) {
+                cvariant_destroy(cvariant);
+                return std::optional<V>(V(std::move(*inner_value)));
+              }
+            }
+          }
+          return std::nullopt;
+        },
+        V{});
+    cvariant_destroy(cvariant);
+
+    return success ? std::optional<V>(V{}) : std::nullopt;
+  }
 
  public:
   // Disable copies, just move semantics
@@ -122,12 +250,30 @@ class IdlValue {
   static IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 
   /******************** Getters ***********************/
+
   template <typename T>
-  std::optional<T> get();
+  std::optional<T> get() {
+    return getHelper<T>(helper::is_variant<T>{}, helper::is_tuple<T>{});
+  }
+
+  template <
+      template <typename, typename> class T, typename U, typename V,
+      std::enable_if_t<
+          std::is_invocable_v<decltype(&IdlValue::get<U>), IdlValue &>, U>,
+      std::enable_if_t<
+          std::is_invocable_v<decltype(&IdlValue::get<V>), IdlValue &>, V>,
+      std::enable_if_t<!std::is_same_v<T, std::variant<U, V>>>>
+  T<U, V> get() {
+    return getImpl(helper::tag_type<T<U, V>>{});
+  }
+
+  template <template <typename, typename> class T, typename U, typename V>
+  std::optional<T<U, V>> get(helper::tag_type<T<U, V>>) {
+    return std::nullopt;
+  }
 
   std::optional<IdlValue> getOpt();
   std::unordered_map<std::string, IdlValue> getRecord();
-  // zondax::idl_value_utils::Variant getVariant();
 
   std::unique_ptr<IDLValue> getPtr();
 };

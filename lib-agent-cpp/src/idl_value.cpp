@@ -16,44 +16,50 @@
 #include "idl_value.h"
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <unordered_map>
 #include <variant>
 
 #include "doctest.h"
+#include "func.h"
+#include "service.h"
 
 namespace zondax {
 
-#define PRIMITIVE_TYPES_GETTER(name, type)               \
-  template <>                                            \
-  std::optional<type> zondax::IdlValue::get() {          \
-    if (ptr == nullptr) return std::nullopt;             \
-    type value;                                          \
-    bool ret = name##_from_idl_value(ptr.get(), &value); \
-    if (!ret) return std::nullopt;                       \
-    return std::make_optional<type>(value);              \
+#define PRIMITIVE_TYPES_GETTER(name, type)                                  \
+  template <>                                                               \
+  std::optional<type> zondax::IdlValue::getImpl(helper::tag_type<type> t) { \
+    if (ptr == nullptr) return std::nullopt;                                \
+    type value;                                                             \
+    bool ret = name##_from_idl_value(ptr.get(), &value);                    \
+    if (!ret) return std::nullopt;                                          \
+    return std::make_optional<type>(value);                                 \
   }
 
-#define VEC_PRIMITIVE_TYPES_GETTER(type)                     \
-  template <>                                                \
-  std::optional<std::vector<type>> zondax::IdlValue::get() { \
-    auto values_vec = vec_from_idl_value(ptr.get());         \
-    if (values_vec == nullptr) return std::nullopt;          \
-    auto vec_len = cidlval_vec_len(values_vec);              \
-    std::vector<type> ret;                                   \
-    for (int i = 0; i < vec_len; ++i) {                      \
-      auto p = cidlval_vec_value_take(values_vec, i);        \
-      if (p == nullptr) return std::nullopt;                 \
-      IdlValue value(p);                                     \
-      std::optional<type> val = value.get<type>();           \
-      if (!val.has_value()) return std::nullopt;             \
-      ret.push_back(val.value());                            \
-    }                                                        \
-    return std::make_optional<std::vector<type>>(ret);       \
-  }
-
-/******************** Public ***********************/
+#define VEC_PRIMITIVE_TYPES_GETTER(type)                                     \
+  template <>                                                                \
+  std::optional<std::vector<type>> zondax::IdlValue::getImpl(                \
+      helper::tag_type<std::vector<type>> t) {                               \
+    auto values_vec = vec_from_idl_value(ptr.get());                         \
+    if (values_vec == nullptr) return std::nullopt;                          \
+    auto vec_len = cidlval_vec_len(values_vec);                              \
+    std::vector<type> ret;                                                   \
+    for (int i = 0; i < vec_len; ++i) {                                      \
+      auto p = cidlval_vec_value_take(values_vec, i);                        \
+      if (p == nullptr) return std::nullopt;                                 \
+      IdlValue value(p);                                                     \
+      std::optional<type> val = value.get<type>();                           \
+      if (!val.has_value()) return std::nullopt;                             \
+      ret.emplace_back(std::move(val.value()));                              \
+    }                                                                        \
+    /*we took ownership of inner fields but still needs to destroy vector */ \
+    cidlval_vec_destroy(values_vec);                                         \
+    return std::make_optional<std::vector<type>>(std::move(ret));            \
+  }                                                                          \
+                                                                             \
+  /******************** Public ***********************/
 
 IdlValue::IdlValue(IdlValue &&o) noexcept : ptr(std::move(o.ptr)) {}
 
@@ -167,10 +173,10 @@ IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
 template <typename... Args, typename, typename>
 IdlValue::IdlValue(const std::variant<Args...> &variant) {
   std::visit(
-      [this](const auto &value) {
-        auto val = IdlValue(value);
-        *this = IdlValue::FromVariant(value.__CANDID_VARIANT_NAME, val,
-                                      value.__CANDID_VARIANT_CODE);
+      [this](auto &value) {
+        IdlValue val(std::move(value));
+        *this = IdlValue::FromVariant(std::string(value.__CANDID_VARIANT_NAME),
+                                      &val, value.__CANDID_VARIANT_CODE);
       },
       variant);
 }
@@ -264,7 +270,8 @@ PRIMITIVE_TYPES_GETTER(float64, double)
 PRIMITIVE_TYPES_GETTER(bool, bool)
 
 template <>
-std::optional<std::string> IdlValue::get() {
+std::optional<std::string> IdlValue::getImpl(
+    helper::tag_type<std::string> type) {
   if (ptr == nullptr) return std::nullopt;
 
   CText *ctext = text_from_idl_value(ptr.get());
@@ -272,8 +279,9 @@ std::optional<std::string> IdlValue::get() {
 
   const char *str = ctext_str(ctext);
   uintptr_t len = ctext_len(ctext);
+  if (len == 0) return std::string("");
 
-  std::string s(str, len);
+  std::string s(str, str + len);
 
   ctext_destroy(ctext);
 
@@ -281,7 +289,8 @@ std::optional<std::string> IdlValue::get() {
 }
 
 template <>
-std::optional<zondax::Principal> IdlValue::get() {
+std::optional<zondax::Principal> IdlValue::getImpl(
+    helper::tag_type<zondax::Principal> type) {
   if (ptr == nullptr) return std::nullopt;
 
   CPrincipal *p = principal_from_idl_value(ptr.get());
@@ -296,7 +305,7 @@ std::optional<zondax::Principal> IdlValue::get() {
 }
 
 template <>
-std::optional<Number> IdlValue::get() {
+std::optional<Number> IdlValue::getImpl(helper::tag_type<Number> type) {
   if (ptr == nullptr) return std::nullopt;
 
   CText *ctext = number_from_idl_value(ptr.get());
@@ -315,7 +324,7 @@ std::optional<Number> IdlValue::get() {
 }
 
 template <>
-std::optional<zondax::Func> IdlValue::get() {
+std::optional<zondax::Func> IdlValue::getImpl(helper::tag_type<Func> type) {
   if (ptr == nullptr) return std::nullopt;
 
   struct CFunc *cFunc = func_from_idl_value(ptr.get());
@@ -338,7 +347,8 @@ std::optional<zondax::Func> IdlValue::get() {
 }
 
 template <>
-std::optional<std::vector<IdlValue>> IdlValue::get() {
+std::optional<std::vector<IdlValue>> IdlValue::getImpl(
+    helper::tag_type<std::vector<IdlValue>> type) {
   if (ptr == nullptr) return std::nullopt;
 
   // call bellow creates a new IDLValue::Vec,
@@ -367,7 +377,8 @@ std::optional<std::vector<IdlValue>> IdlValue::get() {
 }
 
 template <>
-std::optional<zondax::Service> IdlValue::get() {
+std::optional<zondax::Service> IdlValue::getImpl(
+    helper::tag_type<zondax::Service> type) {
   if (ptr == nullptr) return std::nullopt;
 
   CPrincipal *p = service_from_idl_value(ptr.get());
@@ -385,7 +396,8 @@ std::optional<zondax::Service> IdlValue::get() {
 }
 
 template <>
-std::optional<std::monostate> IdlValue::get() {
+std::optional<std::monostate> IdlValue::getImpl(
+    helper::tag_type<std::monostate> type) {
   if (ptr == nullptr) return std::nullopt;
 
   return idl_value_is_null(ptr.get()) ? std::make_optional<std::monostate>()
@@ -402,22 +414,42 @@ std::optional<IdlValue> IdlValue::getOpt() {
   return IdlValue(result);
 }
 
-std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
+// Record specialization
+// TODO: We need to add testing for this!!!!!
+template <>
+std::optional<std::unordered_map<std::string, IdlValue>>
+IdlValue::getImpl<std::unordered_map<std::string, IdlValue>>(
+    helper::tag_type<std::unordered_map<std::string, IdlValue>> t) {
+  auto record = record_from_idl_value(ptr.get());
+  if (record == nullptr) return std::nullopt;
+
   std::unordered_map<std::string, IdlValue> fields;
 
-  struct CRecord *record = record_from_idl_value(ptr.get());
+  auto len = crecord_keys_len(record);
 
-  for (uintptr_t i = 0; i < crecord_keys_len(record); ++i) {
+  for (uintptr_t i = 0; i < len; ++i) {
     auto cKey = crecord_take_key(record, i);
     auto cVal = crecord_take_val(record, i);
 
-    auto key = std::string(ctext_str(cKey));
+    if (cKey == nullptr || cVal == nullptr) return std::nullopt;
+
+    auto str = ctext_str(cKey);
+    auto key_len = ctext_len(cKey);
+    if (str == nullptr) return std::nullopt;
+
+    auto key = std::string("");
+    if (str != nullptr) {
+      key = std::string(str, str + len);
+    }
+
     auto val = IdlValue(cVal);
 
     fields.emplace(std::make_pair(key, std::move(val)));
   }
 
-  return std::move(fields);
+  crecord_destroy(record);
+
+  return std::make_optional(std::move(fields));
 }
 
 VEC_PRIMITIVE_TYPES_GETTER(int8_t)
@@ -431,35 +463,49 @@ VEC_PRIMITIVE_TYPES_GETTER(uint64_t)
 VEC_PRIMITIVE_TYPES_GETTER(float)
 VEC_PRIMITIVE_TYPES_GETTER(double)
 VEC_PRIMITIVE_TYPES_GETTER(bool)
+VEC_PRIMITIVE_TYPES_GETTER(std::string)
+VEC_PRIMITIVE_TYPES_GETTER(zondax::Principal)
+VEC_PRIMITIVE_TYPES_GETTER(zondax::Func)
+VEC_PRIMITIVE_TYPES_GETTER(zondax::Service)
+VEC_PRIMITIVE_TYPES_GETTER(std::monostate)
+// TODO: We need to define a new overload for this to work:
+// std::optional<std::vector<T<U,V>>> get(helper::tag_type<std::vector<T<U,V>>>)
+// VEC_PRIMITIVE_TYPES_GETTER((std::unordered_map<std::string, IdlValue>))
 
-// TODO: Enable later forward declaration is tricky here,
-// specially because it requires raw pointers, which might lead
-// to aliasing of the inner idlValue ptr, and this if doing wrong
-// could cause memory issues, double free and so on.
-// also smart pointers do not work here as types are not fully
-// qualify.
+// TODO: Original getRecord, with some tweeks, to handle null values.
+// do we keep this or the specialization above is enough?
+std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
+  std::unordered_map<std::string, IdlValue> fields;
+  auto record = record_from_idl_value(ptr.get());
 
-// zondax::idl_value_utils::Variant IdlValue::getVariant(){
-//     struct CVariant* cVariant = variant_from_idl_value(ptr);
-//     zondax::idl_value_utils::Variant result;
-//
-//     // Extract ID
-//     result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) +
-//     cvariant_id_len(cVariant));
-//
-//     // Extract value
-//     const IDLValue* valPtr = cvariant_idlvalue(cVariant);
-//
-//     result.val(new IdlValue(valPtr));
-//
-//     // Extract code
-//     result.code = cvariant_code(cVariant);
-//
-//     // Free the allocated CVariant
-//     cvariant_destroy(cVariant);
-//
-//     return result;
-// }
+  if (record == nullptr) return fields;
+
+  auto len = crecord_keys_len(record);
+
+  for (uintptr_t i = 0; i < len; ++i) {
+    auto cKey = crecord_take_key(record, i);
+    auto cVal = crecord_take_val(record, i);
+
+    if (cKey == nullptr || cVal == nullptr) return fields;
+
+    auto str = ctext_str(cKey);
+    auto key_len = ctext_len(cKey);
+    if (str == nullptr) return fields;
+
+    auto key = std::string("");
+    if (str != nullptr) {
+      key = std::string(str, str + len);
+    }
+
+    auto val = IdlValue(cVal);
+
+    fields.emplace(std::make_pair(key, std::move(val)));
+  }
+
+  crecord_destroy(record);
+
+  return std::move(fields);
+}
 
 std::unique_ptr<IDLValue> IdlValue::getPtr() { return std::move(ptr); }
 }  // namespace zondax
@@ -488,6 +534,137 @@ TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to float/double", T, test_id_floats) {
 }
 
 TEST_CASE_TEMPLATE_INVOKE(test_id_floats, float, double);
+
+TEST_CASE("IdlValue from/to string") {
+  std::string str("Zondax");
+  IdlValue value(str);
+  auto back = value.get<std::string>();
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == str);
+}
+
+TEST_CASE("IdlValue from/to Vec<string>") {
+  std::string str("Zondax");
+  std::vector<std::string> vec{str, str, str, str, str};
+
+  IdlValue value(vec);
+  auto back = value.get<std::vector<std::string>>();
+  REQUIRE(back.has_value());
+  auto val = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
+}
+
+struct Peer_authentication {
+  explicit Peer_authentication() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"authentication"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{0};
+  std::string value;
+};
+
+struct Sender_report {
+  explicit Sender_report() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"report"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{1};
+  std::string report;
+};
+
+template <>
+IdlValue::IdlValue(Peer_authentication peer) {
+  IdlValue inner(peer.value);
+  *this = IdlValue::FromVariant(
+      std::string(Peer_authentication::__CANDID_VARIANT_NAME), &inner,
+      Peer_authentication::__CANDID_VARIANT_CODE);
+}
+
+template <>
+IdlValue::IdlValue(Sender_report sender) {
+  IdlValue inner(sender.report);
+  *this =
+      IdlValue::FromVariant(std::string(Sender_report::__CANDID_VARIANT_NAME),
+                            &inner, Sender_report::__CANDID_VARIANT_CODE);
+}
+
+template <>
+std::optional<Peer_authentication> IdlValue::getImpl(
+    helper::tag_type<Peer_authentication> t) {
+  // this is a CVariant type.
+  CVariant *cvariant = variant_from_idl_value(ptr.get());
+  if (cvariant == nullptr) return std::nullopt;
+  // start with the key.
+  auto id_ptr = cvariant_id(cvariant);
+  auto id_len = cvariant_id_len(cvariant);
+
+  auto value = cvariant_idlvalue(cvariant);
+  auto code = cvariant_code(cvariant);
+  if (id_ptr == nullptr || value == nullptr) return std::nullopt;
+
+  auto key = std::string(id_ptr, id_ptr + id_len);
+
+  IdlValue idl_value(value);
+  if (key.compare(Peer_authentication::__CANDID_VARIANT_NAME) != 0)
+    return std::nullopt;
+
+  Peer_authentication peer;
+  auto val = idl_value.get<std::string>();
+  if (!val.has_value()) return std::nullopt;
+
+  peer.value = val.value();
+
+  cvariant_destroy(cvariant);
+
+  return std::make_optional(std::move(peer));
+}
+
+template <>
+std::optional<Sender_report> IdlValue::getImpl(
+    helper::tag_type<Sender_report> t) {
+  // this is a CVariant type.
+  CVariant *cvariant = variant_from_idl_value(ptr.get());
+  if (cvariant == nullptr) return std::nullopt;
+  // start with the key.
+  auto id_ptr = cvariant_id(cvariant);
+  auto id_len = cvariant_id_len(cvariant);
+
+  auto value = cvariant_idlvalue(cvariant);
+  auto code = cvariant_code(cvariant);
+  if (id_ptr == nullptr || value == nullptr) return std::nullopt;
+
+  auto key = std::string(id_ptr, id_ptr + id_len);
+
+  IdlValue idl_value(value);
+  if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
+    return std::nullopt;
+
+  Sender_report sender;
+  auto val = idl_value.get<std::string>();
+  if (!val.has_value()) return std::nullopt;
+
+  sender.report = val.value();
+  cvariant_destroy(cvariant);
+  return std::make_optional(std::move(sender));
+}
+
+TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
+  // construct variant
+  Peer_authentication auth;
+  auth.value = "Peer_authentication";
+  std::variant<Peer_authentication, Sender_report> variant(std::move(auth));
+  IdlValue obj(std::move(variant));
+
+  auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
+  // This test must pass
+  REQUIRE(back.has_value());
+  auto ret = back.value();
+}
+
+// TODO: Uncomment test, currently this does not compile due to constructor
+// TEST_CASE("IdlValue from/to std::tuple<int, std::string>") {
+//   // construct tuple
+//   std::tuple<uint8_t, std::string> tuple{10, "second"};
+//   IdlValue value(tuple);
+//   auto back = value.getRecord();
+// }
 
 TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of ints", T,
                           test_id_vector) {
@@ -520,10 +697,3 @@ TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of floats", T,
   REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
 }
 TEST_CASE_TEMPLATE_INVOKE(test_id_vector_floats, float, double);
-
-TEST_CASE("IdlValue from/to string") {
-  std::string str("Zondax");
-  IdlValue value(str);
-
-  // REQUIRE(bytes.size() == 0);
-}
