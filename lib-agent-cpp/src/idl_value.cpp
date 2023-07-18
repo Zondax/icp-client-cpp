@@ -166,7 +166,7 @@ IdlValue::IdlValue(const std::vector<T> &elems) {
 }
 
 template <typename... Args, typename>
-IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
+IdlValue::IdlValue(std::tuple<Args...> &tuple) {
   initializeFromTuple(tuple, std::index_sequence_for<Args...>());
 }
 
@@ -281,7 +281,8 @@ std::optional<std::string> IdlValue::getImpl(
   uintptr_t len = ctext_len(ctext);
   if (len == 0) return std::string("");
 
-  std::string s(str, str + len);
+  // use c null-terminated string constructor
+  std::string s(str);
 
   ctext_destroy(ctext);
 
@@ -312,9 +313,8 @@ std::optional<Number> IdlValue::getImpl(helper::tag_type<Number> type) {
   if (ctext == nullptr) return std::nullopt;
 
   const char *str = ctext_str(ctext);
-  uintptr_t len = ctext_len(ctext);
 
-  std::string text(str, len);
+  std::string text(str);
 
   ctext_destroy(ctext);
   Number number;
@@ -420,6 +420,7 @@ template <>
 std::optional<std::unordered_map<std::string, IdlValue>>
 IdlValue::getImpl<std::unordered_map<std::string, IdlValue>>(
     helper::tag_type<std::unordered_map<std::string, IdlValue>> t) {
+  if (ptr.get() == nullptr) return std::nullopt;
   auto record = record_from_idl_value(ptr.get());
   if (record == nullptr) return std::nullopt;
 
@@ -434,12 +435,11 @@ IdlValue::getImpl<std::unordered_map<std::string, IdlValue>>(
     if (cKey == nullptr || cVal == nullptr) return std::nullopt;
 
     auto str = ctext_str(cKey);
-    auto key_len = ctext_len(cKey);
     if (str == nullptr) return std::nullopt;
 
     auto key = std::string("");
     if (str != nullptr) {
-      key = std::string(str, str + len);
+      key = std::string(str);
     }
 
     auto val = IdlValue(cVal);
@@ -447,7 +447,7 @@ IdlValue::getImpl<std::unordered_map<std::string, IdlValue>>(
     fields.emplace(std::make_pair(key, std::move(val)));
   }
 
-  crecord_destroy(record);
+  // crecord_destroy(record);
 
   return std::make_optional(std::move(fields));
 }
@@ -468,9 +468,6 @@ VEC_PRIMITIVE_TYPES_GETTER(zondax::Principal)
 VEC_PRIMITIVE_TYPES_GETTER(zondax::Func)
 VEC_PRIMITIVE_TYPES_GETTER(zondax::Service)
 VEC_PRIMITIVE_TYPES_GETTER(std::monostate)
-// TODO: We need to define a new overload for this to work:
-// std::optional<std::vector<T<U,V>>> get(helper::tag_type<std::vector<T<U,V>>>)
-// VEC_PRIMITIVE_TYPES_GETTER((std::unordered_map<std::string, IdlValue>))
 
 // TODO: Original getRecord, with some tweeks, to handle null values.
 // do we keep this or the specialization above is enough?
@@ -489,15 +486,16 @@ std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
     if (cKey == nullptr || cVal == nullptr) return fields;
 
     auto str = ctext_str(cKey);
-    auto key_len = ctext_len(cKey);
     if (str == nullptr) return fields;
 
     auto key = std::string("");
     if (str != nullptr) {
-      key = std::string(str, str + len);
+      // because str is null terminated, we should use the
+      // string constructor for it.
+      key = std::string(str);
     }
 
-    auto val = IdlValue(cVal);
+    IdlValue val(cVal);
 
     fields.emplace(std::make_pair(key, std::move(val)));
   }
@@ -593,27 +591,23 @@ std::optional<Peer_authentication> IdlValue::getImpl(
   if (cvariant == nullptr) return std::nullopt;
   // start with the key.
   auto id_ptr = cvariant_id(cvariant);
-  auto id_len = cvariant_id_len(cvariant);
 
   auto value = cvariant_idlvalue(cvariant);
   auto code = cvariant_code(cvariant);
   if (id_ptr == nullptr || value == nullptr) return std::nullopt;
 
-  auto key = std::string(id_ptr, id_ptr + id_len);
+  std::string key((const char *)id_ptr);
 
   IdlValue idl_value(value);
   if (key.compare(Peer_authentication::__CANDID_VARIANT_NAME) != 0)
     return std::nullopt;
 
-  Peer_authentication peer;
-  auto val = idl_value.get<std::string>();
-  if (!val.has_value()) return std::nullopt;
-
-  peer.value = val.value();
+  auto peer = idl_value.get<Peer_authentication>();
+  if (!peer.has_value()) return std::nullopt;
 
   cvariant_destroy(cvariant);
 
-  return std::make_optional(std::move(peer));
+  return std::make_optional(std::move(peer.value()));
 }
 
 template <>
@@ -630,11 +624,11 @@ std::optional<Sender_report> IdlValue::getImpl(
   auto code = cvariant_code(cvariant);
   if (id_ptr == nullptr || value == nullptr) return std::nullopt;
 
-  auto key = std::string(id_ptr, id_ptr + id_len);
+  std::string key((const char *)id_ptr);
 
   IdlValue idl_value(value);
-  if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
-    return std::nullopt;
+  // if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
+  //   return std::nullopt;
 
   Sender_report sender;
   auto val = idl_value.get<std::string>();
@@ -653,18 +647,38 @@ TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
   IdlValue obj(std::move(variant));
 
   auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
-  // This test must pass
+  // FIXME: This require must pass.
   REQUIRE(back.has_value());
   auto ret = back.value();
 }
 
 // TODO: Uncomment test, currently this does not compile due to constructor
-// TEST_CASE("IdlValue from/to std::tuple<int, std::string>") {
-//   // construct tuple
-//   std::tuple<uint8_t, std::string> tuple{10, "second"};
-//   IdlValue value(tuple);
-//   auto back = value.getRecord();
-// }
+TEST_CASE("IdlValue from/to std::tuple<std::string, std::string>") {
+  std::string first("first");
+  std::string second("second");
+
+  // construct tuple
+  std::tuple<std::string, std::string> tuple{first, second};
+
+  IdlValue value(tuple);
+
+  // auto back = value.get<std::unordered_map<std::string, IdlValue>>();
+  auto map = value.getRecord();
+
+  REQUIRE(map.size() == 2);
+
+  for (auto &n : map) {
+    auto val = n.second.get<std::string>();
+    REQUIRE(val.has_value());
+    auto str = val.value();
+
+    if (n.first.compare("0") == 0) {
+      REQUIRE(str == first);
+    } else if (n.first.compare("1") == 0) {
+      REQUIRE(str == second);
+    }
+  }
+}
 
 TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of ints", T,
                           test_id_vector) {

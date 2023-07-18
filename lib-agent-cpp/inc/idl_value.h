@@ -83,20 +83,14 @@ struct is_tuple : std::false_type {};
 template <typename... T>
 struct is_tuple<std::tuple<T...>> : std::true_type {};
 
-// This is a helper for to use for checking that our
-// variant field is valid for the expected return type
-// when processing variants from idlValue in the
-// getVariant method.
+// Update static for to not use CODE directly, instead
+// we can check if the types at position I match
 template <std::size_t I = 0, typename V, typename T>
 constexpr bool static_for() {
   if constexpr (I < std::variant_size_v<V>) {
-    // the field at I in the variant
     using VariantType = std::variant_alternative_t<I, V>;
 
-    // VariantType value that we compute at runtime should be
-    // at positiong I?
-    // TODO: mmm we need to fix due to the shift the generator does?
-    if (T::__CANDID_VARIANT_CODE == VariantType::__CANDID_VARIANT_CODE) {
+    if (std::is_same_v<T, VariantType>) {
       return true;
     } else {
       return static_for<I + 1, V, T>();
@@ -106,6 +100,17 @@ constexpr bool static_for() {
   }
 }
 
+template <std::size_t I = 0, typename FuncT, typename... Tp>
+inline typename std::enable_if<I == sizeof...(Tp), void>::type for_each(
+    std::tuple<Tp...> &, FuncT)  // Unused arguments are given no names.
+{}
+
+template <std::size_t I = 0, typename FuncT, typename... Tp>
+    inline typename std::enable_if <
+    I<sizeof...(Tp), void>::type for_each(std::tuple<Tp...> &t, FuncT f) {
+  f(std::get<I>(t), std::integral_constant<size_t, I>());
+  for_each<I + 1, FuncT, Tp...>(t, f);
+}
 }  // namespace helper
 
 struct Number {
@@ -121,7 +126,7 @@ class IdlValue {
   // Helper to initialize .ptr from an std::tuple-like set of items
   // used by IdlValue(std::tuple<Args...>) constructor
   template <typename Tuple, size_t... Indices>
-  void initializeFromTuple(const Tuple &tuple, std::index_sequence<Indices...>);
+  void initializeFromTuple(Tuple &tuple, std::index_sequence<Indices...>);
 
   template <typename T>
   std::optional<T> getImpl(helper::tag_type<T> t) {
@@ -173,13 +178,13 @@ class IdlValue {
     if (cvariant == nullptr) return std::nullopt;
     // start with the key.
     auto id_ptr = cvariant_id(cvariant);
-    auto id_len = cvariant_id_len(cvariant);
 
     auto value = cvariant_idlvalue(cvariant);
     auto code = cvariant_code(cvariant);
     if (id_ptr == nullptr || value == nullptr) return std::nullopt;
 
-    auto key = std::string(id_ptr, id_ptr + id_len);
+    // id_ptr is a CText which is null terminated
+    std::string key((const char *)id_ptr);
     IdlValue idl_value(value);
 
     // variant;
@@ -230,7 +235,7 @@ class IdlValue {
   template <typename... Args,
             typename = std::enable_if_t<
                 (std::is_constructible_v<IdlValue, Args> && ...)>>
-  explicit IdlValue(const std::tuple<Args...> &);
+  explicit IdlValue(std::tuple<Args...> &);
 
   template <
       typename... Args,
@@ -281,37 +286,40 @@ class IdlValue {
 /******************** Private ***********************/
 
 template <typename Tuple, size_t... Indices>
-void IdlValue::initializeFromTuple(const Tuple &tuple,
+void IdlValue::initializeFromTuple(Tuple &tuple,
                                    std::index_sequence<Indices...>) {
   std::vector<IDLValue *> values;
-  std::vector<uint8_t[4]> indices;
+  std::vector<std::array<uint8_t, 4>> indices;
 
-  (
-      [&](size_t index) {
-        IdlValue val(std::get<index>(tuple));
-        values.push_back(val.ptr.release());
-        val.ptr = nullptr;
+  auto func = [&](auto &tp, auto index) {
+    IdlValue val(std::move(tp));
+    values.push_back(val.ptr.release());
 
-        uint8_t bytes[4];  // Array to store the resulting bytes
-        auto value = static_cast<uint32_t>(index);
+    // Array to store the resulting bytes
+    std::array<uint8_t, 4> bytes;
+    auto value = static_cast<uint32_t>(index);
 
-        bytes[0] = value & 0xFF;
-        bytes[1] = (value >> 8) & 0xFF;
-        bytes[2] = (value >> 16) & 0xFF;
-        bytes[3] = (value >> 24) & 0xFF;
+    bytes[0] = value & 0xFF;
+    bytes[1] = (value >> 8) & 0xFF;
+    bytes[2] = (value >> 16) & 0xFF;
+    bytes[3] = (value >> 24) & 0xFF;
 
 // If the platform is big endian, swap the byte order
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        std::swap(bytes[0], bytes[3]);
-        std::swap(bytes[1], bytes[2]);
+    std::swap(bytes[0], bytes[3]);
+    std::swap(bytes[1], bytes[2]);
 #endif
-        indices.push_back(bytes);
-      }(Indices),
-      ...);
+    indices.push_back(bytes);
+  };
+  helper::for_each(tuple, func);
 
-  ptr.reset(idl_value_with_record(
-      reinterpret_cast<const char *const *>(indices.data()), indices.size(),
-      values.data(), values.size(), true));
+  std::vector<const char *> cstr_indices(indices.size());
+  for (size_t i = 0; i < indices.size(); ++i) {
+    cstr_indices[i] = reinterpret_cast<const char *>(indices[i].data());
+  }
+
+  ptr.reset(idl_value_with_record(cstr_indices.data(), indices.size(),
+                                  values.data(), values.size(), true));
 }
 
 }  // namespace zondax
