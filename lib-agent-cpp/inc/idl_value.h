@@ -18,6 +18,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <optional>
@@ -174,40 +175,23 @@ class IdlValue {
   std::optional<V> getVariant() {
     if (ptr == nullptr) return std::nullopt;
 
-    CVariant *cvariant = variant_from_idl_value(ptr.get());
-    if (cvariant == nullptr) return std::nullopt;
-    // start with the key.
-    auto id_ptr = cvariant_id(cvariant);
-
-    auto value = cvariant_idlvalue(cvariant);
-    auto code = cvariant_code(cvariant);
-    if (id_ptr == nullptr || value == nullptr) return std::nullopt;
-
-    // id_ptr is a CText which is null terminated
-    std::string key((const char *)id_ptr);
-    IdlValue idl_value(value);
-
-    // variant;
     V variant;
     bool success = false;
     std::visit(
         [&](auto &&arg) -> std::optional<V> {
           using T = std::decay_t<decltype(arg)>;
 
-          if (T::__CANDID_VARIANT_CODE == code &&
-              key.compare(T::__CANDID_VARIANT_NAME) == 0) {
-            auto inner_value = get<T>();
-            if (inner_value.has_value()) {
-              if (helper::static_for<0, V, T>()) {
-                cvariant_destroy(cvariant);
-                return std::optional<V>(V(std::move(*inner_value)));
-              }
+          auto inner_value = get<T>();
+          if (inner_value.has_value()) {
+            // here we check that the type T is spected at index I
+            // in the variant specified by V
+            if (helper::static_for<0, V, T>()) {
+              return std::optional<V>(V(std::move(*inner_value)));
             }
           }
           return std::nullopt;
         },
         V{});
-    cvariant_destroy(cvariant);
 
     return success ? std::optional<V>(V{}) : std::nullopt;
   }

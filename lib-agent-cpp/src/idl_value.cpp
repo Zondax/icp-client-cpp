@@ -278,8 +278,7 @@ std::optional<std::string> IdlValue::getImpl(
   if (ctext == nullptr) return std::nullopt;
 
   const char *str = ctext_str(ctext);
-  uintptr_t len = ctext_len(ctext);
-  if (len == 0) return std::string("");
+  if (str == nullptr) return std::nullopt;
 
   // use c null-terminated string constructor
   std::string s(str);
@@ -598,16 +597,20 @@ std::optional<Peer_authentication> IdlValue::getImpl(
 
   std::string key((const char *)id_ptr);
 
+  // inner value of the Peer_authentication which is a string
   IdlValue idl_value(value);
-  if (key.compare(Peer_authentication::__CANDID_VARIANT_NAME) != 0)
+  if (key.compare(Peer_authentication::__CANDID_VARIANT_NAME) != 0 ||
+      code != Peer_authentication::__CANDID_VARIANT_CODE)
     return std::nullopt;
 
-  auto peer = idl_value.get<Peer_authentication>();
-  if (!peer.has_value()) return std::nullopt;
+  auto inner_value = idl_value.get<std::string>();
+  if (!inner_value.has_value()) return std::nullopt;
+  Peer_authentication peer;
+  peer.value = std::move(inner_value.value());
 
   cvariant_destroy(cvariant);
 
-  return std::make_optional(std::move(peer.value()));
+  return std::make_optional(std::move(peer));
 }
 
 template <>
@@ -627,8 +630,8 @@ std::optional<Sender_report> IdlValue::getImpl(
   std::string key((const char *)id_ptr);
 
   IdlValue idl_value(value);
-  // if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
-  //   return std::nullopt;
+  if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
+    return std::nullopt;
 
   Sender_report sender;
   auto val = idl_value.get<std::string>();
