@@ -568,78 +568,66 @@ struct Sender_report {
 
 template <>
 IdlValue::IdlValue(Peer_authentication peer) {
-  IdlValue inner(peer.value);
-  *this = IdlValue::FromVariant(
-      std::string(Peer_authentication::__CANDID_VARIANT_NAME), &inner,
-      Peer_authentication::__CANDID_VARIANT_CODE);
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("value");
+    auto val = IdlValue(std::move(peer.value));
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
 }
 
 template <>
 IdlValue::IdlValue(Sender_report sender) {
-  IdlValue inner(sender.report);
-  *this =
-      IdlValue::FromVariant(std::string(Sender_report::__CANDID_VARIANT_NAME),
-                            &inner, Sender_report::__CANDID_VARIANT_CODE);
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("report");
+    auto val = IdlValue(std::move(sender.report));
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
 }
 
 template <>
 std::optional<Peer_authentication> IdlValue::getImpl(
     helper::tag_type<Peer_authentication> t) {
-  // this is a CVariant type.
-  CVariant *cvariant = variant_from_idl_value(ptr.get());
-  if (cvariant == nullptr) return std::nullopt;
-  // start with the key.
-  auto id_ptr = cvariant_id(cvariant);
+  Peer_authentication result;
+  auto fields = this->getRecord();
+  {
+    auto field = std::move(fields["value"]);
+    auto val = field.get<std::string>();
 
-  auto value = cvariant_idlvalue(cvariant);
-  auto code = cvariant_code(cvariant);
-  if (id_ptr == nullptr || value == nullptr) return std::nullopt;
+    if (val.has_value()) {
+      result.value = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
 
-  std::string key((const char *)id_ptr);
-
-  // inner value of the Peer_authentication which is a string
-  IdlValue idl_value(value);
-  if (key.compare(Peer_authentication::__CANDID_VARIANT_NAME) != 0 ||
-      code != Peer_authentication::__CANDID_VARIANT_CODE)
-    return std::nullopt;
-
-  auto inner_value = idl_value.get<std::string>();
-  if (!inner_value.has_value()) return std::nullopt;
-  Peer_authentication peer;
-  peer.value = std::move(inner_value.value());
-
-  cvariant_destroy(cvariant);
-
-  return std::make_optional(std::move(peer));
+  return std::make_optional(std::move(result));
 }
 
 template <>
 std::optional<Sender_report> IdlValue::getImpl(
     helper::tag_type<Sender_report> t) {
-  // this is a CVariant type.
-  CVariant *cvariant = variant_from_idl_value(ptr.get());
-  if (cvariant == nullptr) return std::nullopt;
-  // start with the key.
-  auto id_ptr = cvariant_id(cvariant);
-  auto id_len = cvariant_id_len(cvariant);
+  Sender_report result;
+  auto fields = this->getRecord();
+  {
+    auto field = std::move(fields["report"]);
+    auto val = field.get<std::string>();
 
-  auto value = cvariant_idlvalue(cvariant);
-  auto code = cvariant_code(cvariant);
-  if (id_ptr == nullptr || value == nullptr) return std::nullopt;
+    if (val.has_value()) {
+      result.report = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
 
-  std::string key((const char *)id_ptr);
-
-  IdlValue idl_value(value);
-  if (key.compare(Sender_report::__CANDID_VARIANT_NAME) != 0)
-    return std::nullopt;
-
-  Sender_report sender;
-  auto val = idl_value.get<std::string>();
-  if (!val.has_value()) return std::nullopt;
-
-  sender.report = val.value();
-  cvariant_destroy(cvariant);
-  return std::make_optional(std::move(sender));
+  return std::make_optional(std::move(result));
 }
 
 TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
