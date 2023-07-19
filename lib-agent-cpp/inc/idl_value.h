@@ -143,6 +143,10 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
   f(std::get<I>(t), std::integral_constant<size_t, I>());
   for_each<I + 1, FuncT, Tp...>(t, f);
 }
+
+template <typename V>
+using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
+    std::monostate, typename variant_to_tuple<V>::type>::type>::type;
 }  // namespace helper
 
 struct Number {
