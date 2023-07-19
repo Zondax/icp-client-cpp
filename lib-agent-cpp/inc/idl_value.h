@@ -84,21 +84,52 @@ struct is_tuple : std::false_type {};
 template <typename... T>
 struct is_tuple<std::tuple<T...>> : std::true_type {};
 
-// Update static for to not use CODE directly, instead
-// we can check if the types at position I match
-template <std::size_t I = 0, typename V, typename T>
-constexpr bool static_for() {
-  if constexpr (I < std::variant_size_v<V>) {
-    using VariantType = std::variant_alternative_t<I, V>;
+// Helper types to expand std::variant<Args...>
+// and create a tuple of its types.iterating over it.
+template <typename... Ts>
+struct overload : Ts... {
+  using Ts::operator()...;
+};
+template <typename... Ts>
+overload(Ts...) -> overload<Ts...>;
 
-    if (std::is_same_v<T, VariantType>) {
-      return true;
+// A helper to convert a tuple to a variant
+template <typename T>
+struct tuple_to_variant;
+template <typename... Ts>
+struct tuple_to_variant<std::tuple<Ts...>> {
+  using type = std::variant<Ts...>;
+};
+
+// A helper to prepend an element to a tuple, it would be the monostate
+template <typename T, typename Tuple>
+struct tuple_prepend;
+template <typename T, typename... Ts>
+struct tuple_prepend<T, std::tuple<Ts...>> {
+  using type = std::tuple<T, Ts...>;
+};
+
+// Get the variant's types as a tuple
+template <typename V>
+struct variant_to_tuple;
+template <typename... Ts>
+struct variant_to_tuple<std::variant<Ts...>> {
+  using type = std::tuple<Ts...>;
+};
+
+// This static for iterates over the variant types,
+// and returns the position at which the type T
+// is found in the variant. otherwise returns nullopt
+template <typename V, typename T, std::size_t I = 0>
+constexpr std::optional<std::size_t> static_for() {
+  if constexpr (I < std::variant_size_v<V>) {
+    if constexpr (std::is_same_v<std::variant_alternative_t<I, V>, T>) {
+      return I;
     } else {
-      return static_for<I + 1, V, T>();
+      return static_for<V, T, I + 1>();
     }
-  } else {
-    return false;
   }
+  return std::nullopt;
 }
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
@@ -173,27 +204,25 @@ class IdlValue {
 
   template <typename V>
   std::optional<V> getVariant() {
-    if (ptr == nullptr) return std::nullopt;
+    helper::VariantWithMonostate<V> variant;
 
-    V variant;
-    bool success = false;
-    std::visit(
-        [&](auto &&arg) -> std::optional<V> {
-          using T = std::decay_t<decltype(arg)>;
+    return std::visit(
+        helper::overload{
+            [&](std::monostate) -> std::optional<V> { return std::nullopt; },
+            [&](auto &&arg) -> std::optional<V> {
+              using T = std::decay_t<decltype(arg)>;
 
-          auto inner_value = get<T>();
-          if (inner_value.has_value()) {
-            // here we check that the type T is spected at index I
-            // in the variant specified by V
-            if (helper::static_for<0, V, T>()) {
-              return std::optional<V>(V(std::move(*inner_value)));
-            }
-          }
-          return std::nullopt;
-        },
-        V{});
+              auto inner_value = get<T>();
+              auto found_at = helper::static_for<V, T>();
+              if (!found_at.has_value()) return std::nullopt;
+              if (inner_value.has_value() &&
+                  found_at.value() == T::__CANDID_VARIANT_CODE) {
+                return std::optional<V>(V(std::move(*inner_value)));
+              }
 
-    return success ? std::optional<V>(V{}) : std::nullopt;
+              return std::nullopt;
+            }},
+        variant);
   }
 
  public:
