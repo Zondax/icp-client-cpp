@@ -115,7 +115,7 @@ class IdlValue {
   static IdlValue null();
   static IdlValue reserved();
 
-  static IdlValue FromRecord(std::vector<std::pair<std::string, IdlValue>> &);
+  static IdlValue FromRecord(std::unordered_map<std::string, IdlValue> &fields);
   static IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
   static IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 

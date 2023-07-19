@@ -246,7 +246,7 @@ IdlValue IdlValue::reserved(void) {
 }
 
 IdlValue IdlValue::FromRecord(
-    std::vector<std::pair<std::string, IdlValue>> &fields) {
+    std::unordered_map<std::string, IdlValue> &fields) {
   std::vector<const char *> cKeys;
   cKeys.reserve(fields.size());
   std::vector<const IDLValue *> cElems;
