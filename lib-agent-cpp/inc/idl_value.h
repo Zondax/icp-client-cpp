@@ -160,6 +160,15 @@ class IdlValue {
   friend class IdlArgs;
 
  private:
+  template <typename T>
+  struct callGetVariant;
+  template <typename... Ts>
+  struct callGetVariant<std::variant<Ts...>> {
+    static std::optional<std::variant<Ts...>> call(IdlValue *val) {
+      return val->getVariant<Ts...>();
+    }
+  };
+
   std::unique_ptr<IDLValue> ptr;
 
   // Helper to initialize .ptr from an std::tuple-like set of items
@@ -183,7 +192,7 @@ class IdlValue {
   // Specialization for variant
   template <typename T>
   std::optional<T> getHelper(std::true_type, std::false_type) {
-    return getVariant<T>();
+    return callGetVariant<T>::call(this);
   }
 
   // Specialization for tuple
