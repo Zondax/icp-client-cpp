@@ -26,6 +26,8 @@
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "func.h"
@@ -206,27 +208,48 @@ class IdlValue {
     return std::optional<std::tuple<Ts...>>{};  // Return an empty std::optional
   }
 
-  template <typename V>
-  std::optional<V> getVariant() {
-    helper::VariantWithMonostate<V> variant;
+  // Attempt to extract the Indexth variant type from the CVariant
+  template <
+      typename... Args, std::size_t Index,
+      typename = std::enable_if_t<
+          Index<std::variant_size_v<std::variant<Args...>>>,
+          typename = std::enable_if_t<helper::is_candid_variant_v<
+              std::variant_alternative_t<Index, std::variant<Args...>>>>> bool
+          tryVariant(std::optional<std::variant<Args...>> loc,
+                     std::string_view key, std::size_t code) {
+    using T = std::variant_alternative_t<Index, std::variant<Args...>>;
 
-    return std::visit(
-        helper::overload{
-            [&](std::monostate) -> std::optional<V> { return std::nullopt; },
-            [&](auto &&arg) -> std::optional<V> {
-              using T = std::decay_t<decltype(arg)>;
+    if (loc.has_value()) return false;
 
-              auto inner_value = get<T>();
-              auto found_at = helper::static_for<V, T>();
-              if (!found_at.has_value()) return std::nullopt;
-              if (inner_value.has_value() &&
-                  found_at.value() == T::__CANDID_VARIANT_CODE) {
-                return std::optional<V>(V(std::move(*inner_value)));
-              }
+    // check code & key match
+    if (T::__CANDID_VARIANT_NAME != key || T::__CANDID_VARIANT_CODE != code)
+      return false;
 
-              return std::nullopt;
-            }},
-        variant);
+    // get to obtain the inner type
+    auto v = get<T>();
+    if (!v.has_value()) return false;
+
+    // initialize loc with the proper type
+    loc.emplace(std::in_place_index<Index>, std::move(v.value()));
+    return true;
+  }
+
+  template <typename... Args, typename = std::enable_if_t<
+                                  (helper::is_candid_variant_v<Args> && ...)>>
+  std::optional<std::variant<Args...>> getVariant() {
+    using Variant = std::variant<Args...>;
+
+    auto cvariant_data = this->asCVariant();
+    if (!cvariant_data.has_value()) return std::nullopt;
+
+    auto [key, code] = cvariant_data.value();
+    std::optional<Variant> result;
+
+    (tryVariant<Args, std::variant_size_v<Variant> - sizeof...(Args)>(
+         &result, key, code),
+     ...);
+
+    return result;
   }
 
  public:
@@ -298,6 +321,7 @@ class IdlValue {
   std::unordered_map<std::string, IdlValue> getRecord();
 
   std::unique_ptr<IDLValue> getPtr();
+  std::optional<std::pair<std::string_view, std::size_t>> asCVariant();
 };
 
 /******************** Private ***********************/

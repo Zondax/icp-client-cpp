@@ -25,6 +25,7 @@
 #include "doctest.h"
 #include "func.h"
 #include "service.h"
+#include "zondax_ic.h"
 
 namespace zondax {
 
@@ -628,6 +629,23 @@ std::optional<Sender_report> IdlValue::getImpl(
   }
 
   return std::make_optional(std::move(result));
+}
+
+std::optional<std::pair<std::string_view, std::size_t>> IdlValue::asCVariant() {
+  if (ptr == nullptr) return std::nullopt;
+
+  CVariant *variant = variant_from_idl_value(ptr.get());
+  if (variant == nullptr) return std::nullopt;
+
+  auto str = cvariant_id(variant);
+  if (str == nullptr) return std::nullopt;
+
+  auto key = std::string(reinterpret_cast<const char *const>(str));
+
+  //  auto key_len = cvariant_id_len(variant);
+  auto code = cvariant_code(variant);
+
+  return std::make_optional(std::make_pair(key, code));
 }
 
 TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
