@@ -442,7 +442,7 @@ IdlValue::getImpl<std::unordered_map<std::string, IdlValue>>(
       key = std::string(str);
     }
 
-    auto val = IdlValue(cVal);
+    IdlValue val(cVal);
 
     fields.emplace(std::make_pair(key, std::move(val)));
   }
@@ -720,3 +720,21 @@ TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of floats", T,
   REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
 }
 TEST_CASE_TEMPLATE_INVOKE(test_id_vector_floats, float, double);
+
+TEST_CASE("IdlValue from/to tuple") {
+  std::tuple<uint32_t, std::string, float> tuple1{1000, std::string("tuple"),
+                                                  25.5};
+  // make a copy because in constructor impl, we move values
+  auto copy = tuple1;
+  IdlValue value(copy);
+
+  auto back = value.get<std::tuple<uint32_t, std::string, float>>();
+
+  REQUIRE(back.has_value());
+
+  auto tuple2 = back.value();
+
+  REQUIRE(std::get<0>(tuple2) == std::get<0>(tuple1));
+  REQUIRE(std::get<1>(tuple2) == std::get<1>(tuple1));
+  REQUIRE(std::get<2>(tuple2) == std::get<2>(tuple1));
+}

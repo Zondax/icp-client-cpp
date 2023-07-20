@@ -16,6 +16,7 @@
 #ifndef IDL_VALUE_H
 #define IDL_VALUE_H
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -120,6 +121,10 @@ struct variant_to_tuple<std::variant<Ts...>> {
   using type = std::tuple<Ts...>;
 };
 
+template <typename V>
+using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
+    std::monostate, typename variant_to_tuple<V>::type>::type>::type;
+
 // This static for iterates over the variant types,
 // and returns the position at which the type T
 // is found in the variant. otherwise returns nullopt
@@ -150,6 +155,18 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
 template <typename V>
 using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
     std::monostate, typename variant_to_tuple<V>::type>::type>::type;
+template <typename T>
+struct tuple_to_types;  // forward declare the template
+
+template <typename... Ts>
+struct tuple_to_types<std::tuple<Ts...>> {
+  template <template <typename...> typename U>
+  using rebind = U<Ts...>;
+};
+
+template <typename Tuple, template <typename...> typename U>
+using tuple_to_types_t = typename tuple_to_types<Tuple>::template rebind<U>;
+
 }  // namespace helper
 
 struct Number {
@@ -197,26 +214,69 @@ class IdlValue {
   }
 
   // Specialization for tuple
+  template <typename T, typename Tuple, std::size_t... I>
+  std::optional<T> getTupleHelper(Tuple &&, std::index_sequence<I...>) {
+    return getTuple<std::tuple_element_t<I, T>...>();
+  }
+
+  // Specialization for tuple
   template <typename T>
   std::optional<T> getHelper(std::false_type, std::true_type) {
-    auto optTuple = getTuple<T>();
+    auto optTuple = getTupleHelper<T>(
+        T{}, std::make_index_sequence<std::tuple_size_v<T>>{});
     if (!optTuple.has_value()) return std::nullopt;
+    return optTuple;
+  }
 
-    auto tup = std::move(optTuple.value());
-    return std::optional<T>{std::get<0>(tup)};
+  template <typename... Ts, std::size_t... Is>
+  static std::optional<std::tuple<Ts...>> vectorToTupleImpl(
+      std::vector<IdlValue> &vector, std::index_sequence<Is...>) {
+    using variant_t = std::tuple<std::optional<Ts>...>;
+    variant_t variantVector{vector[Is].get<Ts>()...};
+
+    // all this because std::move(std::nullopt) is undefined behavior in C++
+    if (!std::apply([](auto &&...opt) { return ((opt.has_value()) && ...); },
+                    variantVector)) {
+      return std::nullopt;
+    }
+    std::tuple<Ts...> tuple{std::move(*(std::get<Is>(variantVector)))...};
+
+    return std::optional<std::tuple<Ts...>>{std::move(tuple)};
+  }
+
+  template <typename... Ts>
+  std::optional<std::tuple<Ts...>> vectorToTuple(
+      std::vector<IdlValue> &vector) {
+    return std::move(
+        vectorToTupleImpl<Ts...>(vector, std::index_sequence_for<Ts...>{}));
   }
 
   template <typename... Ts>
   std::optional<std::tuple<Ts...>> getTuple() {
-    // tuples are in reality a list or records, we have an specialization
-    // for auto r = obj.get<unordered_map<string, idlValue>>();
-    // so lets use that here;
-    auto records = get<std::unordered_map<std::string, IdlValue>>();
+    // tuples are in reality a list or records, we have an specialization for
+    // it, so lets use that here;
+    auto records = this->get<std::unordered_map<std::string, IdlValue>>();
+
     if (!records.has_value()) return std::nullopt;
-    // now we need to iterate over the records and "push" each value at its
-    // corresponding index in the tuple, this index is define by the key in the
-    // map but this is imposible due to how tuple is designed
-    return std::optional<std::tuple<Ts...>>{};  // Return an empty std::optional
+
+    auto values = std::move(records.value());
+
+    std::vector<int> keys;
+    for (auto &pair : values) {
+      keys.push_back(std::stoi(pair.first));
+    }
+
+    // Sort the keys, yes why? because std::sort does not support sorting
+    // move-only types
+    std::sort(keys.begin(), keys.end());
+
+    // Create a vector of IdlValue objects in the order defined by keys
+    std::vector<IdlValue> vecValues;
+
+    for (int key : keys) {
+      vecValues.push_back(std::move(values[std::to_string(key)]));
+    }
+    return std::move(vectorToTuple<Ts...>(vecValues));
   }
 
   // Attempt to extract the Indexth variant type from the CVariant
