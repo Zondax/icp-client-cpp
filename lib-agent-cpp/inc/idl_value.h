@@ -269,8 +269,9 @@ class IdlValue {
 
     if (loc.has_value()) return false;
 
-    // check code & key match
-    if (T::__CANDID_VARIANT_NAME != key || T::__CANDID_VARIANT_CODE != code)
+    // check code, key & Index match
+    if (T::__CANDID_VARIANT_NAME != key || T::__CANDID_VARIANT_CODE != code ||
+        T::__CANDID_VARIANT_CODE != Index)
       return false;
 
     // get to obtain the inner type

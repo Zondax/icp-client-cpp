@@ -755,10 +755,10 @@ TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
   REQUIRE(back.has_value());
   auto ret = back.value();
 
-  auto back2 = obj.get<std::variant<Peer_authentication, Sender_report>>();
-  REQUIRE(back2.has_value());
+  auto back2 = obj.get<std::variant<Sender_report, Peer_authentication>>();
+  REQUIRE(!back2.has_value());
 
-  auto var = back2.value();
+  auto var = back.value();
 
   REQUIRE(std::holds_alternative<Peer_authentication>(var));
   auto peer = std::get<Peer_authentication>(var);
