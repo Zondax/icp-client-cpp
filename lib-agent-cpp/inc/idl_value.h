@@ -16,6 +16,8 @@
 #ifndef IDL_VALUE_H
 #define IDL_VALUE_H
 
+#include <bits/utility.h>
+
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -165,7 +167,8 @@ class IdlValue {
   template <typename... Ts>
   struct callGetVariant<std::variant<Ts...>> {
     static std::optional<std::variant<Ts...>> call(IdlValue *val) {
-      return val->getVariant<Ts...>();
+      constexpr auto indices = std::index_sequence_for<Ts...>{};
+      return val->getVariant<Ts...>(indices);
     }
   };
 
@@ -219,15 +222,10 @@ class IdlValue {
   }
 
   // Attempt to extract the Indexth variant type from the CVariant
-  template <
-      typename... Args, std::size_t Index,
-      typename = std::enable_if_t<
-          Index<std::variant_size_v<std::variant<Args...>>>,
-          typename = std::enable_if_t<helper::is_candid_variant_v<
-              std::variant_alternative_t<Index, std::variant<Args...>>>>> bool
-          tryVariant(std::optional<std::variant<Args...>> loc,
-                     std::string_view key, std::size_t code) {
-    using T = std::variant_alternative_t<Index, std::variant<Args...>>;
+  template <typename Variant, std::size_t Index>
+  bool tryVariant(std::optional<Variant> &loc, std::string_view key,
+                  std::size_t code) {
+    using T = std::variant_alternative_t<Index, Variant>;
 
     if (loc.has_value()) return false;
 
@@ -244,8 +242,9 @@ class IdlValue {
     return true;
   }
 
-  template <typename... Ts>
-  std::optional<std::variant<Ts...>> getVariant() {
+  template <typename... Ts, std::size_t... Indices>
+  std::optional<std::variant<Ts...>> getVariant(
+      std::index_sequence<Indices...>) {
     using Variant = std::variant<Ts...>;
 
     auto cvariant_data = this->asCVariant();
@@ -254,9 +253,7 @@ class IdlValue {
     auto [key, code] = cvariant_data.value();
     std::optional<Variant> result;
 
-    (tryVariant<Ts, std::variant_size_v<Variant> - sizeof...(Ts)>(&result, key,
-                                                                  code),
-     ...);
+    (tryVariant<Variant, Indices>(result, key, code), ...);
 
     return result;
   }
