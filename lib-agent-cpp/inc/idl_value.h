@@ -16,6 +16,7 @@
 #ifndef IDL_VALUE_H
 #define IDL_VALUE_H
 
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -181,7 +182,7 @@ class IdlValue {
 
   // Specialization for variant
   template <typename T>
-  auto getHelper(std::true_type, std::false_type) {
+  std::optional<T> getHelper(std::true_type, std::false_type) {
     return getVariant<T>();
   }
 
@@ -234,10 +235,9 @@ class IdlValue {
     return true;
   }
 
-  template <typename... Args, typename = std::enable_if_t<
-                                  (helper::is_candid_variant_v<Args> && ...)>>
-  std::optional<std::variant<Args...>> getVariant() {
-    using Variant = std::variant<Args...>;
+  template <typename... Ts>
+  std::optional<std::variant<Ts...>> getVariant() {
+    using Variant = std::variant<Ts...>;
 
     auto cvariant_data = this->asCVariant();
     if (!cvariant_data.has_value()) return std::nullopt;
@@ -245,8 +245,8 @@ class IdlValue {
     auto [key, code] = cvariant_data.value();
     std::optional<Variant> result;
 
-    (tryVariant<Args, std::variant_size_v<Variant> - sizeof...(Args)>(
-         &result, key, code),
+    (tryVariant<Ts, std::variant_size_v<Variant> - sizeof...(Ts)>(&result, key,
+                                                                  code),
      ...);
 
     return result;
