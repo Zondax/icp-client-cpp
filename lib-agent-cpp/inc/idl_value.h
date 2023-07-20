@@ -16,8 +16,6 @@
 #ifndef IDL_VALUE_H
 #define IDL_VALUE_H
 
-#include <bits/utility.h>
-
 #include <array>
 #include <cstdint>
 #include <cstring>
