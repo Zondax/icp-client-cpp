@@ -125,21 +125,6 @@ template <typename V>
 using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
     std::monostate, typename variant_to_tuple<V>::type>::type>::type;
 
-// This static for iterates over the variant types,
-// and returns the position at which the type T
-// is found in the variant. otherwise returns nullopt
-template <typename V, typename T, std::size_t I = 0>
-constexpr std::optional<std::size_t> static_for() {
-  if constexpr (I < std::variant_size_v<V>) {
-    if constexpr (std::is_same_v<std::variant_alternative_t<I, V>, T>) {
-      return I;
-    } else {
-      return static_for<V, T, I + 1>();
-    }
-  }
-  return std::nullopt;
-}
-
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type for_each(
     std::tuple<Tp...> &, FuncT)  // Unused arguments are given no names.
@@ -152,9 +137,6 @@ template <std::size_t I = 0, typename FuncT, typename... Tp>
   for_each<I + 1, FuncT, Tp...>(t, f);
 }
 
-template <typename V>
-using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
-    std::monostate, typename variant_to_tuple<V>::type>::type>::type;
 template <typename T>
 struct tuple_to_types;  // forward declare the template
 
@@ -385,7 +367,8 @@ class IdlValue {
   std::unordered_map<std::string, IdlValue> getRecord();
 
   std::unique_ptr<IDLValue> getPtr();
-  std::optional<std::pair<std::string_view, std::size_t>> asCVariant();
+
+  std::optional<std::pair<std::string, std::size_t>> asCVariant();
 };
 
 /******************** Private ***********************/

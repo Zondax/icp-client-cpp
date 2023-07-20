@@ -469,8 +469,22 @@ VEC_PRIMITIVE_TYPES_GETTER(zondax::Func)
 VEC_PRIMITIVE_TYPES_GETTER(zondax::Service)
 VEC_PRIMITIVE_TYPES_GETTER(std::monostate)
 
-// TODO: Original getRecord, with some tweeks, to handle null values.
-// do we keep this or the specialization above is enough?
+std::optional<std::pair<std::string, std::size_t>> IdlValue::asCVariant() {
+  if (ptr == nullptr) return std::nullopt;
+
+  CVariant *variant = variant_from_idl_value(ptr.get());
+  if (variant == nullptr) return std::nullopt;
+
+  auto str = cvariant_id(variant);
+  if (str == nullptr) return std::nullopt;
+
+  std::string key((const char *)str);
+
+  auto code = cvariant_code(variant);
+
+  return std::make_optional(std::make_pair(key, code));
+}
+
 std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
   std::unordered_map<std::string, IdlValue> fields;
   auto record = record_from_idl_value(ptr.get());
@@ -507,7 +521,8 @@ std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
 
 std::unique_ptr<IDLValue> IdlValue::getPtr() { return std::move(ptr); }
 }  // namespace zondax
-//
+
+// ------------------------------------------------- TESTS
 using namespace zondax;
 
 TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to ints", T, test_id) {
@@ -551,114 +566,6 @@ TEST_CASE("IdlValue from/to Vec<string>") {
   auto val = back.value();
   REQUIRE(vec.size() == val.size());
   REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
-}
-
-struct Peer_authentication {
-  explicit Peer_authentication() = default;
-  static constexpr std::string_view __CANDID_VARIANT_NAME{"authentication"};
-  static constexpr std::size_t __CANDID_VARIANT_CODE{0};
-  std::string value;
-};
-
-struct Sender_report {
-  explicit Sender_report() = default;
-  static constexpr std::string_view __CANDID_VARIANT_NAME{"report"};
-  static constexpr std::size_t __CANDID_VARIANT_CODE{1};
-  std::string report;
-};
-
-template <>
-IdlValue::IdlValue(Peer_authentication peer) {
-  std::unordered_map<std::string, IdlValue> fields;
-
-  {
-    auto name = std::string("value");
-    auto val = IdlValue(std::move(peer.value));
-    fields.emplace(std::make_pair(name, std::move(val)));
-  }
-
-  *this = std::move(IdlValue::FromRecord(fields));
-}
-
-template <>
-IdlValue::IdlValue(Sender_report sender) {
-  std::unordered_map<std::string, IdlValue> fields;
-
-  {
-    auto name = std::string("report");
-    auto val = IdlValue(std::move(sender.report));
-    fields.emplace(std::make_pair(name, std::move(val)));
-  }
-
-  *this = std::move(IdlValue::FromRecord(fields));
-}
-
-template <>
-std::optional<Peer_authentication> IdlValue::getImpl(
-    helper::tag_type<Peer_authentication> t) {
-  Peer_authentication result;
-  auto fields = this->getRecord();
-  {
-    auto field = std::move(fields["value"]);
-    auto val = field.get<std::string>();
-
-    if (val.has_value()) {
-      result.value = std::move(val.value());
-    } else {
-      return std::nullopt;
-    }
-  }
-
-  return std::make_optional(std::move(result));
-}
-
-template <>
-std::optional<Sender_report> IdlValue::getImpl(
-    helper::tag_type<Sender_report> t) {
-  Sender_report result;
-  auto fields = this->getRecord();
-  {
-    auto field = std::move(fields["report"]);
-    auto val = field.get<std::string>();
-
-    if (val.has_value()) {
-      result.report = std::move(val.value());
-    } else {
-      return std::nullopt;
-    }
-  }
-
-  return std::make_optional(std::move(result));
-}
-
-std::optional<std::pair<std::string_view, std::size_t>> IdlValue::asCVariant() {
-  if (ptr == nullptr) return std::nullopt;
-
-  CVariant *variant = variant_from_idl_value(ptr.get());
-  if (variant == nullptr) return std::nullopt;
-
-  auto str = cvariant_id(variant);
-  if (str == nullptr) return std::nullopt;
-
-  auto key = std::string(reinterpret_cast<const char *const>(str));
-
-  //  auto key_len = cvariant_id_len(variant);
-  auto code = cvariant_code(variant);
-
-  return std::make_optional(std::make_pair(key, code));
-}
-
-TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
-  // construct variant
-  Peer_authentication auth;
-  auth.value = "Peer_authentication";
-  std::variant<Peer_authentication, Sender_report> variant(std::move(auth));
-  IdlValue obj(std::move(variant));
-
-  auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
-  // FIXME: This require must pass.
-  REQUIRE(back.has_value());
-  auto ret = back.value();
 }
 
 // TODO: Uncomment test, currently this does not compile due to constructor
@@ -737,4 +644,123 @@ TEST_CASE("IdlValue from/to tuple") {
   REQUIRE(std::get<0>(tuple2) == std::get<0>(tuple1));
   REQUIRE(std::get<1>(tuple2) == std::get<1>(tuple1));
   REQUIRE(std::get<2>(tuple2) == std::get<2>(tuple1));
+}
+
+struct Peer_authentication {
+  explicit Peer_authentication() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"authentication"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{0};
+  std::string value;
+};
+
+struct Sender_report {
+  explicit Sender_report() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"report"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{1};
+  std::string report;
+};
+
+template <>
+IdlValue::IdlValue(Peer_authentication peer) {
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("value");
+    auto val = IdlValue(std::move(peer.value));
+    auto x = val.get<std::string>().value();
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
+}
+
+template <>
+IdlValue::IdlValue(Sender_report sender) {
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("report");
+    auto val = IdlValue(std::move(sender.report));
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
+}
+
+template <>
+std::optional<Peer_authentication> IdlValue::getImpl(
+    helper::tag_type<Peer_authentication> t) {
+  Peer_authentication result;
+
+  CVariant *variant = variant_from_idl_value(ptr.get());
+  if (variant == nullptr) return std::nullopt;
+
+  // get inner record
+  auto inner_ptr = cvariant_idlvalue(variant);
+  if (inner_ptr == nullptr) return std::nullopt;
+
+  IdlValue inner(inner_ptr);
+
+  auto fields = inner.getRecord();
+  {
+    auto field = std::move(fields["value"]);
+    auto val = field.get<std::string>();
+
+    if (val.has_value()) {
+      result.value = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  return std::make_optional(std::move(result));
+}
+
+template <>
+std::optional<Sender_report> IdlValue::getImpl(
+    helper::tag_type<Sender_report> t) {
+  Sender_report result;
+
+  CVariant *variant = variant_from_idl_value(ptr.get());
+  if (variant == nullptr) return std::nullopt;
+
+  // get inner record
+  auto inner_ptr = cvariant_idlvalue(variant);
+  if (inner_ptr == nullptr) return std::nullopt;
+
+  IdlValue inner(inner_ptr);
+  auto fields = inner.getRecord();
+  {
+    auto field = std::move(fields["report"]);
+    auto val = field.get<std::string>();
+
+    if (val.has_value()) {
+      result.report = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  return std::make_optional(std::move(result));
+}
+
+TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
+  // construct variant
+  Peer_authentication auth;
+  auth.value = "Peer_authentication";
+  std::variant<Peer_authentication, Sender_report> variant(std::move(auth));
+  IdlValue obj(std::move(variant));
+
+  auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
+  REQUIRE(back.has_value());
+  auto ret = back.value();
+
+  auto back2 = obj.get<std::variant<Peer_authentication, Sender_report>>();
+  REQUIRE(back2.has_value());
+
+  auto var = back2.value();
+
+  REQUIRE(std::holds_alternative<Peer_authentication>(var));
+  auto peer = std::get<Peer_authentication>(var);
+  REQUIRE(peer.value.compare(auth.value));
 }
