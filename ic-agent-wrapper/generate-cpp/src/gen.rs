@@ -10,6 +10,7 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
 #include <optional>
 #include <stdint.h>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -262,7 +263,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
         RcDoc::text(format!(
             r#"auto name = std::string("{id}");
         auto val = IdlValue(std::move(arg.{id}));
-        fields.emplace_back(std::make_pair(name, std::move(val)));"#
+        fields.emplace(std::make_pair(name, std::move(val)));"#
         ))
     };
 
@@ -272,7 +273,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     );
 
     let body = enclose(
-        "std::vector<std::pair<std::string, IdlValue>> fields;\n",
+        "std::unordered_map<std::string, IdlValue> fields;\n",
         all_fields,
         "\n     *this = std::move(IdlValue::FromRecord(fields));",
     );
@@ -305,14 +306,18 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     let body = str(name)
         .append(" result;")
         .append(RcDoc::hardline())
-        .append("auto fields = this->getRecord();")
+        .append("auto fields = getRecord();")
         .append(RcDoc::hardline())
         .append(all_fields)
         .append(RcDoc::hardline())
         .append("\treturn std::make_optional(std::move(result));");
     let getter = str("template <> std::optional")
         .append(enclose("<", str(name), ">"))
-        .append(" IdlValue::get() ")
+        .append(enclose(
+            "IdlValue::getImpl(helper::tag_type<",
+            str(name),
+            ">)",
+        ))
         .append(enclose("{", body, "}"));
 
     enclose_space(
@@ -381,21 +386,13 @@ fn pp_record<'a, 'b>(
     //  static constexpr std::size_t __CANDID_CODE = 0;
     let pp_mby_variant_info = || {
         if let Some((name, code)) = variant_info {
-            let keywords = kwd("static").append(kwd("constexpr"));
+            let name =
+                format!(r#"static constexpr std::string_view __CANDID_VARIANT_NAME{{"{name}"}};"#);
+            let code = format!("static constexpr std::size_t __CANDID_VARIANT_CODE{{{code}}};");
 
-            let name = keywords
-                .clone()
-                .append(kwd("std::string_view"))
-                .append("__CANDID_VARIANT_NAME")
-                .append(enclose("{\"", RcDoc::text(name.to_string()), "\"};"));
-
-            let code = keywords
-                .append(kwd("std::size_t"))
-                .append("__CANDID_VARIANT_CODE")
-                .append(enclose("{", RcDoc::text(code.to_string()), "};"));
-
-            name.append(RcDoc::hardline())
-                .append(code)
+            RcDoc::text(name)
+                .append(RcDoc::hardline())
+                .append(RcDoc::text(code))
                 .append(RcDoc::hardline())
         } else {
             RcDoc::nil()

@@ -18,6 +18,8 @@
 #include <cstdlib>
 #include <optional>
 
+#include "doctest.h"
+
 namespace zondax {
 
 void Principal::error_callback(const unsigned char *data, int len,
@@ -153,5 +155,91 @@ Principal::~Principal() {
     principal_destroy(cPrincipal);
   }
 }
-
 }  // namespace zondax
+// **************************** Unit tests *****************
+using namespace zondax;
+
+TEST_CASE("Testing Anonymous Principal") {
+  Principal anonym;
+  auto bytes = anonym.getBytes();
+  REQUIRE(bytes.size() == 1);
+  REQUIRE(bytes[0] == 4);
+}
+
+TEST_CASE("Testing Anonymous Principal from/to text") {
+  // Get principal from Text , testing with anonymous principal
+  std::string text = "2vxsx-fae";
+
+  auto result2 = Principal::FromText(text);
+
+  REQUIRE(std::holds_alternative<Principal>(result2));
+  auto bytes = std::get<Principal>(result2).getBytes();
+
+  REQUIRE(bytes.size() == 1);
+  REQUIRE(bytes[0] == 4);
+
+  SUBCASE("Anonymous Principal ToText") {
+    // Get Text from principal, testing with anonymous principal
+    std::vector<unsigned char> p_slice = {4};
+
+    std::string str = Principal::ToText(p_slice);
+
+    REQUIRE(str == text);
+  }
+}
+
+TEST_CASE("Principal from bytes") {
+  // Get Principal from slice of bytes
+  std::vector<uint8_t> slice = {0x1};
+
+  Principal principal(slice);
+
+  auto bytes = principal.getBytes();
+
+  REQUIRE(bytes.size() == 1);
+  REQUIRE(bytes[0] == 0x01);
+}
+
+TEST_CASE("Principal from bytes should fail") {
+  // Get Principal from slice of bytes
+  std::vector<uint8_t> slice_long = {
+      0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55,
+      0x44, 0x33, 0x22, 0x11, 0x00, 0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa,
+      0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
+  };
+
+  auto principal = Principal::TryFromSlice(slice_long);
+
+  // IF we send a byte array bigger than 29 an error is expected
+  REQUIRE(!std::holds_alternative<Principal>(principal));
+}
+
+TEST_CASE("Principal SelfAuthenticating") {
+  // Get SelfAuthenticating Principal
+  std::vector<uint8_t> publicKey = {
+      0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa, 0x99, 0x88, 0x77, 0x66, 0x55,
+      0x44, 0x33, 0x22, 0x11, 0x00, 0xff, 0xee, 0xdd, 0xcc, 0xbb, 0xaa,
+      0x99, 0x88, 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00,
+  };
+
+  std::vector<uint8_t> bytesExpected = {
+      0x2f, 0x8e, 0x47, 0x38, 0xf9, 0xd7, 0x68, 0x16, 0x82, 0x99,
+      0x85, 0x41, 0x52, 0x67, 0x86, 0x38, 0x07, 0xd3, 0x7d, 0x20,
+      0x6a, 0xd9, 0x0f, 0xea, 0x72, 0xbf, 0x9d, 0xcf, 0x02,
+  };
+
+  Principal p = Principal::SelfAuthenticating(publicKey);
+
+  auto bytes = p.getBytes();
+  REQUIRE(bytes.size() == bytesExpected.size());
+  REQUIRE(std::equal(bytes.begin(), bytes.end(), std::begin(bytesExpected)));
+}
+
+TEST_CASE("Principal management") {
+  // Get Management Principal
+  Principal management(false);
+
+  auto bytes = management.getBytes();
+
+  REQUIRE(bytes.size() == 0);
+}

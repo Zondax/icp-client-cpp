@@ -49,7 +49,50 @@ Contains rust code to expose ic-agent lib to C.
 Library folder where we use the wrapper exposed functions
 to create C friendly functions to be used. It is compiled as a static library.
 
-### Guidance & Core Testing
+### Guidance & Core Testing 
+
+The testing framework [doctest](https://github.com/doctest/doctest/tree/master) is used for unit testing different functionality exported by this library.
+The tests can be compiled by running:
+```
+make tests 
+```
+This command will generate a new ***test*** binary which can be executed:
+
+```
+./test
+
+```
+The framework will run all the tests and generate a report similar to the one bellow:
+```
+╰─ ./test                                                                                                                                                        ─╯
+[doctest] doctest version is "2.4.11"
+[doctest] run with "--help" for options
+===============================================================================
+[doctest] test cases:  8 |  8 passed | 0 failed | 0 skipped
+[doctest] assertions: 20 | 20 passed | 0 failed |
+[doctest] Status: SUCCESS!
+```
+You can list the different available tests in the library by running:
+```
+./test -ltc 
+```
+The output at the moment of writting is: 
+```
+╰─ ./test -ltc                                                                                                                                                   ─╯
+[doctest] listing all test case names
+===============================================================================
+Identity_from_pem
+Anonymous Identity
+Testing Anonymous Principal
+Testing Anonymous Principal from/to text
+Principal from bytes
+Principal from bytes should fail
+Principal SelfAuthenticating
+Principal management
+===============================================================================
+[doctest] unskipped test cases passing the current filters: 8
+```
+Please refer to doctest documentation and available options.
 
 On the example folder it can be found different usage examples and
 testing examples for the core exposed functions. 
@@ -59,8 +102,6 @@ different binaries:
 
 - hello-icp: simple example that requires deploying a local hello world canister (see more below);
 - icp-app: interact with canister running on icp0.app, getting a result for a lookup command and extracting the first IDLValue from the result vector;
-- principal: usage tests and examples for the exported function from the principal module;
-- identity: usage tests and examples for the exported function from the identity module;
 - candid: usage tests and examples for the exported function from the candid module;
 
 ### How to use it
