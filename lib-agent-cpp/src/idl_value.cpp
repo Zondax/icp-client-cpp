@@ -667,7 +667,6 @@ IdlValue::IdlValue(Peer_authentication peer) {
   {
     auto name = std::string("value");
     auto val = IdlValue(std::move(peer.value));
-    auto x = val.get<std::string>().value();
     fields.emplace(std::make_pair(name, std::move(val)));
   }
 
@@ -753,14 +752,15 @@ TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
 
   auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
   REQUIRE(back.has_value());
-  auto ret = back.value();
-
-  auto back2 = obj.get<std::variant<Sender_report, Peer_authentication>>();
-  REQUIRE(!back2.has_value());
-
   auto var = back.value();
-
   REQUIRE(std::holds_alternative<Peer_authentication>(var));
   auto peer = std::get<Peer_authentication>(var);
   REQUIRE(peer.value.compare(auth.value));
+
+  auto back2 = obj.get<std::variant<Sender_report, Peer_authentication>>();
+  REQUIRE(back2.has_value());
+  auto var2 = back2.value();
+  REQUIRE(std::holds_alternative<Peer_authentication>(var2));
+  auto peer2 = std::get<Peer_authentication>(var2);
+  REQUIRE(peer2.value.compare(auth.value));
 }

@@ -237,7 +237,7 @@ class IdlValue {
   std::optional<std::tuple<Ts...>> getTuple() {
     // tuples are in reality a list or records, we have an specialization for
     // it, so lets use that here;
-    auto records = this->get<std::unordered_map<std::string, IdlValue>>();
+    auto records = get<std::unordered_map<std::string, IdlValue>>();
 
     if (!records.has_value()) return std::nullopt;
 
@@ -270,8 +270,7 @@ class IdlValue {
     if (loc.has_value()) return false;
 
     // check code, key & Index match
-    if (T::__CANDID_VARIANT_NAME != key || T::__CANDID_VARIANT_CODE != code ||
-        T::__CANDID_VARIANT_CODE != Index)
+    if (T::__CANDID_VARIANT_NAME != key || T::__CANDID_VARIANT_CODE != code)
       return false;
 
     // get to obtain the inner type
@@ -288,7 +287,7 @@ class IdlValue {
       std::index_sequence<Indices...>) {
     using Variant = std::variant<Ts...>;
 
-    auto cvariant_data = this->asCVariant();
+    auto cvariant_data = asCVariant();
     if (!cvariant_data.has_value()) return std::nullopt;
 
     auto [key, code] = cvariant_data.value();
