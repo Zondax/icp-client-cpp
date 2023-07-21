@@ -10,6 +10,7 @@ pub fn compile(env: &TypeEnv, actor: &Option<Type>) -> String {
 #include <optional>
 #include <stdint.h>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -262,7 +263,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
         RcDoc::text(format!(
             r#"auto name = std::string("{id}");
         auto val = IdlValue(std::move(arg.{id}));
-        fields.emplace_back(std::make_pair(name, std::move(val)));"#
+        fields.emplace(std::make_pair(name, std::move(val)));"#
         ))
     };
 
@@ -272,7 +273,7 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     );
 
     let body = enclose(
-        "std::vector<std::pair<std::string, IdlValue>> fields;\n",
+        "std::unordered_map<std::string, IdlValue> fields;\n",
         all_fields,
         "\n     *this = std::move(IdlValue::FromRecord(fields));",
     );
@@ -305,14 +306,18 @@ fn pp_record_conversion<'a>(name: &'a str, fs: &'a [Field]) -> RcDoc<'a> {
     let body = str(name)
         .append(" result;")
         .append(RcDoc::hardline())
-        .append("auto fields = this->getRecord();")
+        .append("auto fields = getRecord();")
         .append(RcDoc::hardline())
         .append(all_fields)
         .append(RcDoc::hardline())
         .append("\treturn std::make_optional(std::move(result));");
     let getter = str("template <> std::optional")
         .append(enclose("<", str(name), ">"))
-        .append(" IdlValue::get() ")
+        .append(enclose(
+            "IdlValue::getImpl(helper::tag_type<",
+            str(name),
+            ">)",
+        ))
         .append(enclose("{", body, "}"));
 
     enclose_space(
