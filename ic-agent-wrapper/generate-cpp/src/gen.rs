@@ -386,21 +386,13 @@ fn pp_record<'a, 'b>(
     //  static constexpr std::size_t __CANDID_CODE = 0;
     let pp_mby_variant_info = || {
         if let Some((name, code)) = variant_info {
-            let keywords = kwd("static").append(kwd("constexpr"));
+            let name =
+                format!(r#"static constexpr std::string_view __CANDID_VARIANT_NAME{{"{name}"}};"#);
+            let code = format!("static constexpr std::size_t __CANDID_VARIANT_CODE{{{code}}};");
 
-            let name = keywords
-                .clone()
-                .append(kwd("std::string_view"))
-                .append("__CANDID_VARIANT_NAME")
-                .append(enclose("{\"", RcDoc::text(name.to_string()), "\"};"));
-
-            let code = keywords
-                .append(kwd("std::size_t"))
-                .append("__CANDID_VARIANT_CODE")
-                .append(enclose("{", RcDoc::text(code.to_string()), "};"));
-
-            name.append(RcDoc::hardline())
-                .append(code)
+            RcDoc::text(name)
+                .append(RcDoc::hardline())
+                .append(RcDoc::text(code))
                 .append(RcDoc::hardline())
         } else {
             RcDoc::nil()
