@@ -290,10 +290,11 @@ class IdlValue {
     auto cvariant_data = asCVariant();
     if (!cvariant_data.has_value()) return std::nullopt;
 
-    auto [key, code] = cvariant_data.value();
+    auto [key, code, variant] = std::move(cvariant_data.value());
+
     std::optional<Variant> result;
 
-    (tryVariant<Variant, Indices>(result, key, code), ...);
+    (variant.tryVariant<Variant, Indices>(result, key, code), ...);
 
     return result;
   }
@@ -368,7 +369,7 @@ class IdlValue {
 
   std::unique_ptr<IDLValue> getPtr();
 
-  std::optional<std::pair<std::string, std::size_t>> asCVariant();
+  std::optional<std::tuple<std::string, std::size_t, IdlValue>> asCVariant();
 };
 
 /******************** Private ***********************/

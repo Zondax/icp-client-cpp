@@ -469,7 +469,8 @@ VEC_PRIMITIVE_TYPES_GETTER(zondax::Func)
 VEC_PRIMITIVE_TYPES_GETTER(zondax::Service)
 VEC_PRIMITIVE_TYPES_GETTER(std::monostate)
 
-std::optional<std::pair<std::string, std::size_t>> IdlValue::asCVariant() {
+std::optional<std::tuple<std::string, std::size_t, IdlValue>>
+IdlValue::asCVariant() {
   if (ptr == nullptr) return std::nullopt;
 
   CVariant *variant = variant_from_idl_value(ptr.get());
@@ -482,7 +483,9 @@ std::optional<std::pair<std::string, std::size_t>> IdlValue::asCVariant() {
 
   auto code = cvariant_code(variant);
 
-  return std::make_optional(std::make_pair(key, code));
+  IdlValue idlvalue(cvariant_idlvalue(variant));
+
+  return std::make_optional(std::make_tuple(key, code, std::move(idlvalue)));
 }
 
 std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
@@ -691,16 +694,7 @@ std::optional<Peer_authentication> IdlValue::getImpl(
     helper::tag_type<Peer_authentication> t) {
   Peer_authentication result;
 
-  CVariant *variant = variant_from_idl_value(ptr.get());
-  if (variant == nullptr) return std::nullopt;
-
-  // get inner record
-  auto inner_ptr = cvariant_idlvalue(variant);
-  if (inner_ptr == nullptr) return std::nullopt;
-
-  IdlValue inner(inner_ptr);
-
-  auto fields = inner.getRecord();
+  auto fields = getRecord();
   {
     auto field = std::move(fields["value"]);
     auto val = field.get<std::string>();
@@ -720,15 +714,7 @@ std::optional<Sender_report> IdlValue::getImpl(
     helper::tag_type<Sender_report> t) {
   Sender_report result;
 
-  CVariant *variant = variant_from_idl_value(ptr.get());
-  if (variant == nullptr) return std::nullopt;
-
-  // get inner record
-  auto inner_ptr = cvariant_idlvalue(variant);
-  if (inner_ptr == nullptr) return std::nullopt;
-
-  IdlValue inner(inner_ptr);
-  auto fields = inner.getRecord();
+  auto fields = getRecord();
   {
     auto field = std::move(fields["report"]);
     auto val = field.get<std::string>();
