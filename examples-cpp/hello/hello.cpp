@@ -19,16 +19,15 @@
 #include "agent.h"
 #include "helper.h"
 #include "idl_value.h"
-//#include "../../examples-cpp/ic/declarations/example/example.hpp"
+#include "../../examples-cpp/hello/declarations/rust_hello/rust_hello.hpp"
 using namespace zondax;
 
 int main() {
-# if 0
   // Canister info from hello world deploy example
-  std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-  // path is relative to binary location, not source
-  std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
-  std::string url = "https://ic0.app";
+  std::string id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
+  std::string did_file = "../examples-cpp/hello/declarations/rust_hello/rust_hello_backend.did";
+  std::string url = "http://127.0.0.1:4943";
+
 
   std::vector<char> buffer;
   auto bytes_read = did_file_content(did_file, buffer);
@@ -37,6 +36,7 @@ int main() {
   auto principal = Principal::FromText(id_text);
 
   if (std::holds_alternative<std::string>(principal)) {
+     std::cerr << "Error: " << std::get<std::string>(principal) << std::endl;
     return -1;
   }
 
@@ -54,24 +54,17 @@ int main() {
 
   SERVICE srv(std::move(std::get<Agent>(agent)));
 
-  auto out = srv.lookup(1974211);
-  if (std::holds_alternative<std::string>(agent)) {
-    std::cerr << "Error: " << std::get<std::string>(agent) << std::endl;
-    return -1;
-  }
+  std::string arg = "Zondax";
+  auto out = srv.greet(arg);
+  // Get the first string value from the variant
+  //std::string str1 = std::get<0>(out);
 
-  auto deviceData = std::get<0>(out);
- 
-for (auto device : deviceData) {
-  std::cout << device.alias << std::endl;
-  // std::cout << std::hex
-  //           << (device.credential_id.has_value()
-  //                   ? device.credential_id.value()
-  //                   : std::vector<uint8_t>(0))
-  //           << std::endl;
-  std::cout << "---------------------------------" << std::endl;
-}
+  // Get the second string value from the variant
+  std::string str2 = std::get<1>(out);
 
-#endif
+  // Print the strings
+  //std::cout << "String 1: " << str1 << std::endl;
+  std::cout << "String 2: " << str2 << std::endl;
+
   return 0;
 }
