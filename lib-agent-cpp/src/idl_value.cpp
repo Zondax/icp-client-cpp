@@ -246,6 +246,31 @@ TEST_CASE("IdlValue from/to tuple") {
   REQUIRE(bytes[0] == 0x01);
 }
 
+TEST_CASE("IdlValue from/to vector<std::tuple<Args...>>") {
+  // construct tuple
+  std::vector<std::tuple<uint8_t, uint64_t, double, std::string, bool>> vec;
+  for (int i = 0; i < 10; ++i) {
+    std::tuple<uint8_t, uint64_t, double, std::string, bool> tuple =
+        std::make_tuple((uint8_t)i, 100500, 2.5, std::string("zondax"),
+                        (i % 2 == 0));
+    vec.push_back(tuple);
+  }
+
+  auto copy = vec;
+
+  IdlValue value(std::move(vec));
+
+  auto back = value.get<
+      std::vector<std::tuple<uint8_t, uint64_t, double, std::string, bool>>>();
+
+  REQUIRE(back.has_value());
+  auto vec2 = back.value();
+  REQUIRE(copy.size() == vec2.size());
+  auto equal = copy == vec2;
+  // REQUIRE(true == equal);
+  REQUIRE(copy == vec2);
+}
+
 struct Peer_authentication {
   explicit Peer_authentication() = default;
   static constexpr std::string_view __CANDID_VARIANT_NAME{"authentication"};

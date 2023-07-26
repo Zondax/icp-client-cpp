@@ -177,6 +177,18 @@ struct tuple_to_types<std::tuple<Ts...>> {
 template <typename Tuple, template <typename...> typename U>
 using tuple_to_types_t = typename tuple_to_types<Tuple>::template rebind<U>;
 
+// ************** helper for vector<tuple<args...>>
+
+template <typename T>
+struct is_vector_of_tuples : std::false_type {};
+
+template <typename... Args>
+struct is_vector_of_tuples<std::vector<std::tuple<Args...>>> : std::true_type {
+};
+
+template <typename T>
+inline constexpr bool is_vector_of_tuples_v = is_vector_of_tuples<T>::value;
+
 }  // namespace helper
 
 struct Number {
@@ -206,8 +218,36 @@ class IdlValue {
 
   template <typename T>
   std::optional<T> getImpl(helper::tag_type<T> t) {
-    // Your default implementation here
     return std::nullopt;
+  }
+
+  // specialization for vector of tuples
+  template <typename... Args>
+  std::optional<std::vector<std::tuple<Args...>>> getImpl(
+      helper::tag_type<std::vector<std::tuple<Args...>>>) {
+    auto values_vec = vec_from_idl_value(ptr.get());
+
+    if (values_vec == nullptr) return std::nullopt;
+
+    auto vec_len = cidlval_vec_len(values_vec);
+    std::vector<std::tuple<Args...>> ret;
+
+    for (int i = 0; i < vec_len; ++i) {
+      auto p = cidlval_vec_value_take(values_vec, i);
+
+      if (p == nullptr) return std::nullopt;
+
+      IdlValue value(p);
+      auto val = value.get<std::tuple<Args...>>();
+
+      if (!val.has_value()) return std::nullopt;
+
+      ret.emplace_back(std::move(val.value()));
+    }
+
+    cidlval_vec_destroy(values_vec);
+
+    return ret;
   }
 
   // Fallback function for non-variant, non-tuples, non-map-like
@@ -376,7 +416,8 @@ class IdlValue {
 
   /******************** Getters ***********************/
 
-  template <typename T>
+  template <typename T,
+            typename = std::enable_if_t<!helper::is_vector_of_tuples_v<T>>>
   std::optional<T> get() {
     return getHelper<T>(helper::is_variant<T>{}, helper::is_tuple<T>{});
   }
@@ -395,6 +436,12 @@ class IdlValue {
   template <template <typename, typename> class T, typename U, typename V>
   std::optional<T<U, V>> get(helper::tag_type<T<U, V>>) {
     return std::nullopt;
+  }
+
+  template <typename T,
+            std::enable_if_t<helper::is_vector_of_tuples_v<T>, bool> = true>
+  std::optional<T> get() {
+    return getImpl(helper::tag_type<T>{});
   }
 
   std::optional<IdlValue> getOpt();
