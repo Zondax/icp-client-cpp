@@ -16,14 +16,13 @@
 #include <iostream>
 #include <variant>
 
+#include "../../examples-cpp/ic/declarations/example/example.hpp"
 #include "agent.h"
 #include "helper.h"
 #include "idl_value.h"
-//#include "../../examples-cpp/ic/declarations/example/example.hpp"
 using namespace zondax;
 
 int main() {
-# if 0
   // Canister info from hello world deploy example
   std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
   // path is relative to binary location, not source
@@ -61,17 +60,16 @@ int main() {
   }
 
   auto deviceData = std::get<0>(out);
- 
-for (auto device : deviceData) {
-  std::cout << device.alias << std::endl;
-  // std::cout << std::hex
-  //           << (device.credential_id.has_value()
-  //                   ? device.credential_id.value()
-  //                   : std::vector<uint8_t>(0))
-  //           << std::endl;
-  std::cout << "---------------------------------" << std::endl;
-}
 
-#endif
+  for (auto device : deviceData) {
+    std::cout << device.alias << std::endl;
+    // std::cout << std::hex
+    //           << (device.credential_id.has_value()
+    //                   ? device.credential_id.value()
+    //                   : std::vector<uint8_t>(0))
+    //           << std::endl;
+    std::cout << "---------------------------------" << std::endl;
+  }
+
   return 0;
 }
