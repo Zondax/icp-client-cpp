@@ -91,7 +91,6 @@ std::vector<uint8_t> IdlArgs::getBytes() {
 
 std::vector<zondax::IdlValue> IdlArgs::getVec() {
   if (ptr == nullptr) {
-    std::cerr << "IDLArgs instance uninitialized" << std::endl;
     return std::vector<zondax::IdlValue>();
   }
 
@@ -99,7 +98,8 @@ std::vector<zondax::IdlValue> IdlArgs::getVec() {
   std::vector<zondax::IdlValue> vec;
 
   for (uintptr_t i = 0; i < cidlval_vec_len(cVec); ++i) {
-    const IDLValue* idlValue = cidlval_vec_value(cVec, i);
+    // take ownership of inner value
+    const IDLValue* idlValue = cidlval_vec_value_take(cVec, i);
     vec.push_back(zondax::IdlValue(idlValue));
   }
 
