@@ -16,18 +16,21 @@
 #include <iostream>
 #include <variant>
 
+#include "../../examples-cpp/hello/declarations/rust_hello/rust_hello.hpp"
 #include "agent.h"
 #include "helper.h"
 #include "idl_value.h"
-#include "../../examples-cpp/hello/declarations/rust_hello/rust_hello.hpp"
 using namespace zondax;
 
 int main() {
   // Canister info from hello world deploy example
-  std::string id_text = "rrkah-fqaaa-aaaaa-aaaaq-cai";
-  std::string did_file = "../examples-cpp/hello/declarations/rust_hello/rust_hello_backend.did";
-  std::string url = "http://127.0.0.1:4943";
 
+  // canister id, this might need to be change as canister when deployed
+  // might change its id
+  std::string id_text = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+  std::string did_file =
+      "../examples-cpp/hello/declarations/rust_hello/rust_hello_backend.did";
+  std::string url = "http://127.0.0.1:4943";
 
   std::vector<char> buffer;
   auto bytes_read = did_file_content(did_file, buffer);
@@ -36,7 +39,7 @@ int main() {
   auto principal = Principal::FromText(id_text);
 
   if (std::holds_alternative<std::string>(principal)) {
-     std::cerr << "Error: " << std::get<std::string>(principal) << std::endl;
+    std::cerr << "Error: " << std::get<std::string>(principal) << std::endl;
     return -1;
   }
 
@@ -56,15 +59,15 @@ int main() {
 
   std::string arg = "Zondax";
   auto out = srv.greet(arg);
-  // Get the first string value from the variant
-  //std::string str1 = std::get<0>(out);
 
-  // Get the second string value from the variant
-  std::string str2 = std::get<1>(out);
-
-  // Print the strings
-  //std::cout << "String 1: " << str1 << std::endl;
-  std::cout << "String 2: " << str2 << std::endl;
+  if (out.index() == 0) {
+    // Print message from the canister
+    std::cout << std::get<0>(out) << std::endl;
+  } else {
+    // Get the second string value from the variant
+    std::string str2 = std::get<1>(out);
+    std::cout << "Error: " << str2 << std::endl;
+  }
 
   return 0;
 }
