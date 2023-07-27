@@ -260,8 +260,27 @@ template <typename... Args>
 struct is_vector_of_tuples<std::vector<std::tuple<Args...>>> : std::true_type {
 };
 
+// Helper Trait definitions to handle std::optiona<T>
+// specializations.
 template <typename T>
 inline constexpr bool is_vector_of_tuples_v = is_vector_of_tuples<T>::value;
+
+template <typename T>
+struct is_optional : std::false_type {};
+
+template <typename U>
+struct is_optional<std::optional<U>> : std::true_type {};
+
+template <typename T>
+inline constexpr bool is_optional_v = is_optional<T>::value;
+
+template <typename T>
+struct inner_type {};
+
+template <typename T>
+struct inner_type<std::optional<T>> {
+  typedef T type;
+};
 
 }  // namespace helper
 
@@ -491,9 +510,33 @@ class IdlValue {
   /******************** Getters ***********************/
 
   template <typename T,
-            typename = std::enable_if_t<!helper::is_vector_of_tuples_v<T>>>
+            typename = std::enable_if_t<!helper::is_vector_of_tuples_v<T> &&
+                                        !helper::is_optional_v<T>>>
   std::optional<T> get() {
     return getHelper<T>(helper::is_variant<T>{}, helper::is_tuple<T>{});
+  }
+
+  template <typename T, std::enable_if_t<helper::is_optional_v<T>, bool> = true>
+  std::optional<T> get() {
+    // get inner type:
+    using U = typename helper::inner_type<T>::type;
+
+    // use the type as inner value can be either Opt or None
+    switch (type()) {
+      case IdlValueType::Opt: {
+        auto opt = getOpt();
+        if (!opt.has_value()) return std::nullopt;
+
+        auto value = std::move(opt.value());
+
+        return value.get<U>();
+      }
+      case IdlValueType::None:
+        return T{std::nullopt};
+
+      default:
+        return std::nullopt;
+    }
   }
 
   template <
@@ -519,6 +562,8 @@ class IdlValue {
   }
 
   std::unordered_map<std::string, IdlValue> getRecord();
+
+  std::optional<IdlValue> getOpt();
 
   std::unique_ptr<IDLValue> getPtr();
 

@@ -134,6 +134,16 @@ std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
   return std::move(fields);
 }
 
+std::optional<IdlValue> IdlValue::getOpt() {
+  if (ptr == nullptr) return std::nullopt;
+
+  IDLValue *result = opt_from_idl_value(ptr.get());
+
+  if (result == nullptr) return std::nullopt;
+
+  return IdlValue(result);
+}
+
 std::unique_ptr<IDLValue> IdlValue::getPtr() { return std::move(ptr); }
 
 }  // namespace zondax
@@ -271,6 +281,30 @@ TEST_CASE("IdlValue from/to vector<std::tuple<Args...>>") {
   auto equal = copy == vec2;
   // REQUIRE(true == equal);
   REQUIRE(copy == vec2);
+}
+
+TEST_CASE("IdlValue from/to std::optional<T>") {
+  uint32_t num = 100;
+  std::optional<uint32_t> op(num);
+  IdlValue value(op);
+
+  auto back = value.get<std::optional<uint32_t>>();
+  REQUIRE(back.has_value());
+  auto inner = back.value();
+  REQUIRE(inner.has_value());
+  auto result = inner.value();
+  REQUIRE(result == num);
+
+  SUBCASE("Inner optional null") {
+    std::optional<uint32_t> val;
+    val = std::nullopt;
+    IdlValue value(val);
+
+    auto back = value.get<std::optional<uint32_t>>();
+    REQUIRE(back.has_value());
+    auto inner = back.value();
+    REQUIRE(!inner.has_value());
+  }
 }
 
 struct Peer_authentication {
