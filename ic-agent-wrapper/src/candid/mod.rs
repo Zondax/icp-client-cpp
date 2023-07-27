@@ -206,21 +206,11 @@ pub extern "C" fn idl_args_from_vec(
 /// @return Pointer to the Array of IDLValues , i.e. CIDLValuesVec struture
 #[no_mangle]
 pub extern "C" fn idl_args_to_vec(ptr: &IDLArgs) -> Option<Box<CIDLValuesVec>> {
-    let r = {
-        let idl_values = ptr.args.clone();
-
-        let mut ptrs = Vec::new();
-
-        for idl_value in idl_values {
-            let boxed = Box::new(idl_value);
-            let ptr = Box::into_raw(boxed);
-
-            ptrs.push(ptr as *const IDLValue);
-        }
-
-        ptrs
-    };
-
+    let idl_values = ptr.args.clone();
+    let r: Vec<*const IDLValue> = idl_values
+        .into_iter()
+        .map(|value| Box::into_raw(Box::new(value)) as _)
+        .collect();
     Some(Box::new(CIDLValuesVec { data: r }))
 }
 
@@ -968,23 +958,15 @@ pub extern "C" fn idl_value_with_vec(
 /// @return Pointer to Array of IDLValues , CIDLValuesVec
 #[no_mangle]
 pub extern "C" fn vec_from_idl_value(ptr: &IDLValue) -> Option<Box<CIDLValuesVec>> {
-    let r = {
-        let s = match ptr {
-            IDLValue::Vec(v) => v.to_owned(),
-            _ => return None,
-        };
-
-        let mut ptrs = Vec::new();
-
-        for idl_value in s {
-            let boxed = Box::new(idl_value);
-            let ptr = Box::into_raw(boxed);
-
-            ptrs.push(ptr as *const IDLValue);
-        }
-
-        ptrs
+    let IDLValue::Vec(vec) = ptr else {
+        return None;
     };
+
+    let r: Vec<*const IDLValue> = vec
+        .clone()
+        .into_iter()
+        .map(|inner| Box::into_raw(Box::new(inner)) as _)
+        .collect();
 
     Some(Box::new(CIDLValuesVec { data: r }))
 }
