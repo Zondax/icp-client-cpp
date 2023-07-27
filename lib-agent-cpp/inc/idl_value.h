@@ -25,6 +25,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
@@ -49,6 +50,79 @@ struct default_delete<IDLValue> {
   }
 };
 }  // namespace std
+
+namespace zondax {
+enum class IdlValueType : int {
+  Bool,
+  Null,
+  Text,
+  Number,
+  Float64,
+  Opt,
+  Vec,
+  Record,
+  Variant,
+  Principal,
+  Service,
+  Func,
+  None,
+  Int,
+  Nat,
+  Nat8,
+  Nat16,
+  Nat32,
+  Nat64,
+  Int8,
+  Int16,
+  Int32,
+  Int64,
+  Float32,
+  Reserved,
+  Invalid  // place holder for invalid types
+};
+
+#define ENUM_TO_STRING_CASE(x) \
+  case IdlValueType::x:        \
+    return #x;
+
+// Function to convert IdlValueType to string
+constexpr std::string_view to_string(IdlValueType value) {
+  switch (value) {
+    ENUM_TO_STRING_CASE(Bool)
+    ENUM_TO_STRING_CASE(Null)
+    ENUM_TO_STRING_CASE(Text)
+    ENUM_TO_STRING_CASE(Number)
+    ENUM_TO_STRING_CASE(Float64)
+    ENUM_TO_STRING_CASE(Opt)
+    ENUM_TO_STRING_CASE(Vec)
+    ENUM_TO_STRING_CASE(Record)
+    ENUM_TO_STRING_CASE(Variant)
+    ENUM_TO_STRING_CASE(Principal)
+    ENUM_TO_STRING_CASE(Service)
+    ENUM_TO_STRING_CASE(Func)
+    ENUM_TO_STRING_CASE(None)
+    ENUM_TO_STRING_CASE(Int)
+    ENUM_TO_STRING_CASE(Nat)
+    ENUM_TO_STRING_CASE(Nat8)
+    ENUM_TO_STRING_CASE(Nat16)
+    ENUM_TO_STRING_CASE(Nat32)
+    ENUM_TO_STRING_CASE(Nat64)
+    ENUM_TO_STRING_CASE(Int8)
+    ENUM_TO_STRING_CASE(Int16)
+    ENUM_TO_STRING_CASE(Int32)
+    ENUM_TO_STRING_CASE(Int64)
+    ENUM_TO_STRING_CASE(Float32)
+    ENUM_TO_STRING_CASE(Reserved)
+    default:
+      return "Unknown type";
+  }
+}
+
+inline std::ostream &operator<<(std::ostream &os, IdlValueType value) {
+  os << to_string(value);
+  return os;
+}
+}  // namespace zondax
 
 namespace zondax {
 
@@ -444,12 +518,13 @@ class IdlValue {
     return getImpl(helper::tag_type<T>{});
   }
 
-  std::optional<IdlValue> getOpt();
   std::unordered_map<std::string, IdlValue> getRecord();
 
   std::unique_ptr<IDLValue> getPtr();
 
   std::optional<std::tuple<std::string, std::size_t, IdlValue>> asCVariant();
+
+  IdlValueType type();
 };
 
 /******************** Private ***********************/

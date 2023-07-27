@@ -41,6 +41,18 @@ IdlValue &IdlValue::operator=(IdlValue &&o) noexcept {
   return *this;
 }
 
+IdlValueType IdlValue::type() {
+  if (ptr.get() == nullptr) return IdlValueType::Null;
+
+  uint32_t ty = idl_value_type(ptr.get());
+
+  auto max = static_cast<uint8_t>(IdlValueType::Reserved);
+
+  if (ty > max) return static_cast<IdlValueType>(IdlValueType::Invalid);
+
+  return static_cast<IdlValueType>(ty);
+}
+
 /******************** T -> IdlValue ***********************/
 
 IdlValue IdlValue::FromRecord(
@@ -68,16 +80,6 @@ IdlValue IdlValue::FromVariant(std::string key, IdlValue *val, uint64_t code) {
 }
 
 // ---------------------- IdlValue::get() specializations ---
-
-std::optional<IdlValue> IdlValue::getOpt() {
-  if (ptr == nullptr) return std::nullopt;
-
-  IDLValue *result = opt_from_idl_value(ptr.get());
-
-  if (result == nullptr) return std::nullopt;
-
-  return IdlValue(result);
-}
 
 std::optional<std::tuple<std::string, std::size_t, IdlValue>>
 IdlValue::asCVariant() {

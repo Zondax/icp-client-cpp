@@ -76,6 +76,13 @@ typedef struct RetError {
 } RetError;
 
 /**
+ * @brief Returns the type of the IdlValue as an u8 value.
+ *
+ * @param _ptr Pointer to IDLValue
+ */
+uint8_t idl_value_type(const IDLValue *value);
+
+/**
  * @brief Free allocated memory
  *
  * @param _ptr Pointer to IDLValue Array

@@ -37,6 +37,72 @@ pub struct RetError {
     call: RetPtr<u8>,
 }
 
+#[repr(u8)]
+#[derive(Debug)]
+enum IdlValueType {
+    Bool,
+    Null,
+    Text,
+    Number,
+    Float64,
+    Opt,
+    Vec,
+    Record,
+    Variant,
+    Principal,
+    Service,
+    Func,
+    None,
+    Int,
+    Nat,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Reserved,
+}
+
+/// @brief Returns the type of the IdlValue as an u8 value.
+///
+/// @param _ptr Pointer to IDLValue
+#[no_mangle]
+pub extern "C" fn idl_value_type(value: &IDLValue) -> u8 {
+    let ty = match value {
+        IDLValue::Bool(_) => IdlValueType::Bool,
+        IDLValue::Null => IdlValueType::Null,
+        IDLValue::Text(_) => IdlValueType::Text,
+        IDLValue::Number(_) => IdlValueType::Number,
+        IDLValue::Float64(_) => IdlValueType::Float64,
+        IDLValue::Opt(_) => IdlValueType::Opt,
+        IDLValue::Vec(_) => IdlValueType::Vec,
+        IDLValue::Record(_) => IdlValueType::Record,
+        IDLValue::Variant(_) => IdlValueType::Variant,
+        IDLValue::Principal(_) => IdlValueType::Principal,
+        IDLValue::Service(_) => IdlValueType::Service,
+        IDLValue::Func(..) => IdlValueType::Func,
+        IDLValue::None => IdlValueType::None,
+        IDLValue::Int(_) => IdlValueType::Int,
+        IDLValue::Nat(_) => IdlValueType::Nat,
+        IDLValue::Nat8(_) => IdlValueType::Nat8,
+        IDLValue::Nat16(_) => IdlValueType::Nat16,
+        IDLValue::Nat32(_) => IdlValueType::Nat32,
+        IDLValue::Nat64(_) => IdlValueType::Nat64,
+        IDLValue::Int8(_) => IdlValueType::Int8,
+        IDLValue::Int16(_) => IdlValueType::Int16,
+        IDLValue::Int32(_) => IdlValueType::Int32,
+        IDLValue::Int64(_) => IdlValueType::Int64,
+        IDLValue::Float32(_) => IdlValueType::Float32,
+        IDLValue::Reserved => IdlValueType::Reserved,
+    };
+
+    ty as u8
+}
+
 /// @brief Free allocated memory
 ///
 /// @param _ptr Pointer to IDLValue Array
