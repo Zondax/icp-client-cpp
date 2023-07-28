@@ -1,12 +1,7 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  - push
 
 jobs:
   build:
@@ -42,5 +37,13 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/build --config Release
 
-      - name: Run tests (optional)
-        run: ctest --test-dir ${{github.workspace}}/build
+      - name: Run tests
+        run: |
+          cd ${{github.workspace}}/build
+          ./test
+
+      - name: Run ic_example
+        run: |
+          cd ${{github.workspace}}/build
+          ./ic
+
