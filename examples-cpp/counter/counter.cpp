@@ -16,18 +16,18 @@
 #include <iostream>
 #include <variant>
 
-#include "../../examples-cpp/ic/declarations/example/example.hpp"
 #include "agent.h"
 #include "helper.h"
 #include "idl_value.h"
+#include "../../examples-cpp/counter/declarations/counter/counter.hpp"
 using namespace zondax;
 
 int main() {
   // Canister info from hello world deploy example
-  std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
+  std::string id_text = "q4eej-kyaaa-aaaaa-aaaha-cai";
   // path is relative to binary location, not source
-  std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
-  std::string url = "https://ic0.app";
+  std::string did_file = "../examples-cpp/counter/declarations/counter/counter_backend.did";
+  std::string url = "http://127.0.0.1:4943";
 
   std::vector<char> buffer;
   auto bytes_read = did_file_content(did_file, buffer);
@@ -36,6 +36,7 @@ int main() {
   auto principal = Principal::FromText(id_text);
 
   if (std::holds_alternative<std::string>(principal)) {
+     std::cerr << "Error: " << std::get<std::string>(principal) << std::endl;
     return -1;
   }
 
@@ -53,23 +54,23 @@ int main() {
 
   SERVICE srv(std::move(std::get<Agent>(agent)));
 
-  auto out = srv.lookup(1974211);
-  if (std::holds_alternative<std::string>(agent)) {
-    std::cerr << "Error: " << std::get<std::string>(agent) << std::endl;
-    return -1;
-  }
+  auto out = srv.set(20);
 
-  auto deviceData = std::get<0>(out);
-
-  for (auto device : deviceData) {
-    std::cout << "Device alias: " << device.alias << std::endl;
-    // std::cout << std::hex
-    //           << (device.credential_id.has_value()
-    //                   ? device.credential_id.value()
-    //                   : std::vector<uint8_t>(0))
-    //           << std::endl;
-    std::cout << "---------------------------------" << std::endl;
-  }
+  auto result = srv.get();
+  std::visit([](const auto& value) {
+    // Check if the value is an uint64_t
+    if constexpr (std::is_same_v<std::decay_t<decltype(value)>, uint64_t>) {
+        std::cout << "uint64_t value: " << value << std::endl;
+    }
+    // Check if the value is a string
+    else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, std::string>) {
+        std::cout << "string value: " << value << std::endl;
+    }
+    // Handle any other types if needed
+    else {
+        std::cout << "Unknown type!" << std::endl;
+    }
+  }, result);
 
   return 0;
 }

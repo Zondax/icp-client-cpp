@@ -39,10 +39,7 @@ use crate::{
 /// @return An IDLArgs object containing an empty list IDLValues
 #[no_mangle]
 pub extern "C" fn empty_idl_args() -> Box<IDLArgs> {
-    // use dummy idl_value
-    let values = [IDLValue::Bool(false); 0];
-    let args = IDLArgs::new(values.as_slice());
-    Box::new(args)
+    Box::new(IDLArgs { args: vec![] })
 }
 
 /// @brief Push a new IDLValue into values list
@@ -209,22 +206,21 @@ pub extern "C" fn idl_args_from_vec(
 /// @return Pointer to the Array of IDLValues , i.e. CIDLValuesVec struture
 #[no_mangle]
 pub extern "C" fn idl_args_to_vec(ptr: &IDLArgs) -> Option<Box<CIDLValuesVec>> {
-    let r = {
-        let idl_values = ptr.args.clone();
-
-        let mut ptrs = Vec::new();
-
-        for idl_value in idl_values {
-            let boxed = Box::new(idl_value);
-            let ptr = Box::into_raw(boxed);
-
-            ptrs.push(ptr as *const IDLValue);
-        }
-
-        ptrs
-    };
-
+    let idl_values = ptr.args.clone();
+    let r: Vec<*const IDLValue> = idl_values
+        .into_iter()
+        .map(|value| Box::into_raw(Box::new(value)) as _)
+        .collect();
     Some(Box::new(CIDLValuesVec { data: r }))
+}
+
+/// @brief Number of elements in IDLArgs
+///
+/// @param ptr Pointer to IDLArgs Array
+/// @return Number of IDLValues in IDLArgs
+#[no_mangle]
+pub extern "C" fn idl_args_len(ptr: &IDLArgs) -> usize {
+    return ptr.args.len();
 }
 
 /// @brief Free allocated memory
@@ -649,6 +645,15 @@ pub extern "C" fn idl_value_with_null() -> Box<IDLValue> {
     Box::new(idl_value)
 }
 
+/// @brief Get null from value
+///
+/// @param idl IDLValue pointer
+/// @return boolean value that indicates if idlValue is in fact of this type
+#[no_mangle]
+pub extern "C" fn idl_value_is_null(idl: &IDLValue) -> bool {
+    matches!(idl, IDLValue::Null)
+}
+
 /// @brief Create IDLValue with none
 ///
 /// @return Pointer to the IDLValue Structure
@@ -953,23 +958,15 @@ pub extern "C" fn idl_value_with_vec(
 /// @return Pointer to Array of IDLValues , CIDLValuesVec
 #[no_mangle]
 pub extern "C" fn vec_from_idl_value(ptr: &IDLValue) -> Option<Box<CIDLValuesVec>> {
-    let r = {
-        let s = match ptr {
-            IDLValue::Vec(v) => v.to_owned(),
-            _ => return None,
-        };
-
-        let mut ptrs = Vec::new();
-
-        for idl_value in s {
-            let boxed = Box::new(idl_value);
-            let ptr = Box::into_raw(boxed);
-
-            ptrs.push(ptr as *const IDLValue);
-        }
-
-        ptrs
+    let IDLValue::Vec(vec) = ptr else {
+        return None;
     };
+
+    let r: Vec<*const IDLValue> = vec
+        .clone()
+        .into_iter()
+        .map(|inner| Box::into_raw(Box::new(inner)) as _)
+        .collect();
 
     Some(Box::new(CIDLValuesVec { data: r }))
 }

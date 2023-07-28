@@ -16,7 +16,12 @@
 
 #include "agent.h"
 
+// #include <bits/utility.h>
+
+#include <optional>
+#include <string>
 #include <utility>
+#include <variant>
 
 using zondax::IdlArgs;
 
@@ -52,7 +57,7 @@ Agent& Agent::operator=(Agent&& o) noexcept {
 }
 
 std::variant<Agent, std::string> Agent::create_agent(
-    std::string url, zondax::Identity id, zondax::Principal principal,
+    std::string url, zondax::Identity id, zondax::Principal& principal,
     const std::vector<char>& did_content) {
   // string to get error message from callback
   std::string data;
@@ -81,13 +86,11 @@ std::variant<Agent, std::string> Agent::create_agent(
   return ok;
 }
 
-std::variant<IdlArgs, std::string> Agent::Query(std::string service,
-                                                zondax::IdlArgs& args) {
-  if (agent == nullptr) {
-    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
-                                             "Agent instance uninitialized"};
-    return error;
-  }
+/* *********************** Query ************************/
+
+std::variant<IdlArgs, std::string> Agent::Query(const std::string& method,
+                                                zondax::IdlArgs&& args) {
+  if (agent == nullptr) return std::string("Agent instance uninitialized");
 
   CText* arg = idl_args_to_text(args.getPtr().get());
 
@@ -97,27 +100,21 @@ std::variant<IdlArgs, std::string> Agent::Query(std::string service,
   ret.call = Agent::error_callback;
 
   IDLArgs* argsPtr =
-      agent_query_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+      agent_query_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
-  if (argsPtr == nullptr) {
-    std::variant<IdlArgs, std::string> error(data);
-    return error;
-  }
+  if (argsPtr == nullptr) return std::string(data);
 
-  // IdlArgs result(argsPtr);
+  auto idlArgs = IdlArgs(argsPtr);
+  idlArgs.ensureNonEmpty();
 
-  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
-
-  return ok;
+  return std::move(idlArgs);
 }
 
-std::variant<IdlArgs, std::string> Agent::Update(std::string service,
-                                                 zondax::IdlArgs& args) {
-  if (agent == nullptr) {
-    std::variant<IdlArgs, std::string> error{std::in_place_type<std::string>,
-                                             "Agent instance uninitialized"};
-    return error;
-  }
+/* *********************** Update ************************/
+
+std::variant<IdlArgs, std::string> Agent::Update(const std::string& method,
+                                                 IdlArgs&& args) {
+  if (agent == nullptr) return std::string("Agent instance uninitialized");
 
   CText* arg = idl_args_to_text(args.getPtr().get());
 
@@ -127,16 +124,14 @@ std::variant<IdlArgs, std::string> Agent::Update(std::string service,
   ret.call = Agent::error_callback;
 
   IDLArgs* argsPtr =
-      agent_update_wrap(agent, service.c_str(), ctext_str(arg), &ret);
+      agent_update_wrap(agent, method.c_str(), ctext_str(arg), &ret);
 
-  if (argsPtr == nullptr) {
-    std::variant<IdlArgs, std::string> error(data);
-    return error;
-  }
+  if (argsPtr == nullptr) return std::string(data);
 
-  std::variant<IdlArgs, std::string> ok{std::in_place_type<IdlArgs>, argsPtr};
+  auto idlArgs = IdlArgs(argsPtr);
+  idlArgs.ensureNonEmpty();
 
-  return ok;
+  return std::move(idlArgs);
 }
 
 Agent::~Agent() {

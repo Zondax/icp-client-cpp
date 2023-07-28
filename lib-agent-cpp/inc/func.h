@@ -30,6 +30,8 @@ class Func {
   std::string method;
 
  public:
+  Func() : princ(){};
+
   // Disable copies, just move semantics
   Func(const Func &args) = delete;
   void operator=(const Func &) = delete;

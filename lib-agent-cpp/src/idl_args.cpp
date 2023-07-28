@@ -15,7 +15,19 @@
  ********************************************************************************/
 #include "idl_args.h"
 
+#include "idl_value.h"
+#include "zondax_ic.h"
+
 namespace zondax {
+
+void IdlArgs::ensureNonEmpty() {
+  if (ptr == nullptr) return;
+
+  auto p = ptr.get();
+  if (idl_args_len(p) == 0) {
+    idl_args_push_value(p, IdlValue::null().getPtr().release());
+  }
+}
 
 // declare move constructor
 IdlArgs::IdlArgs(IdlArgs&& o) noexcept : ptr(std::move(o.ptr)) {}
@@ -32,7 +44,7 @@ IdlArgs& IdlArgs::operator=(IdlArgs&& o) noexcept {
 
 IdlArgs::IdlArgs(IDLArgs* argsPtr) : ptr(argsPtr){};
 
-IdlArgs::IdlArgs(std::vector<zondax::IdlValue> values) {
+IdlArgs::IdlArgs(std::vector<zondax::IdlValue>& values) {
   ptr.reset(empty_idl_args());
   // Convert vector of IdlValue pointers to an array of const pointers
   for (int i = 0; i < values.size(); ++i) {
@@ -79,7 +91,6 @@ std::vector<uint8_t> IdlArgs::getBytes() {
 
 std::vector<zondax::IdlValue> IdlArgs::getVec() {
   if (ptr == nullptr) {
-    std::cerr << "IDLArgs instance uninitialized" << std::endl;
     return std::vector<zondax::IdlValue>();
   }
 
@@ -87,7 +98,8 @@ std::vector<zondax::IdlValue> IdlArgs::getVec() {
   std::vector<zondax::IdlValue> vec;
 
   for (uintptr_t i = 0; i < cidlval_vec_len(cVec); ++i) {
-    const IDLValue* idlValue = cidlval_vec_value(cVec, i);
+    // take ownership of inner value
+    const IDLValue* idlValue = cidlval_vec_value_take(cVec, i);
     vec.push_back(zondax::IdlValue(idlValue));
   }
 

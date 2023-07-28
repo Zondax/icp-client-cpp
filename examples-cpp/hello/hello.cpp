@@ -16,7 +16,7 @@
 #include <iostream>
 #include <variant>
 
-#include "../../examples-cpp/ic/declarations/example/example.hpp"
+#include "../../examples-cpp/hello/declarations/rust_hello/rust_hello.hpp"
 #include "agent.h"
 #include "helper.h"
 #include "idl_value.h"
@@ -24,10 +24,13 @@ using namespace zondax;
 
 int main() {
   // Canister info from hello world deploy example
-  std::string id_text = "rdmx6-jaaaa-aaaaa-aaadq-cai";
-  // path is relative to binary location, not source
-  std::string did_file = "../examples/ic_c/rdmx6-jaaaa-aaaaa-aaadq-cai.did";
-  std::string url = "https://ic0.app";
+
+  // canister id, this might need to be change as canister when deployed
+  // might change its id
+  std::string id_text = "bkyz2-fmaaa-aaaaa-qaaaq-cai";
+  std::string did_file =
+      "../examples-cpp/hello/declarations/rust_hello/rust_hello_backend.did";
+  std::string url = "http://127.0.0.1:4943";
 
   std::vector<char> buffer;
   auto bytes_read = did_file_content(did_file, buffer);
@@ -36,6 +39,7 @@ int main() {
   auto principal = Principal::FromText(id_text);
 
   if (std::holds_alternative<std::string>(principal)) {
+    std::cerr << "Error: " << std::get<std::string>(principal) << std::endl;
     return -1;
   }
 
@@ -53,22 +57,16 @@ int main() {
 
   SERVICE srv(std::move(std::get<Agent>(agent)));
 
-  auto out = srv.lookup(1974211);
-  if (std::holds_alternative<std::string>(agent)) {
-    std::cerr << "Error: " << std::get<std::string>(agent) << std::endl;
-    return -1;
-  }
+  std::string arg = "Zondax";
+  auto out = srv.greet(arg);
 
-  auto deviceData = std::get<0>(out);
-
-  for (auto device : deviceData) {
-    std::cout << "Device alias: " << device.alias << std::endl;
-    // std::cout << std::hex
-    //           << (device.credential_id.has_value()
-    //                   ? device.credential_id.value()
-    //                   : std::vector<uint8_t>(0))
-    //           << std::endl;
-    std::cout << "---------------------------------" << std::endl;
+  if (out.index() == 0) {
+    // Print message from the canister
+    std::cout << std::get<0>(out) << std::endl;
+  } else {
+    // Get the second string value from the variant
+    std::string str2 = std::get<1>(out);
+    std::cout << "Error: " << str2 << std::endl;
   }
 
   return 0;

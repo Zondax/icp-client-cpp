@@ -76,6 +76,13 @@ typedef struct RetError {
 } RetError;
 
 /**
+ * @brief Returns the type of the IdlValue as an u8 value.
+ *
+ * @param _ptr Pointer to IDLValue
+ */
+uint8_t idl_value_type(const IDLValue *value);
+
+/**
  * @brief Free allocated memory
  *
  * @param _ptr Pointer to IDLValue Array
@@ -200,8 +207,10 @@ const uint8_t *crecord_keys(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Key
+ *
+ * @note Ownership is transfered to the caller
  */
-const uint8_t *crecord_get_key(const struct CRecord *ptr, uintptr_t index);
+struct CText *crecord_take_key(struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Key Vector length
@@ -225,8 +234,10 @@ const IDLValue *crecord_vals(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Value
+ *
+ * @note Ownership is trasfered to the caller
  */
-const IDLValue *crecord_get_val(const struct CRecord *ptr, uintptr_t index);
+IDLValue *crecord_take_val(struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Values Vector length
@@ -500,6 +511,14 @@ IDLArgs *idl_args_from_vec(const IDLValue *const *elems, int elems_len);
 struct CIDLValuesVec *idl_args_to_vec(const IDLArgs *ptr);
 
 /**
+ * @brief Number of elements in IDLArgs
+ *
+ * @param ptr Pointer to IDLArgs Array
+ * @return Number of IDLValues in IDLArgs
+ */
+uintptr_t idl_args_len(const IDLArgs *ptr);
+
+/**
  * @brief Free allocated memory
  *
  * @param _ptr Pointer to IDLArgs Array
@@ -735,6 +754,14 @@ bool bool_from_idl_value(const IDLValue *idl, bool *value);
  * @return Pointer to the IDLValue Structure
  */
 IDLValue *idl_value_with_null(void);
+
+/**
+ * @brief Get null from value
+ *
+ * @param idl IDLValue pointer
+ * @return boolean value that indicates if idlValue is in fact of this type
+ */
+bool idl_value_is_null(const IDLValue *idl);
 
 /**
  * @brief Create IDLValue with none

@@ -91,22 +91,24 @@ int main(void) {
     // Get First element of vector
     const IDLValue *val2 = cidlval_vec_value(vec2, 0);
 
-    // Get record and print first key element
-    CRecord *rec = record_from_idl_value(val2);
-    printf("%s\n",crecord_get_key(rec,0));
+  // Get record and print first key element
+  CRecord *rec = record_from_idl_value(val2);
+  CText *key = crecord_take_key(rec, 0);
+  printf("%s\n", ctext_str(key));
+  ctext_destroy(key);
 
-    // Free Memory
-    free(did_content);
-    free((void *) error.ptr);
-    principal_destroy(principal);
-    identity_destroy(id.ptr, id.type);
-    agent_destroy(agent_1);
-    idl_args_destroy(idl_args_ptr);
-    idl_args_destroy(call_1);
-    idl_value_destroy((IDLValue *)val);
-    idl_value_destroy((IDLValue *)val2);
-    ctext_destroy(text);
-    cidlval_vec_destroy(vec);
-    cidlval_vec_destroy(vec2);
-    crecord_destroy(rec);
+  // Free Memory
+  free(did_content);
+  free((void *)error.ptr);
+  principal_destroy(principal);
+  identity_destroy(id.ptr, id.type);
+  agent_destroy(agent_1);
+  idl_args_destroy(idl_args_ptr);
+  idl_args_destroy(call_1);
+  idl_value_destroy((IDLValue *)val);
+  idl_value_destroy((IDLValue *)val2);
+  ctext_destroy(text);
+  cidlval_vec_destroy(vec);
+  cidlval_vec_destroy(vec2);
+  crecord_destroy(rec);
 }

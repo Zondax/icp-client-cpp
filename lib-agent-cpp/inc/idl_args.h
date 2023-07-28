@@ -38,8 +38,15 @@ struct default_delete<IDLArgs> {
 
 namespace zondax {
 class IdlArgs {
+  friend class Agent;
+
  private:
   std::unique_ptr<IDLArgs> ptr;
+
+  // ensure the inner IDLArgs contains at least 1 entry
+  // if not, an `IDLValue::Null` will be inserted
+  // to represent a "void" return
+  void ensureNonEmpty();
 
  public:
   // Disable copies, just move semantics
@@ -56,7 +63,14 @@ class IdlArgs {
   explicit IdlArgs(IDLArgs *argsPtr);
   explicit IdlArgs(std::string text);
   explicit IdlArgs(std::vector<uint8_t> bytes);
-  explicit IdlArgs(const std::vector<zondax::IdlValue> values);
+
+  /**
+   * Constructor
+   *
+   * @tparam values a vector of IdlValues. This call does not take ownership of
+   * the vector but of each IdlValue it contains.
+   */
+  explicit IdlArgs(std::vector<zondax::IdlValue> &values);
 
   std::string getText();
   std::vector<uint8_t> getBytes();

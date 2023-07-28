@@ -16,60 +16,18 @@
 #include "idl_value.h"
 
 #include <cstdint>
+#include <iostream>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 #include <variant>
 
+#include "doctest.h"
 #include "func.h"
 #include "service.h"
+#include "zondax_ic.h"
 
 namespace zondax {
-
-#define PRIMITIVE_TYPES_GETTER(name, type)               \
-  template <>                                            \
-  std::optional<type> zondax::IdlValue::get() {          \
-    if (ptr == nullptr) return std::nullopt;             \
-    type value;                                          \
-    bool ret = name##_from_idl_value(ptr.get(), &value); \
-    if (!ret) return std::nullopt;                       \
-    return std::make_optional<type>(value);              \
-  }
-
-/******************** Private ***********************/
-
-template <typename Tuple, size_t... Indices>
-void IdlValue::initializeFromTuple(const Tuple &tuple,
-                                   std::index_sequence<Indices...>) {
-  std::vector<IDLValue *> values;
-  std::vector<uint8_t[4]> indices;
-
-  (
-      [&](size_t index) {
-        IdlValue val(std::get<index>(tuple));
-        values.push_back(val.ptr.release());
-        val.ptr = nullptr;
-
-        uint8_t bytes[4];  // Array to store the resulting bytes
-        auto value = static_cast<uint32_t>(index);
-
-        bytes[0] = value & 0xFF;
-        bytes[1] = (value >> 8) & 0xFF;
-        bytes[2] = (value >> 16) & 0xFF;
-        bytes[3] = (value >> 24) & 0xFF;
-
-// If the platform is big endian, swap the byte order
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-        std::swap(bytes[0], bytes[3]);
-        std::swap(bytes[1], bytes[2]);
-#endif
-        indices.push_back(bytes);
-      }(Indices),
-      ...);
-
-  ptr.reset(idl_value_with_record(
-      reinterpret_cast<const char *const *>(indices.data()), indices.size(),
-      values.data(), values.size(), true));
-}
 
 /******************** Public ***********************/
 
@@ -83,160 +41,22 @@ IdlValue &IdlValue::operator=(IdlValue &&o) noexcept {
   return *this;
 }
 
+IdlValueType IdlValue::type() {
+  if (ptr.get() == nullptr) return IdlValueType::Null;
+
+  uint32_t ty = idl_value_type(ptr.get());
+
+  auto max = static_cast<uint8_t>(IdlValueType::Reserved);
+
+  if (ty > max) return static_cast<IdlValueType>(IdlValueType::Invalid);
+
+  return static_cast<IdlValueType>(ty);
+}
+
 /******************** T -> IdlValue ***********************/
 
-template <>
-IdlValue::IdlValue(uint8_t value) {
-  ptr.reset(idl_value_with_nat8(value));
-}
-
-template <>
-IdlValue::IdlValue(uint16_t value) {
-  ptr.reset(idl_value_with_nat16(value));
-}
-
-template <>
-IdlValue::IdlValue(uint32_t value) {
-  ptr.reset(idl_value_with_nat32(value));
-}
-
-template <>
-IdlValue::IdlValue(uint64_t value) {
-  ptr.reset(idl_value_with_nat64(value));
-}
-
-template <>
-IdlValue::IdlValue(int8_t value) {
-  ptr.reset(idl_value_with_int8(value));
-}
-
-template <>
-IdlValue::IdlValue(int16_t value) {
-  ptr.reset(idl_value_with_int16(value));
-}
-
-template <>
-IdlValue::IdlValue(int32_t value) {
-  ptr.reset(idl_value_with_int32(value));
-}
-
-template <>
-IdlValue::IdlValue(int64_t value) {
-  ptr.reset(idl_value_with_int64(value));
-}
-
-template <>
-IdlValue::IdlValue(float value) {
-  ptr.reset(idl_value_with_float32(value));
-}
-
-template <>
-IdlValue::IdlValue(double value) {
-  ptr.reset(idl_value_with_float64(value));
-}
-
-template <>
-IdlValue::IdlValue(bool value) {
-  ptr.reset(idl_value_with_bool(value));
-}
-
-template <>
-IdlValue::IdlValue(std::string text) {
-  // TODO: Use RetError
-  ptr.reset(idl_value_with_text(text.c_str(), nullptr));
-}
-
-template <>
-IdlValue::IdlValue(Number number) {
-  // TODO: Use RetError
-  // RetPtr_u8 error;
-
-  ptr.reset(idl_value_with_number(number.value.c_str(), nullptr));
-}
-
-template <typename T, typename>
-IdlValue::IdlValue(std::optional<T> val) {
-  if (val.has_value()) {
-    auto value = IdlValue(val.value());
-    ptr.reset(idl_value_with_opt(value.ptr.release()));
-  } else {
-    ptr.reset(idl_value_with_none());
-  }
-}
-
-template <typename T, typename>
-IdlValue::IdlValue(const std::vector<T> &elems) {
-  std::vector<const IDLValue *> cElems;
-  cElems.reserve(elems.size());
-
-  for (auto e : elems) {
-    IdlValue val(e);
-    cElems.push_back(val.ptr.release());
-  }
-
-  ptr.reset(idl_value_with_vec(cElems.data(), cElems.size()));
-}
-
-template <typename... Args, typename>
-IdlValue::IdlValue(const std::tuple<Args...> &tuple) {
-  initializeFromTuple(tuple, std::index_sequence_for<Args...>());
-}
-
-template <typename... Args, typename>
-IdlValue::IdlValue(const std::variant<Args...> &variant) {
-  // TODO: use FromVariant
-  //  1. recover variant name
-  //  2. recover variant index
-  std::visit([this](const auto &value) { *this = IdlValue(value); }, variant);
-}
-
-template <>
-IdlValue::IdlValue(IDLValue *ptr) : ptr(ptr){};
-
-template <>
-IdlValue::IdlValue(const IDLValue *ptr) : ptr((IDLValue *)ptr){};
-
-template <>
-IdlValue::IdlValue(zondax::Principal principal) {
-  // TODO: Use RetError
-  // RetPtr_u8 error;
-
-  ptr.reset(idl_value_with_principal(principal.getBytes().data(),
-                                     principal.getBytes().size(), nullptr));
-}
-
-template <>
-IdlValue::IdlValue(zondax::Service service) {
-  // TODO: Use RetError
-  // RetPtr_u8 error;
-
-  auto principal = service.principal_take();
-  ptr.reset(idl_value_with_service(principal.getBytes().data(),
-                                   principal.getBytes().size(), nullptr));
-}
-
-template <>
-IdlValue::IdlValue(zondax::Func func) {
-  auto princ = func.principal().getBytes();
-
-  ptr.reset(idl_value_with_func(princ.data(), princ.size(),
-                                func.method_name().c_str()));
-}
-
-IdlValue IdlValue::null(void) {
-  IdlValue val;
-  val.ptr.reset(idl_value_with_null());
-  return val;
-}
-
-IdlValue IdlValue::reserved(void) {
-  IdlValue val;
-  val.ptr.reset(idl_value_with_reserved());
-  return val;
-}
-
 IdlValue IdlValue::FromRecord(
-    std::vector<std::pair<std::string, IdlValue>> &fields) {
+    std::unordered_map<std::string, IdlValue> &fields) {
   std::vector<const char *> cKeys;
   cKeys.reserve(fields.size());
   std::vector<const IDLValue *> cElems;
@@ -259,139 +79,59 @@ IdlValue IdlValue::FromVariant(std::string key, IdlValue *val, uint64_t code) {
   return IdlValue(p);
 }
 
-/******************** IdlValue -> T ************************/
+// ---------------------- IdlValue::get() specializations ---
 
-PRIMITIVE_TYPES_GETTER(int8, int8_t)
-PRIMITIVE_TYPES_GETTER(int16, int16_t)
-PRIMITIVE_TYPES_GETTER(int32, int32_t)
-PRIMITIVE_TYPES_GETTER(int64, int64_t)
-PRIMITIVE_TYPES_GETTER(nat8, uint8_t)
-PRIMITIVE_TYPES_GETTER(nat16, uint16_t)
-PRIMITIVE_TYPES_GETTER(nat32, uint32_t)
-PRIMITIVE_TYPES_GETTER(nat64, uint64_t)
-PRIMITIVE_TYPES_GETTER(float32, float)
-PRIMITIVE_TYPES_GETTER(float64, double)
-PRIMITIVE_TYPES_GETTER(bool, bool)
-
-template <>
-std::optional<std::string> IdlValue::get() {
+std::optional<std::tuple<std::string, std::size_t, IdlValue>>
+IdlValue::asCVariant() {
   if (ptr == nullptr) return std::nullopt;
 
-  CText *ctext = text_from_idl_value(ptr.get());
-  if (ctext == nullptr) return std::nullopt;
+  CVariant *variant = variant_from_idl_value(ptr.get());
+  if (variant == nullptr) return std::nullopt;
 
-  const char *str = ctext_str(ctext);
-  uintptr_t len = ctext_len(ctext);
+  auto str = cvariant_id(variant);
+  if (str == nullptr) return std::nullopt;
 
-  std::string s(str, len);
+  std::string key((const char *)str);
 
-  ctext_destroy(ctext);
+  auto code = cvariant_code(variant);
 
-  return std::make_optional<std::string>(s);
+  IdlValue idlvalue(cvariant_idlvalue(variant));
+
+  return std::make_optional(std::make_tuple(key, code, std::move(idlvalue)));
 }
 
-template <>
-std::optional<zondax::Principal> IdlValue::get() {
-  if (ptr == nullptr) return std::nullopt;
+std::unordered_map<std::string, IdlValue> IdlValue::getRecord() {
+  std::unordered_map<std::string, IdlValue> fields;
+  auto record = record_from_idl_value(ptr.get());
 
-  CPrincipal *p = principal_from_idl_value(ptr.get());
-  if (p == nullptr) return std::nullopt;
+  if (record == nullptr) return fields;
 
-  std::vector<unsigned char> bytes(p->ptr, p->ptr + p->len);
-  zondax::Principal principal(bytes);
+  auto len = crecord_keys_len(record);
 
-  principal_destroy(p);
+  for (uintptr_t i = 0; i < len; ++i) {
+    auto cKey = crecord_take_key(record, i);
+    auto cVal = crecord_take_val(record, i);
 
-  return std::make_optional(std::move(principal));
-}
+    if (cKey == nullptr || cVal == nullptr) return fields;
 
-template <>
-std::optional<Number> IdlValue::get() {
-  if (ptr == nullptr) return std::nullopt;
+    auto str = ctext_str(cKey);
+    if (str == nullptr) return fields;
 
-  CText *ctext = number_from_idl_value(ptr.get());
-  if (ctext == nullptr) return std::nullopt;
+    auto key = std::string("");
+    if (str != nullptr) {
+      // because str is null terminated, we should use the
+      // string constructor for it.
+      key = std::string(str);
+    }
 
-  const char *str = ctext_str(ctext);
-  uintptr_t len = ctext_len(ctext);
+    IdlValue val(cVal);
 
-  std::string text(str, len);
-
-  ctext_destroy(ctext);
-  Number number;
-  number.value = text;
-
-  return std::make_optional(number);
-}
-
-template <>
-std::optional<zondax::Func> IdlValue::get() {
-  if (ptr == nullptr) return std::nullopt;
-
-  struct CFunc *cFunc = func_from_idl_value(ptr.get());
-  if (cFunc == nullptr) return std::nullopt;
-
-  // Extract principal
-  struct CPrincipal *cPrincipal = cfunc_principal(cFunc);
-  std::vector<uint8_t> vec =
-      std::vector<uint8_t>(cPrincipal->ptr, cPrincipal->ptr + cPrincipal->len);
-
-  zondax::Func result(
-      zondax::Principal(vec),
-      std::string(cfunc_string(cFunc),
-                  cfunc_string(cFunc) + cfunc_string_len(cFunc)));
-
-  // Free the allocated CFunc
-  cfunc_destroy(cFunc);
-
-  return std::optional<zondax::Func>(std::move(result));
-}
-
-template <>
-std::optional<std::vector<IdlValue>> IdlValue::get() {
-  if (ptr == nullptr) return std::nullopt;
-
-  // call bellow creates a new IDLValue::Vec,
-  // this means it "clones" from this.ptr
-  struct CIDLValuesVec *cVec = vec_from_idl_value(ptr.get());
-  if (cVec == nullptr) return std::nullopt;
-
-  uintptr_t length = cidlval_vec_len(cVec);
-
-  std::vector<IdlValue> result;
-  result.reserve(length);
-
-  // then it should take out each value from the vector
-  // and give ownership to the caller.
-  for (uintptr_t i = 0; i < length; ++i) {
-    // the take variant leave the value in the vector in a null state
-    // this is valid as inner value belongs now to result
-    const IDLValue *valuePtr = cidlval_vec_value_take(cVec, i);
-    result.emplace_back(valuePtr);
+    fields.emplace(std::make_pair(key, std::move(val)));
   }
 
-  // Free the allocated CIDLValuesVec
-  cidlval_vec_destroy(cVec);
+  crecord_destroy(record);
 
-  return std::make_optional(std::move(result));
-}
-
-template <>
-std::optional<zondax::Service> IdlValue::get() {
-  if (ptr == nullptr) return std::nullopt;
-
-  CPrincipal *p = service_from_idl_value(ptr.get());
-
-  if (p == nullptr) return std::nullopt;
-
-  std::vector<unsigned char> bytes(p->ptr, p->ptr + p->len);
-  zondax::Principal principal(bytes);
-
-  // there is not issue in destroying raw principal
-  // because bytes makes a deep copy
-  principal_destroy(p);
-
-  return std::make_optional(zondax::Service(std::move(principal)));
+  return std::move(fields);
 }
 
 std::optional<IdlValue> IdlValue::getOpt() {
@@ -404,59 +144,267 @@ std::optional<IdlValue> IdlValue::getOpt() {
   return IdlValue(result);
 }
 
-// TODO: Enable later forward declaration is tricky here,
-// specially because it requires raw pointers, which might lead
-// to aliasing of the inner idlValue ptr, and this if doing wrong
-// could cause memory issues, double free and so on.
-// also smart pointers do not work here as types are not fully
-// qualify.
-
-// zondax::idl_value_utils::Record IdlValue::getRecord() {
-//     struct CRecord* cRecord = record_from_idl_value(ptr);
-//     zondax::idl_value_utils::Record result;
-//
-//     // Extract keys
-//     uintptr_t keysLength = crecord_keys_len(cRecord);
-//     for (uintptr_t i = 0; i < keysLength; ++i) {
-//         const char* keyPtr = reinterpret_cast<const
-//         char*>(crecord_get_key(cRecord, i));
-//         result.keys.emplace_back(keyPtr);
-//     }
-//
-//     // Extract values
-//     uintptr_t valsLength = crecord_vals_len(cRecord);
-//     for (uintptr_t i = 0; i < valsLength; ++i) {
-//         const IDLValue* valPtr = crecord_get_val(cRecord, i);
-//         result.vals.emplace_back(valPtr);
-//     }
-//
-//     // Free the allocated CRecord
-//     crecord_destroy(cRecord);
-//
-//     return result;
-// }
-
-// zondax::idl_value_utils::Variant IdlValue::getVariant(){
-//     struct CVariant* cVariant = variant_from_idl_value(ptr);
-//     zondax::idl_value_utils::Variant result;
-//
-//     // Extract ID
-//     result.id.assign(cvariant_id(cVariant), cvariant_id(cVariant) +
-//     cvariant_id_len(cVariant));
-//
-//     // Extract value
-//     const IDLValue* valPtr = cvariant_idlvalue(cVariant);
-//
-//     result.val(new IdlValue(valPtr));
-//
-//     // Extract code
-//     result.code = cvariant_code(cVariant);
-//
-//     // Free the allocated CVariant
-//     cvariant_destroy(cVariant);
-//
-//     return result;
-// }
-
 std::unique_ptr<IDLValue> IdlValue::getPtr() { return std::move(ptr); }
+
 }  // namespace zondax
+
+// ------------------------------------------------- TESTS
+using namespace zondax;
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to ints", T, test_id) {
+  T integer = 100;
+  IdlValue value(integer);
+  auto back = value.get<T>();
+
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == integer);
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id, uint8_t, uint16_t, uint32_t, uint64_t,
+                          int8_t, int16_t, int32_t, int64_t);
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to float/double", T, test_id_floats) {
+  T val = 1.5;
+  IdlValue value(val);
+  auto back = value.get<T>();
+
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == val);
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id_floats, float, double);
+
+TEST_CASE("IdlValue from/to string") {
+  std::string str("Zondax");
+  IdlValue value(str);
+  auto back = value.get<std::string>();
+  REQUIRE(back.has_value());
+  REQUIRE(back.value() == str);
+}
+
+TEST_CASE("IdlValue from/to Vec<string>") {
+  std::string str("Zondax");
+  std::vector<std::string> vec{str, str, str, str, str};
+  auto copy = vec;
+
+  IdlValue value(std::move(vec));
+  auto back = value.get<std::vector<std::string>>();
+  REQUIRE(back.has_value());
+  auto val = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(copy.begin(), copy.end(), std::begin(val)));
+}
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of ints", T,
+                          test_id_vector) {
+  std::vector<T> val{1, 2, 4, 5};
+  IdlValue value(std::move(val));
+  auto back = value.get<std::vector<T>>();
+
+  REQUIRE(back.has_value());
+  auto vec = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
+
+  // check that it fails if comparing with another vector with different
+  // values
+  std::vector<T> val2{6, 7, 8, 9};
+  REQUIRE(!std::equal(vec.begin(), vec.end(), std::begin(val2)));
+}
+
+TEST_CASE_TEMPLATE_INVOKE(test_id_vector, uint8_t, uint16_t, uint32_t, uint64_t,
+                          int8_t, int16_t, int32_t, int64_t);
+
+TEST_CASE_TEMPLATE_DEFINE("IdlValue from/to vector of floats", T,
+                          test_id_vector_floats) {
+  std::vector<T> val{1.0, 2.04, 4.555, 5.89};
+  IdlValue value(std::move(val));
+  auto back = value.get<std::vector<T>>();
+
+  REQUIRE(back.has_value());
+  auto vec = back.value();
+  REQUIRE(vec.size() == val.size());
+  REQUIRE(std::equal(vec.begin(), vec.end(), std::begin(val)));
+}
+TEST_CASE_TEMPLATE_INVOKE(test_id_vector_floats, float, double);
+
+TEST_CASE("IdlValue from/to tuple") {
+  // Get Principal from slice of bytes
+  std::vector<uint8_t> slice = {0x1};
+
+  zondax::Principal principal(slice);
+  // construct tuple
+  std::tuple<uint8_t, uint64_t, double, std::string, zondax::Principal> tuple =
+      std::make_tuple(1, 100500, 2.5, std::string("zondax"),
+                      std::move(principal));
+
+  IdlValue value(std::move(tuple));
+
+  auto back = value.get<
+      std::tuple<uint8_t, uint64_t, double, std::string, zondax::Principal>>();
+  REQUIRE(back.has_value());
+
+  auto tuple2 = std::move(back.value());
+
+  REQUIRE(1 == std::get<0>(tuple2));
+  REQUIRE(100500 == std::get<1>(tuple2));
+  REQUIRE(2.5 == std::get<2>(tuple2));
+  REQUIRE(std::string("zondax") == std::get<3>(tuple2));
+
+  auto p = std::move(std::get<4>(tuple2));
+  auto bytes = p.getBytes();
+
+  REQUIRE(bytes.size() == 1);
+  REQUIRE(bytes[0] == 0x01);
+}
+
+TEST_CASE("IdlValue from/to vector<std::tuple<Args...>>") {
+  // construct tuple
+  std::vector<std::tuple<uint8_t, uint64_t, double, std::string, bool>> vec;
+  for (int i = 0; i < 10; ++i) {
+    std::tuple<uint8_t, uint64_t, double, std::string, bool> tuple =
+        std::make_tuple((uint8_t)i, 100500, 2.5, std::string("zondax"),
+                        (i % 2 == 0));
+    vec.push_back(tuple);
+  }
+
+  auto copy = vec;
+
+  IdlValue value(std::move(vec));
+
+  auto back = value.get<
+      std::vector<std::tuple<uint8_t, uint64_t, double, std::string, bool>>>();
+
+  REQUIRE(back.has_value());
+  auto vec2 = back.value();
+  REQUIRE(copy.size() == vec2.size());
+  auto equal = copy == vec2;
+  // REQUIRE(true == equal);
+  REQUIRE(copy == vec2);
+}
+
+TEST_CASE("IdlValue from/to std::optional<T>") {
+  uint32_t num = 100;
+  std::optional<uint32_t> op(num);
+  IdlValue value(op);
+
+  auto back = value.get<std::optional<uint32_t>>();
+  REQUIRE(back.has_value());
+  auto inner = back.value();
+  REQUIRE(inner.has_value());
+  auto result = inner.value();
+  REQUIRE(result == num);
+
+  SUBCASE("Inner optional null") {
+    std::optional<uint32_t> val;
+    val = std::nullopt;
+    IdlValue value(val);
+
+    auto back = value.get<std::optional<uint32_t>>();
+    REQUIRE(back.has_value());
+    auto inner = back.value();
+    REQUIRE(!inner.has_value());
+  }
+}
+
+struct Peer_authentication {
+  explicit Peer_authentication() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"authentication"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{0};
+  std::string value;
+};
+
+struct Sender_report {
+  explicit Sender_report() = default;
+  static constexpr std::string_view __CANDID_VARIANT_NAME{"report"};
+  static constexpr std::size_t __CANDID_VARIANT_CODE{1};
+  std::string report;
+};
+
+template <>
+IdlValue::IdlValue(Peer_authentication peer) {
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("value");
+    auto val = IdlValue(peer.value);
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
+}
+
+template <>
+IdlValue::IdlValue(Sender_report sender) {
+  std::unordered_map<std::string, IdlValue> fields;
+
+  {
+    auto name = std::string("report");
+    auto val = IdlValue(sender.report);
+    fields.emplace(std::make_pair(name, std::move(val)));
+  }
+
+  *this = std::move(IdlValue::FromRecord(fields));
+}
+
+template <>
+std::optional<Peer_authentication> IdlValue::getImpl(
+    helper::tag_type<Peer_authentication> t) {
+  Peer_authentication result;
+
+  auto fields = getRecord();
+  {
+    auto field = std::move(fields["value"]);
+    auto val = field.get<std::string>();
+
+    if (val.has_value()) {
+      result.value = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  return std::make_optional(std::move(result));
+}
+
+template <>
+std::optional<Sender_report> IdlValue::getImpl(
+    helper::tag_type<Sender_report> t) {
+  Sender_report result;
+
+  auto fields = getRecord();
+  {
+    auto field = std::move(fields["report"]);
+    auto val = field.get<std::string>();
+
+    if (val.has_value()) {
+      result.report = std::move(val.value());
+    } else {
+      return std::nullopt;
+    }
+  }
+
+  return std::make_optional(std::move(result));
+}
+
+TEST_CASE("IdlValue from/to std::variant<Peer_authentication, Sender_report>") {
+  // construct variant
+  Peer_authentication auth;
+  auth.value = "Peer_authentication";
+  std::variant<Peer_authentication, Sender_report> variant(std::move(auth));
+  IdlValue obj(std::move(variant));
+
+  auto back = obj.get<std::variant<Peer_authentication, Sender_report>>();
+  REQUIRE(back.has_value());
+  auto var = back.value();
+  REQUIRE(std::holds_alternative<Peer_authentication>(var));
+  auto peer = std::get<Peer_authentication>(var);
+  REQUIRE(peer.value.compare(auth.value));
+
+  auto back2 = obj.get<std::variant<Sender_report, Peer_authentication>>();
+  REQUIRE(back2.has_value());
+  auto var2 = back2.value();
+  REQUIRE(std::holds_alternative<Peer_authentication>(var2));
+  auto peer2 = std::get<Peer_authentication>(var2);
+  REQUIRE(peer2.value.compare(auth.value));
+}
