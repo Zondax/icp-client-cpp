@@ -67,6 +67,7 @@ target_link_libraries(agent_cpp_tests ic_agent_wrapper agent_c)
 
 add_custom_target(tests)
 add_executable(test "lib-agent-cpp/tests.cpp")
+
 target_link_libraries(test agent_cpp_tests ic_agent_wrapper agent_c ${EXTRA_LIBS}) 
 target_compile_features(test PRIVATE cxx_std_17)
 add_dependencies(tests test)
