@@ -52,6 +52,11 @@ struct default_delete<IDLValue> {
 }  // namespace std
 
 namespace zondax {
+
+/**
+ * Enum class definition that is used to describe the type of the inner IDLValue
+ * instance.
+ */
 enum class IdlValueType : int {
   Bool,
   Null,
@@ -192,14 +197,6 @@ struct tuple_to_variant<std::tuple<Ts...>> {
   using type = std::variant<Ts...>;
 };
 
-// A helper to prepend an element to a tuple, it would be the monostate
-template <typename T, typename Tuple>
-struct tuple_prepend;
-template <typename T, typename... Ts>
-struct tuple_prepend<T, std::tuple<Ts...>> {
-  using type = std::tuple<T, Ts...>;
-};
-
 // Get the variant's types as a tuple
 template <typename V>
 struct variant_to_tuple;
@@ -207,10 +204,6 @@ template <typename... Ts>
 struct variant_to_tuple<std::variant<Ts...>> {
   using type = std::tuple<Ts...>;
 };
-
-template <typename V>
-using VariantWithMonostate = typename tuple_to_variant<typename tuple_prepend<
-    std::monostate, typename variant_to_tuple<V>::type>::type>::type;
 
 template <std::size_t I = 0, typename FuncT, typename... Tp>
 inline typename std::enable_if<I == sizeof...(Tp), void>::type for_each(
@@ -274,6 +267,10 @@ struct inner_type<std::vector<T>> {
 
 }  // namespace helper
 
+/**
+ * Struct use to represent and IdlValue of type Number, which is used
+ * to represent a Big number.
+ */
 struct Number {
   std::string value;
 };
@@ -299,6 +296,13 @@ class IdlValue {
   template <typename Tuple, size_t... Indices>
   void initializeFromTuple(Tuple &tuple, std::index_sequence<Indices...>);
 
+  /**
+   * Generic method meant to be specialized by users that wants to support their
+   * custom types, and equivalent specialization must exist for constructors.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   template <typename T,
             std::enable_if_t<!helper::is_vector<T>::value, bool> = true>
   std::optional<T> getImpl(helper::tag_type<T> t) {
@@ -486,26 +490,63 @@ class IdlValue {
   IdlValue &operator=(IdlValue &&o) noexcept;
 
   /******************** Constructors ***********************/
+
+  /**
+   * Default constructor for IdlValues of type Opt or None
+   *
+   * @tparam A generic type T wrapped into a std::optional
+   *
+   */
   template <typename T>
   explicit IdlValue(T);
   template <typename T,
             typename = std::enable_if_t<std::is_constructible_v<IdlValue, T>>>
   explicit IdlValue(std::optional<T>);
 
+  /**
+   * Default constructor for a collection of values of type T. Any type T is
+   * supported as long as a constructor specialization exist for it.
+   *
+   * @tparam A move only vector of types T
+   *
+   */
   template <typename T,
             typename = std::enable_if_t<std::is_constructible_v<IdlValue, T>>>
   explicit IdlValue(std::vector<T> &&);
 
+  /**
+   * Default constructor for a collection of tuples. Any tuple is
+   * supported as long as a constructor specialization exist for each element
+   * it contains.
+   *
+   * @tparam A move only vector of tuple.
+   *
+   */
   template <typename... Args,
             typename = std::enable_if_t<
                 (std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(std::vector<std::tuple<Args...>> &&elems);
 
+  /**
+   * Default constructor for tuples. Any tuple is
+   * supported as long as a constructor specialization exist for each element
+   * it contains.
+   *
+   * @tparam A move only tuple.
+   *
+   */
   template <typename... Args,
             typename = std::enable_if_t<
                 (std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(std::tuple<Args...> &&);
 
+  /**
+   * Default constructor for std::variant. Any variant alternative type is
+   * supported as long as a constructor specialization exist for each.
+   *
+   * @tparam std::variant<Args...>
+   *
+   */
   template <
       typename... Args,
       typename = std::enable_if_t<(helper::is_candid_variant_v<Args> && ...)>,
@@ -513,18 +554,48 @@ class IdlValue {
           std::enable_if_t<(std::is_constructible_v<IdlValue, Args> && ...)>>
   explicit IdlValue(std::variant<Args...>);
 
-  // Specific constructors
+  /**
+   * Default constructor. Constructs an Null idlValue instance
+   *
+   */
   explicit IdlValue() : ptr(nullptr) {}
 
+  /**
+   * Static method to create an NULL idlValue instance
+   */
   static IdlValue null();
+  /**
+   * Static method to create an IdlValue::Reserve instance
+   */
   static IdlValue reserved();
 
+  /**
+   * static constructor for to create an idlValue with a list of records.
+   *
+   * @tparam An unordered_map containing a list of records.
+   *
+   */
   static IdlValue FromRecord(std::unordered_map<std::string, IdlValue> &fields);
+
+  /**
+   * static constructor for to create an idlValue of type Variant.
+   *
+   * @tparam key
+   * @tparam IdlValue pointer containing the inner value.
+   * @tparam code is the index at which this values is in a collection
+   *
+   */
   static IdlValue FromVariant(std::string key, IdlValue *val, uint64_t code);
-  static IdlValue FromFunc(std::vector<uint8_t> vector, std::string func_name);
 
   /******************** Getters ***********************/
 
+  /**
+   * Generic Getter to obtain the inner values this IdlValue instance
+   * holds. This method is overloaded to support common C++ types.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   template <typename T,
             typename = std::enable_if_t<!helper::is_vector_of_tuples_v<T> &&
                                         !helper::is_optional_v<T>>>
@@ -532,6 +603,14 @@ class IdlValue {
     return getHelper<T>(helper::is_variant<T>{}, helper::is_tuple<T>{});
   }
 
+  /**
+   * Generic Getter specialized to get a std::optional<T>, meant to be used by
+   * IdlValue instances of type IDLValue::Opt or  IDLValue::None
+   * holds. This method is overloaded to support common C++ types.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   template <typename T, std::enable_if_t<helper::is_optional_v<T>, bool> = true>
   std::optional<T> get() {
     // get inner type:
@@ -555,6 +634,14 @@ class IdlValue {
     }
   }
 
+  /**
+   * Generic Getter specialized to get values of type
+   * std::map/std::unordered_map. This method relays on the corresponding getter
+   * specialization for types U and V.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   template <
       template <typename, typename> class T, typename U, typename V,
       std::enable_if_t<
@@ -571,20 +658,53 @@ class IdlValue {
     return std::nullopt;
   }
 
+  /**
+   * Generic Getter specialized to get a vector of tuples.
+   * This method relays on the corresponding getter
+   * specialization for types contained in the std::tuple<Args...>
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   template <typename T,
             std::enable_if_t<helper::is_vector_of_tuples_v<T>, bool> = true>
   std::optional<T> get() {
     return getImpl(helper::tag_type<T>{});
   }
 
+  /**
+   * Generic Getter specialized to get an unordered_map or records.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   std::unordered_map<std::string, IdlValue> getRecord();
 
+  /**
+   * Getter to get an IdlValue of type Opt or None.
+   *
+   * @treturns The value contained in this instance.
+   *
+   */
   std::optional<IdlValue> getOpt();
 
+  /**
+   * Getter to get the inner pointer to a raw IDLValue instance.
+   * this methods transfer ownership to the caller.
+   *
+   * @treturns std::unique_ptr<IDLValue> instance.
+   *
+   */
   std::unique_ptr<IDLValue> getPtr();
 
   std::optional<std::tuple<std::string, std::size_t, IdlValue>> asCVariant();
 
+  /**
+   * Method to get the inner type of this IdlValue instance.
+   *
+   * @treturns the IdlValueType instance indicating the IDLValue type.
+   *
+   */
   IdlValueType type();
 };
 
