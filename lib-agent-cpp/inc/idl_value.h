@@ -142,27 +142,6 @@ namespace zondax {
     return std::make_optional<type>(value);                                \
   }
 
-#define VEC_PRIMITIVE_TYPES_GETTER(type)                                     \
-  template <>                                                                \
-  inline std::optional<std::vector<type>> IdlValue::getImpl(                 \
-      helper::tag_type<std::vector<type>> t) {                               \
-    auto values_vec = vec_from_idl_value(ptr.get());                         \
-    if (values_vec == nullptr) return std::nullopt;                          \
-    auto vec_len = cidlval_vec_len(values_vec);                              \
-    std::vector<type> ret;                                                   \
-    for (int i = 0; i < vec_len; ++i) {                                      \
-      auto p = cidlval_vec_value_take(values_vec, i);                        \
-      if (p == nullptr) return std::nullopt;                                 \
-      IdlValue value(p);                                                     \
-      std::optional<type> val = value.get<type>();                           \
-      if (!val.has_value()) return std::nullopt;                             \
-      ret.emplace_back(std::move(val.value()));                              \
-    }                                                                        \
-    /*we took ownership of inner fields but still needs to destroy vector */ \
-    cidlval_vec_destroy(values_vec);                                         \
-    return std::make_optional<std::vector<type>>(std::move(ret));            \
-  }
-
 namespace helper {
 template <typename T>
 struct is_candid_variant {
@@ -198,6 +177,12 @@ struct is_tuple : std::false_type {};
 
 template <typename... T>
 struct is_tuple<std::tuple<T...>> : std::true_type {};
+
+template <typename T>
+struct is_vector : std::false_type {};
+
+template <typename T>
+struct is_vector<std::vector<T>> : std::true_type {};
 
 // A helper to convert a tuple to a variant
 template <typename T>
@@ -282,6 +267,11 @@ struct inner_type<std::optional<T>> {
   typedef T type;
 };
 
+template <typename T>
+struct inner_type<std::vector<T>> {
+  typedef T type;
+};
+
 }  // namespace helper
 
 struct Number {
@@ -309,7 +299,8 @@ class IdlValue {
   template <typename Tuple, size_t... Indices>
   void initializeFromTuple(Tuple &tuple, std::index_sequence<Indices...>);
 
-  template <typename T>
+  template <typename T,
+            std::enable_if_t<!helper::is_vector<T>::value, bool> = true>
   std::optional<T> getImpl(helper::tag_type<T> t) {
     return std::nullopt;
   }
@@ -341,6 +332,31 @@ class IdlValue {
     cidlval_vec_destroy(values_vec);
 
     return ret;
+  }
+
+  template <typename Vec,
+            std::enable_if_t<helper::is_vector<Vec>::value, bool> = true,
+            std::enable_if_t<!helper::is_tuple<
+                                 typename helper::inner_type<Vec>::type>::value,
+                             bool> = true>
+  std::optional<Vec> getImpl(helper::tag_type<Vec>) {
+    using T = typename helper::inner_type<Vec>::type;
+
+    auto values_vec = vec_from_idl_value(ptr.get());
+    if (values_vec == nullptr) return std::nullopt;
+    auto vec_len = cidlval_vec_len(values_vec);
+    std::vector<T> ret;
+    for (int i = 0; i < vec_len; ++i) {
+      auto p = cidlval_vec_value_take(values_vec, i);
+      if (p == nullptr) return std::nullopt;
+      IdlValue value(p);
+      std::optional<T> val = value.get<T>();
+      if (!val.has_value()) return std::nullopt;
+      ret.emplace_back(std::move(val.value()));
+    }
+    /*we took ownership of inner fields but still needs to destroy vector */
+    cidlval_vec_destroy(values_vec);
+    return std::make_optional<std::vector<T>>(std::move(ret));
   }
 
   // Fallback function for non-variant, non-tuples, non-map-like
@@ -751,23 +767,6 @@ PRIMITIVE_TYPES_GETTER(nat64, uint64_t)
 PRIMITIVE_TYPES_GETTER(float32, float)
 PRIMITIVE_TYPES_GETTER(float64, double)
 PRIMITIVE_TYPES_GETTER(bool, bool)
-
-VEC_PRIMITIVE_TYPES_GETTER(int8_t)
-VEC_PRIMITIVE_TYPES_GETTER(int16_t)
-VEC_PRIMITIVE_TYPES_GETTER(int32_t)
-VEC_PRIMITIVE_TYPES_GETTER(int64_t)
-VEC_PRIMITIVE_TYPES_GETTER(uint8_t)
-VEC_PRIMITIVE_TYPES_GETTER(uint16_t)
-VEC_PRIMITIVE_TYPES_GETTER(uint32_t)
-VEC_PRIMITIVE_TYPES_GETTER(uint64_t)
-VEC_PRIMITIVE_TYPES_GETTER(float)
-VEC_PRIMITIVE_TYPES_GETTER(double)
-VEC_PRIMITIVE_TYPES_GETTER(bool)
-VEC_PRIMITIVE_TYPES_GETTER(std::string)
-VEC_PRIMITIVE_TYPES_GETTER(zondax::Principal)
-VEC_PRIMITIVE_TYPES_GETTER(zondax::Func)
-VEC_PRIMITIVE_TYPES_GETTER(zondax::Service)
-VEC_PRIMITIVE_TYPES_GETTER(std::monostate)
 
 template <>
 inline std::optional<std::string> IdlValue::getImpl(

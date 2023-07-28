@@ -62,7 +62,7 @@ int main() {
   auto deviceData = std::get<0>(out);
 
   for (auto device : deviceData) {
-    std::cout << device.alias << std::endl;
+    std::cout << "Device alias: " << device.alias << std::endl;
     // std::cout << std::hex
     //           << (device.credential_id.has_value()
     //                   ? device.credential_id.value()
