@@ -18,7 +18,7 @@ Please, **Do not use yet in production**.
 
 ## General Description
 
-The objective of this project is to provide a C wrapper for the Rust Agent Crate
+The objective of this project is to provide a C and C++ interface for the Rust Agent Crate
 
 Reference: https://internetcomputer.org/docs/current/developer-docs/agents/
 
@@ -40,14 +40,20 @@ Configure Project and generate makefile.
     cmake ..
     make
 
-#### ic-agent-wrapper
+After compilation, the library offers three primary functionalities:
 
-Contains rust code to expose ic-agent lib to C.
+- C Wrapper for the agent: A static library (libagent_c.a) that provides a C wrapper for the agent.
+- C++ Interface for the agent  (libagent_cpp.a) : Another static library that uses the C wrapper to provide a C++ interface for the agent.
+- Cpp Header File Generator from Candid File: This feature simplifies developer interaction with a canister by generating an hpp file from the canister candid file. This eliminates the need to handle candid types directly.
+All candid services are translated into C++ functions using native C++ types, allowing them to be called with the C++ interface. This makes it more convenient for developers to work with the library and interact with canisters.
 
-#### lib-agent-c
+To use the generator:
 
-Library folder where we use the wrapper exposed functions
-to create C friendly functions to be used. It is compiled as a static library.
+    cd ic-agent-wrapper
+    cargo run -p generate-cpp {did file} {canister name}
+
+The hpp file can be found on the root of the project inside
+/src/declarations/{canister_name}/.
 
 ### Guidance & Core Testing 
 
@@ -94,17 +100,19 @@ Principal management
 ```
 Please refer to doctest documentation and available options.
 
-On the example folder it can be found different usage examples and
-testing examples for the core exposed functions. 
+On the examples folders it can be found different usage examples and
+testing examples for the core exposed functions. All the examples are compiled with the projects and the executables can be found on hte build/ folder. The main examples that can be used as guidance are:
 
-After the project is built, with the previous commands, there will be available on the build folder
-different binaries:
+- examples/hello_c : interaction with a caniter using c wrapper, requires deploying a local hello world canister (see more below);
 
-- hello-icp: simple example that requires deploying a local hello world canister (see more below);
-- icp-app: interact with canister running on icp0.app, getting a result for a lookup command and extracting the first IDLValue from the result vector;
-- candid: usage tests and examples for the exported function from the candid module;
+- examples-cpp/hello : interaction with a caniter using Cpp interface, canister header file already generated requires deploying a local hello world canister (see more below);
 
-### How to use it
+- examples/ic_c : interaction with IC caniter using c wrapper.
+
+- examples-cpp/ic : interaction with a caniter using Cpp interface, canister header file already generated.
+
+
+### How to use
 
 To use this library in a project you can clone this source code into your project and build the library with:
 
@@ -113,26 +121,22 @@ To use this library in a project you can clone this source code into your projec
     cmake ..
     make
 
+Create the header file for the canister:
+
+    cd ic-agent-wrapper
+    cargo run -p generate-cpp ../rust_hello_backend.did  rust_hello
+
 Take as an example a simple hello world project with the following structure:
 
     ── hello_world
         ├── CMakeLists.txt
         ├── icp-client-cpp
-        │   ├── CMakeLists.txt
-        │   ├── build
-        │   │   └-─ libagent_c.a
-        │   ├── ic-agent-wrapper
-        │   │   └── target
-        │   │       └── release
-        │   │           └─── libic_agent_wrapper.a
-        │   └── lib-agent-c
-        │       └── inc
-        │           ├── agent.h
-        │           ├── bindings.h
-        │           ├── helper.h
-        │           └── identity.h
         └── src
-            └── main.c
+            └── main.cpp
+        └── inc
+            ├── rust_hello_backend.did
+            └── rust_hello.hpp
+        
 
 Then link the rust wrapper library, ic_agent_wrapper, and the c library, agent-c.
 For a CMake platform, the Cmakelists file would look like this:
@@ -155,21 +159,13 @@ For a CMake platform, the Cmakelists file would look like this:
     add_executable(helloworld src/main.c)
 
     # Specify libraries  to use when linking
-    target_link_libraries(helloworld agent_c ic_agent_wrapper ${EXTRA_LIBS})
-    # Include directories with .h files
+    target_link_libraries(helloworld agent_cpp agent_c ic_agent_wrapper ${EXTRA_LIBS})
+    # Include deirectories with .h files
+    target_include_directories(helloworld PRIVATE "inc")
+    target_include_directories(helloworld PRIVATE "icp-client-cpp/lib-agent-cpp/inc")
     target_include_directories(helloworld PRIVATE "icp-client-cpp/lib-agent-c/inc")
 
-
-Header description:
-- bindings.h : contains all the signatures and documentation for the functions exposed from the ic-agent crate
-- agent.h : uses exported agent related functions to offer a C friendly interface to interact with the agent
-- identity.h : uses exported identity related functions to offer a C friendly interface to get identity
-- principal.h : uses exported principal related functions to offer a C friendly interface
-- helper.h : functions to read the content from .did file and helper structures
-
-### Running Hello World example
-
-#### 1. Deploy local Hello world canister
+#### Deploy local Hello world canister
 
 In a separate directory create new hello world canister:
 
@@ -186,26 +182,6 @@ Start the local execution environment:
 Register, build, and deploy the canister:
 
     dfx deploy
-
-#### 2. Use IC-C agent to interact with local canister
-
-Inside IC-C folder configure Project and generate makefile:
-
-    cmake .
-
-Compile and link project:
-
-    cmake --build .
-
-Run hello_world example:
-
-    ./hello_icp
-
-The example sends the text "World" to the available canister service "greet", the response
-is represented inside the () :
-
-    Hello ICP! 
-    ("Hello, World!")
 
 ### Rust agent crate
 
