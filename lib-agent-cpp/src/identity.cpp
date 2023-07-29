@@ -260,6 +260,7 @@ TEST_CASE("Anonymous Identity") {
   auto bytes = std::get<Principal>(senderPrincipal).getBytes();
 
   REQUIRE(bytes.size() == 1);
+  // REQUIRE(bytes[0] == 4);
   REQUIRE(bytes[0] == 4);
   REQUIRE(anonymousIdentity.getType() == Anonym);
 }
