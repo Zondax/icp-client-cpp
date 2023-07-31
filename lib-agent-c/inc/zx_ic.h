@@ -68,19 +68,13 @@ typedef struct CPrincipal {
 /**
  * CallBack Ptr creation with size and len
  */
-typedef void (*RetPtr_u8)(const uint8_t*, int, void*);
+typedef void (*RetPtr_u8)(const uint8_t*, int, void *user_data);
 
-typedef struct RetError {
-  void *user_data;
-  RetPtr_u8 call;
+typedef struct {
+    void *user_data;
+    RetPtr_u8 *call;
 } RetError;
 
-/**
- * @brief Returns the type of the IdlValue as an u8 value.
- *
- * @param _ptr Pointer to IDLValue
- */
-uint8_t idl_value_type(const IDLValue *value);
 
 /**
  * @brief Free allocated memory
@@ -166,17 +160,6 @@ const IDLValue *cidlval_vec(const struct CIDLValuesVec *ptr);
 const IDLValue *cidlval_vec_value(const struct CIDLValuesVec *ptr, uintptr_t index);
 
 /**
- * @brief Get pointer to IDLValue at specific index
- *
- * @param ptr CIDLValuesVec structure pointer
- * @param index to specific index
- * @return Pointer to IDLValue
- * @note This gives ownership of the requested value to the caller, who is in charge
- * of free the memory.
- */
-const IDLValue *cidlval_vec_value_take(struct CIDLValuesVec *ptr, uintptr_t index);
-
-/**
  * @brief Get CIDLValuesVec length
  *
  * @param ptr CIDLValuesVec structure pointer
@@ -207,10 +190,8 @@ const uint8_t *crecord_keys(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Key
- *
- * @note Ownership is transfered to the caller
  */
-struct CText *crecord_take_key(struct CRecord *ptr, uintptr_t index);
+const uint8_t *crecord_get_key(const struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Key Vector length
@@ -234,10 +215,8 @@ const IDLValue *crecord_vals(const struct CRecord *ptr);
  * @param ptr CRecord structure pointer
  * @param index to specific index
  * @return Pointer to CRecord Value
- *
- * @note Ownership is trasfered to the caller
  */
-IDLValue *crecord_take_val(struct CRecord *ptr, uintptr_t index);
+const IDLValue *crecord_get_val(const struct CRecord *ptr, uintptr_t index);
 
 /**
  * @brief Get CRecord Values Vector length
@@ -382,7 +361,7 @@ struct FFIAgent *agent_create_wrap(const char *path,
                                    const uint8_t *canister_id,
                                    int canister_id_len,
                                    const char *did_content,
-                                   struct RetError *error_ret);
+                                   RetError error_ret);
 
 /**
  * @brief Calls and returns the information returned by the status endpoint of a replica
@@ -393,7 +372,7 @@ struct FFIAgent *agent_create_wrap(const char *path,
  * If the function returns a NULL CText the user should check
  * The error callback, to attain the error
  */
-struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, struct RetError *error_ret);
+struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, RetError error_ret);
 
 /**
  * @brief Calls and returns a query call to the canister
@@ -407,7 +386,7 @@ struct CText *agent_status_wrap(const struct FFIAgent *agent_ptr, struct RetErro
 IDLArgs *agent_query_wrap(const struct FFIAgent *agent_ptr,
                           const char *method,
                           const char *method_args,
-                          struct RetError *error_ret);
+                          RetError error_ret);
 
 /**
  * @brief Calls and returns a update call to the canister
@@ -423,7 +402,7 @@ IDLArgs *agent_query_wrap(const struct FFIAgent *agent_ptr,
 IDLArgs *agent_update_wrap(const struct FFIAgent *agent_ptr,
                            const char *method,
                            const char *method_args,
-                           struct RetError *error_ret);
+                           RetError error_ret);
 
 /**
  * @brief Free allocated Agent
@@ -431,22 +410,6 @@ IDLArgs *agent_update_wrap(const struct FFIAgent *agent_ptr,
  * @param agent_ptr Pointer to FFI structure that holds agent info
  */
 void agent_destroy(struct FFIAgent *_agent);
-
-/**
- * @brief Creates and empty IDLArgs
- *
- * @return An IDLArgs object containing an empty list IDLValues
- */
-IDLArgs *empty_idl_args(void);
-
-/**
- * @brief Push a new IDLValue into values list
- * @param args The IDLArgs instance where `value` would be added.
- * @param value that is going to be pushed into
- * the list.
- * @note: This takes ownership of the passed value
- */
-void idl_args_push_value(IDLArgs *args, IDLValue *value);
 
 /**
  * @brief Translate IDLArgs to text
@@ -467,7 +430,7 @@ struct CText *idl_args_to_text(const IDLArgs *idl_args);
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-IDLArgs *idl_args_from_text(const char *text, struct RetError *error_ret);
+IDLArgs *idl_args_from_text(const char *text, RetError error_ret);
 
 /**
  * @brief Translate IDLArgs to bytes array
@@ -477,7 +440,7 @@ IDLArgs *idl_args_from_text(const char *text, struct RetError *error_ret);
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, struct RetError *error_ret);
+struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, RetError error_ret);
 
 /**
  * @brief Translate IDLArgs from a byte representation
@@ -489,7 +452,7 @@ struct CBytes *idl_args_to_bytes(const IDLArgs *idl_args, struct RetError *error
  * If the function returns a NULL IDLArgs the user should check
  * The error callback, to attain the error
  */
-IDLArgs *idl_args_from_bytes(const uint8_t *bytes, int bytes_len, struct RetError *error_ret);
+IDLArgs *idl_args_from_bytes(const uint8_t *bytes, int bytes_len, RetError error_ret);
 
 /**
  * @brief Create IDLArgs from an IDLValue Array(C)/Vector(Rust)
@@ -511,14 +474,6 @@ IDLArgs *idl_args_from_vec(const IDLValue *const *elems, int elems_len);
 struct CIDLValuesVec *idl_args_to_vec(const IDLArgs *ptr);
 
 /**
- * @brief Number of elements in IDLArgs
- *
- * @param ptr Pointer to IDLArgs Array
- * @return Number of IDLValues in IDLArgs
- */
-uintptr_t idl_args_len(const IDLArgs *ptr);
-
-/**
  * @brief Free allocated memory
  *
  * @param _ptr Pointer to IDLArgs Array
@@ -528,7 +483,7 @@ void idl_args_destroy(IDLArgs *_ptr);
 /**
  * Format Text to IDLValue text format
  */
-IDLValue *idl_value_format_text(const char *text, struct RetError *error_ret);
+IDLValue *idl_value_format_text(const char *text, RetError error_ret);
 
 /**
  * @brief Test if IDLValues are equal
@@ -548,7 +503,7 @@ bool idl_value_is_equal(const IDLValue *idl_1, const IDLValue *idl_2);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_nat(const char *nat, struct RetError *error_ret);
+IDLValue *idl_value_with_nat(const char *nat, RetError error_ret);
 
 /**
  * @brief Create IDLValue with nat8
@@ -756,14 +711,6 @@ bool bool_from_idl_value(const IDLValue *idl, bool *value);
 IDLValue *idl_value_with_null(void);
 
 /**
- * @brief Get null from value
- *
- * @param idl IDLValue pointer
- * @return boolean value that indicates if idlValue is in fact of this type
- */
-bool idl_value_is_null(const IDLValue *idl);
-
-/**
  * @brief Create IDLValue with none
  *
  * @return Pointer to the IDLValue Structure
@@ -779,7 +726,7 @@ IDLValue *idl_value_with_none(void);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_text(const char *text, struct RetError *error_ret);
+IDLValue *idl_value_with_text(const char *text, RetError error_ret);
 
 /**
  * @brief Get Text from IDLValue
@@ -801,7 +748,7 @@ struct CText *text_from_idl_value(const IDLValue *ptr);
  */
 IDLValue *idl_value_with_principal(const uint8_t *principal,
                                    int principal_len,
-                                   struct RetError *error_ret);
+                                   RetError error_ret);
 
 /**
  * @brief Principal from IDLValue
@@ -821,9 +768,7 @@ struct CPrincipal *principal_from_idl_value(const IDLValue *ptr);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_service(const uint8_t *principal,
-                                 int principal_len,
-                                 struct RetError *error_ret);
+IDLValue *idl_value_with_service(const uint8_t *principal, int principal_len, RetError error_ret);
 
 /**
  * @brief Service from IDLValue
@@ -842,7 +787,7 @@ struct CPrincipal *service_from_idl_value(const IDLValue *ptr);
  * If the function returns a NULL IDLValue the user should check
  * The error callback, to attain the error
  */
-IDLValue *idl_value_with_number(const char *number, struct RetError *error_ret);
+IDLValue *idl_value_with_number(const char *number, RetError error_ret);
 
 /**
  * @brief Get Number from IDLValue
@@ -855,7 +800,7 @@ struct CText *number_from_idl_value(const IDLValue *ptr);
 /**
  * @brief Create Opt IDLValue
  *
- * @param number Pointer to IDLValue (ownership is taken)
+ * @param number Pointer to IDLValue
  * @return Pointer to the Opt IDLValue Structure
  */
 IDLValue *idl_value_with_opt(IDLValue *value);
@@ -900,23 +845,15 @@ struct CIDLValuesVec *vec_from_idl_value(const IDLValue *ptr);
  * @param keys Pointer to array of keys
  * @param keys_len Number of Keys
  * @param vals Pointer to array of IDLValues
- * @param vals_len Number of Values
- * @param keys_are_ids If set to true, keys are expected to be [u8; 4] and will
- * be read as LE u32 and the resulting record will have unnamed/id labels based
- * on the value of the keys
- *
- * Take in account rust will take
+ * @param vals_len Number of Values, take in account rust will take
  * ownership of the memory where this array is stored and free it once it comes out of
- * the function scope.
- * So the user should not use this array after calling this function
- *
+ * the function scope. So the user should not use this array after calling
  * @return Pointer to IDLValue Structure
  */
 IDLValue *idl_value_with_record(const char *const *keys,
                                 int keys_len,
                                 const IDLValue *const *vals,
-                                int vals_len,
-                                bool keys_are_ids);
+                                int vals_len);
 
 /**
  * @brief Get Record from IDLValue
@@ -984,7 +921,7 @@ void *identity_anonymous(void);
  * If the function returns a NULL pointer the user should check
  * The error callback, to attain the error
  */
-void *identity_basic_from_pem(const char *pem_data, struct RetError *error_ret);
+void *identity_basic_from_pem(const char *pem_data, RetError error_ret);
 
 /**
  * @brief Create a BasicIdentity from a KeyPair from the ring crate
@@ -1000,7 +937,7 @@ void *identity_basic_from_pem(const char *pem_data, struct RetError *error_ret);
  */
 void *identity_basic_from_key_pair(const uint8_t *public_key,
                                    const uint8_t *private_key_seed,
-                                   struct RetError *error_ret);
+                                   RetError error_ret);
 
 /**
  * @brief Creates an Secp256k1 identity from a PEM file
@@ -1013,7 +950,7 @@ void *identity_basic_from_key_pair(const uint8_t *public_key,
  * If the function returns a NULL pointer the user should check
  * The error callback, to attain the error
  */
-void *identity_secp256k1_from_pem(const char *pem_data, struct RetError *error_ret);
+void *identity_secp256k1_from_pem(const char *pem_data, RetError error_ret);
 
 /**
  * @brief Create a Secp256k1 from a KeyPair from the ring crate
@@ -1030,15 +967,16 @@ void *identity_secp256k1_from_private_key(const char *private_key, uintptr_t pk_
  * @brief Returns a sender, ie. the Principal ID that is used to sign a request.
  * Only one sender can be used per request.
  *
- * @param id_ptr Pointer to identity. This function does not take ownership
- * of the passed identity.
+ * @param id_ptr Pointer to identity. Since is rust doing the memory management
+ * Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
+ * to unexpected behavior
  * @param idType Identity Type
  * @param error_ret CallBack to get error
  * @return Void pointer to CPrincipal structure
  */
-struct CPrincipal *identity_sender(const void *id_ptr,
+struct CPrincipal *identity_sender(void *id_ptr,
                                    enum IdentityType idType,
-                                   struct RetError *error_ret);
+                                   RetError error_ret);
 
 /**
  * @brief Sign a blob, the concatenation of the domain separator & request ID,
@@ -1046,27 +984,18 @@ struct CPrincipal *identity_sender(const void *id_ptr,
  *
  * @param bytes Pointer to blob content
  * @param bytes_len Length of blob
- * @param id_ptr Pointer to identity. This function does not take ownership of the passed
- * identity.
+ * @param id_ptr Pointer to identity. Since is rust doing the memory management
+ * Rust will take ownership of this memory. So in C, using this pointer after calling this function may lead
+ * to unexpected behavior
  * @param idType Identity Type
  * @param error_ret CallBack to get error
- * @return Pointer to the signature
+ * @return Void pointer to CPrincipal structure
  */
 struct CIdentitySign *identity_sign(const uint8_t *bytes,
                                     int bytes_len,
-                                    const void *id_ptr,
+                                    void *id_ptr,
                                     enum IdentityType idType,
-                                    struct RetError *error_ret);
-
-/**
- * @brief Free allocated Memory
- *
- * @param identity Identity pointer
- * @param idType Identity Type
- * Rust code will deal the memory allocation but the user should guarantee
- * The memory is free when isn't needed anymore
- */
-void identity_destroy(void *identity, enum IdentityType idType);
+                                    RetError error_ret);
 
 /**
  * @brief Construct a Principal of the IC management canister
@@ -1112,7 +1041,7 @@ struct CPrincipal *principal_from_slice(const uint8_t *bytes, int bytes_len);
  */
 struct CPrincipal *principal_try_from_slice(const uint8_t *bytes,
                                             int bytes_len,
-                                            struct RetError *error_ret);
+                                            RetError error_ret);
 
 /**
  * @brief Construct a Principal from text representation.
@@ -1123,7 +1052,7 @@ struct CPrincipal *principal_try_from_slice(const uint8_t *bytes,
  * If the function returns a NULL CPrincipal the user should check
  * The error callback, to attain the error
  */
-struct CPrincipal *principal_from_text(const char *text, struct RetError *error_ret);
+struct CPrincipal *principal_from_text(const char *text, RetError error_ret);
 
 /**
  * @brief Return the textual representation of Principal.
@@ -1135,9 +1064,7 @@ struct CPrincipal *principal_from_text(const char *text, struct RetError *error_
  * If the function returns a NULL CPrincipal the user should check
  * The error callback, to attain the error
  */
-struct CPrincipal *principal_to_text(const uint8_t *bytes,
-                                     int bytes_len,
-                                     struct RetError *error_ret);
+struct CPrincipal *principal_to_text(const uint8_t *bytes, int bytes_len, RetError error_ret);
 
 /**
  * @brief Free allocated Memory

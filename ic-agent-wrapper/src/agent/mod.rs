@@ -13,7 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
-use crate::{identity::IdentityType, AnyErr, AnyResult, CText, RetPtr};
+use crate::{identity::IdentityType, AnyErr, AnyResult, CText, RetError};
 use anyhow::{anyhow, bail, Context};
 use candid::{
     check_prog,
@@ -242,7 +242,7 @@ pub extern "C" fn agent_create_wrap(
     canister_id: *const u8,
     canister_id_len: c_int,
     did_content: *const c_char,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> *mut FFIAgent {
     let computation = || -> AnyResult<FFIAgent> {
         let path = unsafe { CStr::from_ptr(path).to_str().map_err(AnyErr::from) }?.to_string();
@@ -288,7 +288,9 @@ pub extern "C" fn agent_create_wrap(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
 
             ptr::null_mut()
         }
@@ -305,7 +307,7 @@ pub extern "C" fn agent_create_wrap(
 #[no_mangle]
 pub extern "C" fn agent_status_wrap(
     agent_ptr: Option<&FFIAgent>,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> Option<Box<CText>> {
     let computation = || -> AnyResult<_> {
         let agent = agent_ptr.ok_or(anyhow!("FFIAgent instance null"))?;
@@ -330,7 +332,9 @@ pub extern "C" fn agent_status_wrap(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             None
         }
     }
@@ -348,7 +352,7 @@ pub extern "C" fn agent_query_wrap(
     agent_ptr: Option<&FFIAgent>,
     method: *const c_char,
     method_args: *const c_char,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> *mut IDLArgs {
     let computation = || -> AnyResult<_> {
         let agent = agent_ptr.ok_or(anyhow!("FFIAgent instance null"))?;
@@ -370,7 +374,9 @@ pub extern "C" fn agent_query_wrap(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             ptr::null_mut()
         }
     }
@@ -390,7 +396,7 @@ pub extern "C" fn agent_update_wrap(
     agent_ptr: Option<&FFIAgent>,
     method: *const c_char,
     method_args: *const c_char,
-    error_ret: RetPtr<u8>,
+    error_ret: Option<&mut RetError>,
 ) -> *mut IDLArgs {
     let computation = || -> AnyResult<_> {
         let agent = agent_ptr.ok_or(anyhow!("FFIAgent instance null"))?;
@@ -411,7 +417,9 @@ pub extern "C" fn agent_update_wrap(
                 let fallback_error = "Failed to convert error message to CString";
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
-            error_ret(c_string.as_ptr() as _, c_string.as_bytes().len() as _);
+            if let Some(error_ret) = error_ret {
+                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+            }
             ptr::null_mut()
         }
     }
@@ -428,7 +436,6 @@ mod tests {
     #[allow(unused)]
     use super::*;
     use crate::identity::identity_anonymous;
-    use libc::c_int;
 
     const IC_PATH: &[u8] = b"http://127.0.0.1:4943\0";
     const II_DID_CONTENT_BYTES: &[u8] =
@@ -440,11 +447,10 @@ mod tests {
         cstr.to_str().unwrap()
     }
 
-    extern "C" fn error_ret(_data: *const u8, _len: c_int) {}
-
     #[test]
     fn test_agent_create_with_anonymous() {
         let identity = identity_anonymous();
+
 
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,
@@ -453,7 +459,7 @@ mod tests {
             II_CANISTER_ID_BYTES.as_ptr(),
             II_CANISTER_ID_BYTES.len() as i32,
             II_DID_CONTENT_BYTES.as_ptr() as *mut c_char,
-            error_ret,
+            None,
         );
 
         unsafe {
@@ -483,14 +489,14 @@ mod tests {
             II_CANISTER_ID_BYTES.as_ptr(),
             II_CANISTER_ID_BYTES.len() as i32,
             II_DID_CONTENT_BYTES.as_ptr() as *mut c_char,
-            error_ret,
+            None,
         );
 
         let ret = agent_query_wrap(
             unsafe { agent.as_ref() },
             b"greet\0".as_ptr() as *const c_char,
             b"(\"World\")\0".as_ptr() as *const c_char,
-            error_ret,
+            None,
         );
 
         unsafe {
@@ -504,6 +510,7 @@ mod tests {
         const EXPECTED: &str = "(\"Hello, World!\")";
         let identity = identity_anonymous();
 
+
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,
             identity,
@@ -511,14 +518,14 @@ mod tests {
             II_CANISTER_ID_BYTES.as_ptr(),
             II_CANISTER_ID_BYTES.len() as i32,
             II_DID_CONTENT_BYTES.as_ptr() as *mut c_char,
-            error_ret,
+            None,
         );
 
         let ret = agent_update_wrap(
             unsafe { agent.as_ref() },
             b"greet\0".as_ptr() as *const c_char,
             b"(\"World\")\0".as_ptr() as *const c_char,
-            error_ret,
+            None,
         );
 
         unsafe {
@@ -538,10 +545,10 @@ mod tests {
             II_CANISTER_ID_BYTES.as_ptr(),
             II_CANISTER_ID_BYTES.len() as i32,
             II_DID_CONTENT_BYTES.as_ptr() as *mut c_char,
-            error_ret,
+            None,
         );
 
-        let _status = agent_status_wrap(unsafe { agent.as_ref() }, error_ret);
+        let _status = agent_status_wrap(unsafe { agent.as_ref() }, None);
 
         unsafe {
             let id = Box::from_raw(identity as *mut AnonymousIdentity);

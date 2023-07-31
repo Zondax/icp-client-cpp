@@ -17,6 +17,7 @@ use ::candid::parser::value::IDLValue;
 use ::candid::Principal;
 use anyhow::Error as AnyErr;
 use anyhow::Result as AnyResult;
+use libc::c_void;
 use principal::CPrincipal;
 use std::ffi::c_char;
 use std::ffi::c_int;
@@ -28,7 +29,79 @@ mod principal;
 mod request_id;
 
 /// CallBack Ptr creation with size and len
-type RetPtr<T> = extern "C" fn(*const T, c_int);
+type RetPtr<T> = extern "C" fn(*const T, c_int, *mut c_void);
+
+#[repr(C)]
+pub struct RetError {
+    user_data: *mut c_void,
+    call: RetPtr<u8>,
+}
+
+#[repr(u8)]
+#[derive(Debug)]
+enum IdlValueType {
+    Bool,
+    Null,
+    Text,
+    Number,
+    Float64,
+    Opt,
+    Vec,
+    Record,
+    Variant,
+    Principal,
+    Service,
+    Func,
+    None,
+    Int,
+    Nat,
+    Nat8,
+    Nat16,
+    Nat32,
+    Nat64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Float32,
+    Reserved,
+}
+
+/// @brief Returns the type of the IdlValue as an u8 value.
+///
+/// @param _ptr Pointer to IDLValue
+#[no_mangle]
+pub extern "C" fn idl_value_type(value: &IDLValue) -> u8 {
+    let ty = match value {
+        IDLValue::Bool(_) => IdlValueType::Bool,
+        IDLValue::Null => IdlValueType::Null,
+        IDLValue::Text(_) => IdlValueType::Text,
+        IDLValue::Number(_) => IdlValueType::Number,
+        IDLValue::Float64(_) => IdlValueType::Float64,
+        IDLValue::Opt(_) => IdlValueType::Opt,
+        IDLValue::Vec(_) => IdlValueType::Vec,
+        IDLValue::Record(_) => IdlValueType::Record,
+        IDLValue::Variant(_) => IdlValueType::Variant,
+        IDLValue::Principal(_) => IdlValueType::Principal,
+        IDLValue::Service(_) => IdlValueType::Service,
+        IDLValue::Func(..) => IdlValueType::Func,
+        IDLValue::None => IdlValueType::None,
+        IDLValue::Int(_) => IdlValueType::Int,
+        IDLValue::Nat(_) => IdlValueType::Nat,
+        IDLValue::Nat8(_) => IdlValueType::Nat8,
+        IDLValue::Nat16(_) => IdlValueType::Nat16,
+        IDLValue::Nat32(_) => IdlValueType::Nat32,
+        IDLValue::Nat64(_) => IdlValueType::Nat64,
+        IDLValue::Int8(_) => IdlValueType::Int8,
+        IDLValue::Int16(_) => IdlValueType::Int16,
+        IDLValue::Int32(_) => IdlValueType::Int32,
+        IDLValue::Int64(_) => IdlValueType::Int64,
+        IDLValue::Float32(_) => IdlValueType::Float32,
+        IDLValue::Reserved => IdlValueType::Reserved,
+    };
+
+    ty as u8
+}
 
 /// @brief Free allocated memory
 ///
@@ -112,8 +185,13 @@ pub struct CIDLValuesVec {
 #[no_mangle]
 pub unsafe extern "C" fn cidlval_vec_destroy(ptr: Option<Box<CIDLValuesVec>>) {
     if let Some(cidlval_vec) = ptr {
-        for idlval_ptr in cidlval_vec.data.iter() {
-            let idlval = *idlval_ptr as *mut IDLValue;
+        for ptr in cidlval_vec.data.iter() {
+            // check if inner value is null,
+            // that means it could have been move or changed owner
+            let idlval = *ptr as *mut IDLValue;
+            if idlval.is_null() {
+                continue;
+            }
             idl_value_destroy(Some(Box::from_raw(idlval)));
         }
     }
@@ -138,6 +216,24 @@ pub extern "C" fn cidlval_vec(ptr: &CIDLValuesVec) -> *const IDLValue {
 pub extern "C" fn cidlval_vec_value(ptr: &CIDLValuesVec, index: usize) -> *const IDLValue {
     if index < ptr.data.len() {
         ptr.data[index]
+    } else {
+        std::ptr::null()
+    }
+}
+
+/// @brief Get pointer to IDLValue at specific index
+///
+/// @param ptr CIDLValuesVec structure pointer
+/// @param index to specific index
+/// @return Pointer to IDLValue
+/// @note This gives ownership of the requested value to the caller, who is in charge
+/// of free the memory.
+#[no_mangle]
+pub extern "C" fn cidlval_vec_value_take(ptr: &mut CIDLValuesVec, index: usize) -> *const IDLValue {
+    if index < ptr.data.len() {
+        let owned_ptr = ptr.data[index];
+        ptr.data[index] = std::ptr::null();
+        owned_ptr
     } else {
         std::ptr::null()
     }
@@ -181,12 +277,23 @@ pub extern "C" fn crecord_keys(ptr: &CRecord) -> *const u8 {
 /// @param ptr CRecord structure pointer
 /// @param index to specific index
 /// @return Pointer to CRecord Key
+///
+/// @note Ownership is transfered to the caller
 #[no_mangle]
-pub extern "C" fn crecord_get_key(ptr: &CRecord, index: usize) -> *const u8 {
-    if index < ptr.keys.len() {
-        ptr.keys[index].data.as_ptr() as _
+pub extern "C" fn crecord_take_key(ptr: *mut CRecord, index: usize) -> *mut CText {
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let keys = unsafe { &mut (*ptr).keys };
+
+    if index < keys.len() {
+        let mut key = CText { data: vec![0] };
+        std::mem::swap(&mut keys[index], &mut key);
+
+        Box::into_raw(Box::new(key))
     } else {
-        std::ptr::null()
+        std::ptr::null_mut()
     }
 }
 
@@ -213,12 +320,23 @@ pub extern "C" fn crecord_vals(ptr: &CRecord) -> *const IDLValue {
 /// @param ptr CRecord structure pointer
 /// @param index to specific index
 /// @return Pointer to CRecord Value
+///
+/// @note Ownership is trasfered to the caller
 #[no_mangle]
-pub extern "C" fn crecord_get_val(ptr: &CRecord, index: usize) -> *const IDLValue {
-    if index < ptr.vals.len() {
-        &ptr.vals[index] as *const IDLValue
+pub extern "C" fn crecord_take_val(ptr: *mut CRecord, index: usize) -> *mut IDLValue {
+    if ptr.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let vals = unsafe { &mut (*ptr).vals };
+
+    if index < vals.len() {
+        let mut val = IDLValue::Null;
+        std::mem::swap(&mut vals[index], &mut val);
+
+        Box::into_raw(Box::new(val))
     } else {
-        std::ptr::null()
+        std::ptr::null_mut()
     }
 }
 
