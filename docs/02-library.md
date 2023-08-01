@@ -1,35 +1,4 @@
-# IC-C
-
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GithubActions](https://github.com/zondax/icp-client-cpp/actions/workflows/build.yml/badge.svg)](https://github.com/Zondax/icp-client-cpp/blob/main/.github/workflows/build.yaml)
-
----
-
-![zondax_light](docs/zondax_light.png#gh-light-mode-only)
-![zondax_dark](docs/zondax_dark.png#gh-dark-mode-only)
-
-_Please visit our website at [zondax.ch](https://www.zondax.ch)_
-
----
-
-## :warning: ATTENTION
-
-Please, **Do not use yet in production**.
-
-## General Description
-
-The objective of this project is to provide a C and C++ interface for the Rust Agent Crate
-
-Reference: https://internetcomputer.org/docs/current/developer-docs/agents/
-
-What an agent does:
-
-- Encodes arguments to be sent in REST calls (Candid based)
-- Verifies certificates and decode responses
-- Manages authentication
-
-### Disclaimer
-Team is currently working on building the project and running it on Windows platforms.
+# Library Walkthrough
 
 ### Project Build and Description
 
@@ -43,17 +12,43 @@ Configure Project and generate makefile.
 After compilation, the library offers three primary functionalities:
 
 - C Wrapper for the agent: A static library (libagent_c.a) that provides a C wrapper for the agent.
+
 - C++ Interface for the agent  (libagent_cpp.a) : Another static library that uses the C wrapper to provide a C++ interface for the agent.
+
 - Cpp Header File Generator from Candid File: This feature simplifies developer interaction with a canister by generating an hpp file from the canister candid file. This eliminates the need to handle candid types directly.
 All candid services are translated into C++ functions using native C++ types, allowing them to be called with the C++ interface. This makes it more convenient for developers to work with the library and interact with canisters.
+
+### C++ Header Generator
+
+The C++ Header Generator tool is a tool available in this project that allows the user to get a C++ header file from a candid file.
+All the services from the candid file and translate them to C++ functions that use our C++ library to handle the Candid types as C++ native types.
+
+Lets take as an example this Candid file :
+
+    service : {
+    "increment": () -> ();
+    "get": () -> (nat64) query;
+    "set": (nat64) -> ();
+    }
+
+The C++ header will have 3 functions that will use a uint64 instead of the nat64:
+    
+```cpp
+std::variant<uint64_t, std::string>get()
+std::variant<std::monostate, std::string>increment()
+std::variant<std::monostate, std::string>set(uint64_t arg0)
+```
+
+This functions belong to SERVICE class, and the user can use this class constructor
+to initialize a SERVICE instance with the agent configured previously with Agent::create_agent interface for the C++ lib.
 
 To use the generator:
 
     cd ic-agent-wrapper
     cargo run -p generate-cpp {did file} {canister name}
 
-The hpp file can be found on the root of the project inside
-/src/declarations/{canister_name}/.
+The hpp file can be found inside
+ic-agent-wrapper/src/declarations/{canister_name}/.
 
 ### Guidance & Core Testing 
 
@@ -110,80 +105,3 @@ testing examples for the core exposed functions. All the examples are compiled w
 - examples/ic_c : interaction with IC canister using c wrapper.
 
 - examples-cpp/ic : interaction with a canister using Cpp interface, canister header file already generated.
-
-
-### How to use
-
-To use this library in a project you can clone this source code into your project and build the library with:
-
-    mkdir build
-    cd build
-    cmake ..
-    make
-
-Create the header file for the canister:
-
-    cd ic-agent-wrapper
-    cargo run -p generate-cpp ../rust_hello_backend.did  rust_hello
-
-Take as an example a simple hello world project with the following structure:
-
-    ── hello_world
-        ├── CMakeLists.txt
-        ├── icp-client-cpp
-        └── src
-            └── main.cpp
-        └── inc
-            ├── rust_hello_backend.did
-            └── rust_hello.hpp
-        
-
-Then link the rust wrapper library, ic_agent_wrapper, and the c library, agent-c.
-For a CMake platform, the Cmakelists file would look like this:
-
-    # OS-specific libraries
-    if(APPLE)
-        find_library(SECURITY_LIB Security)
-        find_library(COREFOUNDATION_LIB CoreFoundation)
-        set(EXTRA_LIBS ${SECURITY_LIB} ${COREFOUNDATION_LIB})
-    elseif(UNIX AND NOT APPLE)
-        set(EXTRA_LIBS m)
-    elseif(WIN32)
-        # Add any Windows-specific libraries here
-    endif()
-
-    # Link against the icp-client-cpp libraries
-    link_directories(icp-client-cpp/build)
-    link_directories(icp-client-cpp/ic-agent-wrapper/target/release/)
-
-    add_executable(helloworld src/main.c)
-
-    # Specify libraries  to use when linking
-    target_link_libraries(helloworld agent_cpp agent_c ic_agent_wrapper ${EXTRA_LIBS})
-    # Include deirectories with .h files
-    target_include_directories(helloworld PRIVATE "inc")
-    target_include_directories(helloworld PRIVATE "icp-client-cpp/lib-agent-cpp/inc")
-    target_include_directories(helloworld PRIVATE "icp-client-cpp/lib-agent-c/inc")
-
-#### Deploy local Hello world canister
-
-In a separate directory create new hello world canister:
-
-    dfx new --type=rust rust_hello
-
-Change to your project directory:
-
-    cd rust_hello
-
-Start the local execution environment:
-
-    dfx start --background
-
-Register, build, and deploy the canister:
-
-    dfx deploy
-
-### Rust agent crate
-
-- Repository: https://github.com/dfinity/agent-rs
-- Documentation: https://docs.rs/ic-agent/latest/ic_agent/
