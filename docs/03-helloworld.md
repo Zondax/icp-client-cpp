@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-To get started with ICP-Client-C++ Hello World project, we recommend your development environment includes a hello world canister deployed locally. More information can be found [here](https://staging--eloquent-poitras-af14f0.netlify.app/docs/rust-guide/rust-quickstart.html).
+To get started with ICP-Client-C++ Hello World project, we recommend your development environment includes a hello world canister deployed locally. More information can be found [here](https://internetcomputer.org/docs/current/developer-docs/backend/rust/).
 
 ### Creating the project
 The complete Hello World example code can be found [here](https://github.com/Zondax/icp-client-cpp/tree/main/examples-cpp/hello).
