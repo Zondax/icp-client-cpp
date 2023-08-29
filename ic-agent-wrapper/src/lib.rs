@@ -28,6 +28,12 @@ mod identity;
 mod principal;
 mod request_id;
 
+use once_cell::sync::Lazy;
+use tokio::runtime::Runtime;
+
+pub(crate) static RUNTIME: Lazy<Runtime> =
+    Lazy::new(|| Runtime::new().expect("Failed to create tokio::Runtime"));
+
 /// CallBack Ptr creation with size and len
 type RetPtr<T> = extern "C" fn(*const T, c_int, *mut c_void);
 

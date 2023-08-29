@@ -17,7 +17,6 @@ crate-type = ["staticlib","lib"]
 ic-agent = "0.24.1"
 ic-utils = "0.24.1"
 # async runtime
-futures = "0.3"
 tokio = { version = "1.18", features = ["full"] }
 # serde
 serde = "1.0.*"
@@ -25,26 +24,21 @@ serde_json = "1.0.*"
 serde_derive = "1.0.*"
 # encrypt
 getrandom = { version = "0.2.8" }
-untrusted = { version = "0.9" }
 ring = "0.16.*"
 k256 = "0.13.1"
 base64 = "0.21.2"
-rust-argon2 = "1.0.0"
-chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 # helper
 hex = "0.4"
 anyhow = "1.0.*"
-lazy_static = "1.4.*"
-chrono = { version = "0.4.*", features = ["serde"] }
-garcon = { version = "0.2.3", features = ["async"] }
 # ffi
 libc = "0.2"
 candid.workspace = true
 cty = "0.2.2"
-safer-ffi = { version = "0.0.10", features = ["proc_macros"] }
-crypto_api_osrandom = "0.2.0"
-const-str = "0.5.2"
 arrayref = "0.3.7"
+once_cell = { version = "1.18.0", features = ["parking_lot"] }
+
+[dev-dependencies]
+const-str = "0.5.2"
 
 [build-dependencies]
 cbindgen = "0.20.0"

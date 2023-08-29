@@ -13,6 +13,7 @@
 *  See the License for the specific language governing permissions and
 *  limitations under the License.
 ********************************************************************************/
+use crate::RUNTIME;
 use crate::{identity::IdentityType, AnyErr, AnyResult, CText, RetError};
 use anyhow::{anyhow, bail, Context};
 use candid::{
@@ -36,7 +37,6 @@ use std::{
     sync::Arc,
 };
 use std::{ptr, str::FromStr};
-use tokio::runtime;
 
 /// Struture that holds the information related to a specific agent
 pub struct FFIAgent {
@@ -289,7 +289,11 @@ pub extern "C" fn agent_create_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             ptr::null_mut()
@@ -312,7 +316,7 @@ pub extern "C" fn agent_status_wrap(
     let computation = || -> AnyResult<_> {
         let agent = agent_ptr.ok_or(anyhow!("FFIAgent instance null"))?;
 
-        let runtime = runtime::Runtime::new()?;
+        let runtime = &*RUNTIME;
         let status = runtime.block_on(agent.inner_ic_status())?;
 
         let status_str = status.to_string();
@@ -333,7 +337,11 @@ pub extern "C" fn agent_status_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -360,7 +368,7 @@ pub extern "C" fn agent_query_wrap(
         let method = unsafe { CStr::from_ptr(method).to_str().map_err(AnyErr::from) }?;
         let method_args = unsafe { CStr::from_ptr(method_args).to_str().map_err(AnyErr::from) }?;
 
-        let runtime = runtime::Runtime::new()?;
+        let runtime = &*RUNTIME;
         let rst_idl = runtime.block_on(agent.inner_ic_query(method, method_args))?;
 
         Ok(rst_idl)
@@ -375,7 +383,11 @@ pub extern "C" fn agent_query_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             ptr::null_mut()
         }
@@ -403,7 +415,7 @@ pub extern "C" fn agent_update_wrap(
         let method = unsafe { CStr::from_ptr(method).to_str().map_err(AnyErr::from) }?;
         let method_args = unsafe { CStr::from_ptr(method_args).to_str().map_err(AnyErr::from) }?;
 
-        let runtime = runtime::Runtime::new()?;
+        let runtime = &*RUNTIME;
         let rst_idl = runtime.block_on(agent.inner_ic_update(method, method_args))?;
 
         Ok(rst_idl)
@@ -418,7 +430,11 @@ pub extern "C" fn agent_update_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             ptr::null_mut()
         }
@@ -450,7 +466,6 @@ mod tests {
     #[test]
     fn test_agent_create_with_anonymous() {
         let identity = identity_anonymous();
-
 
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,
@@ -509,7 +524,6 @@ mod tests {
     fn test_agent_update() {
         const EXPECTED: &str = "(\"Hello, World!\")";
         let identity = identity_anonymous();
-
 
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,
