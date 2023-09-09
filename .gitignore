@@ -1,2 +1,13 @@
 .idea
 cmake-build-debug
+*.a
+Makefile
+CMakeFiles/
+CMakeCache.txt
+*.cmake
+# Ignore compiled binaries
+*_c
+hello
+ic
+counter
+test

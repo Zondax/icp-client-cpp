@@ -12,10 +12,6 @@ _Please visit our website at [zondax.ch](https://www.zondax.ch)_
 
 ---
 
-## :warning: ATTENTION
-
-Please, **Do not use yet in production**.
-
 ## General Description
 
 The objective of this project is to provide a C and C++ interface for the Rust Agent Crate
