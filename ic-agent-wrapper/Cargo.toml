@@ -14,8 +14,8 @@ crate-type = ["staticlib","lib"]
 
 [dependencies]
 # dfinity
-ic-agent = "0.24.1"
-ic-utils = "0.24.1"
+ic-agent = "0.35.0"
+ic-utils = "0.35.0"
 # async runtime
 futures = "0.3"
 tokio = { version = "1.18", features = ["full"] }
@@ -24,12 +24,12 @@ serde = "1.0.*"
 serde_json = "1.0.*"
 serde_derive = "1.0.*"
 # encrypt
-getrandom = { version = "0.2.8" }
+getrandom = { version = "0.2.*" }
 untrusted = { version = "0.9" }
 ring = "0.16.*"
-k256 = "0.13.1"
-base64 = "0.21.2"
-rust-argon2 = "1.0.0"
+k256 = "0.13.*"
+base64 = "0.21.*"
+rust-argon2 = "1.0.*"
 chacha20poly1305 = { version = "0.10.1", features = ["std"] }
 # helper
 hex = "0.4"
@@ -43,7 +43,7 @@ candid.workspace = true
 cty = "0.2.2"
 safer-ffi = { version = "0.0.10", features = ["proc_macros"] }
 crypto_api_osrandom = "0.2.0"
-const-str = "0.5.2"
+const-str = "0.5.*"
 arrayref = "0.3.7"
 
 [build-dependencies]
