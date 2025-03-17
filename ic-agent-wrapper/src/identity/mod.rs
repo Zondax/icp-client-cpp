@@ -25,6 +25,7 @@ use k256::SecretKey;
 use libc::c_void;
 use ring::signature::Ed25519KeyPair;
 use std::ffi::{c_char, CStr, CString};
+use sha2::{Digest, Sha256};
 
 /// Enum for Identity Types
 #[allow(dead_code)]
@@ -324,12 +325,13 @@ pub extern "C" fn identity_sign(
             IdentityType::Anonym => {
                 let id = id_ptr as *const AnonymousIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = (&*id).sign(blob);
+                let signature = (&*id).sign_arbitrary(blob);
 
                 match signature {
                     Ok(Signature {
                         public_key,
                         signature,
+                        delegations: _,
                     }) => {
                         let public_key = public_key.unwrap_or_default();
                         let signature = signature.unwrap_or_default();
@@ -359,12 +361,18 @@ pub extern "C" fn identity_sign(
             IdentityType::Basic => {
                 let id = id_ptr as *const BasicIdentity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = (&*id).sign(blob);
+                // Hash the blob using SHA256
+                let mut hasher = Sha256::new();
+                hasher.update(blob);
+                let hash = hasher.finalize();
+
+                let signature = (&*id).sign_arbitrary(&hash);
 
                 match signature {
                     Ok(Signature {
                         public_key,
                         signature,
+                        delegations: _,
                     }) => {
                         let public_key = public_key.unwrap_or_default();
                         let signature = signature.unwrap_or_default();
@@ -394,12 +402,18 @@ pub extern "C" fn identity_sign(
             IdentityType::Secp256k1 => {
                 let id = id_ptr as *const Secp256k1Identity;
                 let blob = std::slice::from_raw_parts(bytes, bytes_len as usize);
-                let signature = (&*id).sign(blob);
+                // Hash the blob using SHA256
+                let mut hasher = Sha256::new();
+                hasher.update(blob);
+                let hash = hasher.finalize();
+
+                let signature = (&*id).sign_arbitrary(&hash);
 
                 match signature {
                     Ok(Signature {
                         public_key,
                         signature,
+                        delegations: _,
                     }) => {
                         let public_key = public_key.unwrap_or_default();
                         let signature = signature.unwrap_or_default();
@@ -455,7 +469,7 @@ pub extern "C" fn identity_destroy(identity: *mut c_void, idType: IdentityType) 
 
 #[cfg(test)]
 mod tests {
-    use candid::Principal;
+    use ic_agent::export::Principal;
     use ic_agent::Identity;
 
     #[allow(unused)]
