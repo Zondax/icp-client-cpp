@@ -18,18 +18,16 @@ use anyhow::{anyhow, bail, Context};
 use candid::{
     check_prog,
     types::{Function, Type},
-    CandidType, Decode, Deserialize, IDLArgs, IDLProg, Principal, TypeEnv,
+    IDLArgs, IDLProg, TypeEnv,
 };
 use cty::{c_char, c_int};
+use ic_agent::export::Principal;
 use ic_agent::{
-    agent::{http_transport::ReqwestHttpReplicaV2Transport, status::Status},
+    agent::status::Status,
     identity::{AnonymousIdentity, Secp256k1Identity},
     Agent, Identity,
 };
-use ic_utils::interfaces::management_canister::{
-    builders::{CanisterInstall, CanisterSettings},
-    MgmtMethod,
-};
+use ic_utils::interfaces::management_canister::MgmtMethod;
 use libc::c_void;
 use std::{
     ffi::{CStr, CString},
@@ -97,11 +95,7 @@ impl FFIAgent {
                     "{} can only be called via an inter-canister call.",
                     method_name.as_ref()
                 ),
-                MgmtMethod::InstallCode => {
-                    let install_args = Decode!(args_blob, CanisterInstall)
-                        .context("Argument is not valid for CanisterInstall")?;
-                    Ok(install_args.canister_id)
-                }
+                MgmtMethod::InstallCode => todo!(),
                 MgmtMethod::StartCanister
                 | MgmtMethod::StopCanister
                 | MgmtMethod::CanisterStatus
@@ -109,36 +103,39 @@ impl FFIAgent {
                 | MgmtMethod::DepositCycles
                 | MgmtMethod::UninstallCode
                 | MgmtMethod::ProvisionalTopUpCanister => {
-                    #[derive(CandidType, Deserialize)]
-                    struct In {
-                        canister_id: Principal,
-                    }
-                    let in_args =
-                        Decode!(args_blob, In).context("Argument is not a valid Principal")?;
-                    Ok(in_args.canister_id)
+                    let principal = Principal::from_slice(args_blob);
+                    Ok(principal)
                 }
                 MgmtMethod::ProvisionalCreateCanisterWithCycles => {
                     Ok(Principal::management_canister())
                 }
-                MgmtMethod::UpdateSettings => {
-                    #[derive(CandidType, Deserialize)]
-                    struct In {
-                        canister_id: Principal,
-                        settings: CanisterSettings,
-                    }
-                    let in_args = Decode!(args_blob, In)
-                        .context("Argument is not valid for UpdateSettings")?;
-                    Ok(in_args.canister_id)
-                }
+                MgmtMethod::UpdateSettings => todo!(),
+                MgmtMethod::UploadChunk => todo!(),
+                MgmtMethod::ClearChunkStore => todo!(),
+                MgmtMethod::StoredChunks => todo!(),
+                MgmtMethod::InstallChunkedCode => todo!(),
+                MgmtMethod::FetchCanisterLogs => todo!(),
+                MgmtMethod::TakeCanisterSnapshot => todo!(),
+                MgmtMethod::DeleteCanisterSnapshot => todo!(),
+                MgmtMethod::EcdsaPublicKey => todo!(),
+                MgmtMethod::SignWithEcdsa => todo!(),
+                MgmtMethod::BitcoinGetBalance => todo!(),
+                MgmtMethod::BitcoinGetUtxos => todo!(),
+                MgmtMethod::BitcoinSendTransaction => todo!(),
+                MgmtMethod::LoadCanisterSnapshot => todo!(),
+                MgmtMethod::ListCanisterSnapshots => todo!(),
+                MgmtMethod::NodeMetricsHistory => todo!(),
+                MgmtMethod::CanisterInfo => todo!(),
+                MgmtMethod::BitcoinGetCurrentFeePercentiles => todo!(),
+                MgmtMethod::BitcoinGetBlockHeaders => todo!(),
             }
         }
     }
 
     // Create real agent based on FFIAgent
     pub async fn inner_ic_create(&self) -> AnyResult<Agent> {
-        let transport = ReqwestHttpReplicaV2Transport::create(&self.path).map_err(AnyErr::from)?;
-        let agent_tmp = Agent::builder()
-            .with_transport(transport)
+        let agent_tmp = ic_agent::Agent::builder()
+            .with_url(&self.path)
             .with_arc_identity(self.identity.clone())
             .build()
             .map_err(AnyErr::from)?;
@@ -289,7 +286,11 @@ pub extern "C" fn agent_create_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
 
             ptr::null_mut()
@@ -333,7 +334,11 @@ pub extern "C" fn agent_status_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             None
         }
@@ -375,7 +380,11 @@ pub extern "C" fn agent_query_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             ptr::null_mut()
         }
@@ -418,7 +427,11 @@ pub extern "C" fn agent_update_wrap(
                 CString::new(fallback_error).expect("Fallback error message is invalid")
             });
             if let Some(error_ret) = error_ret {
-                (error_ret.call)(c_string.as_ptr() as _, c_string.as_bytes().len() as _, error_ret.user_data);
+                (error_ret.call)(
+                    c_string.as_ptr() as _,
+                    c_string.as_bytes().len() as _,
+                    error_ret.user_data,
+                );
             }
             ptr::null_mut()
         }
@@ -450,7 +463,6 @@ mod tests {
     #[test]
     fn test_agent_create_with_anonymous() {
         let identity = identity_anonymous();
-
 
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,
@@ -509,7 +521,6 @@ mod tests {
     fn test_agent_update() {
         const EXPECTED: &str = "(\"Hello, World!\")";
         let identity = identity_anonymous();
-
 
         let agent = agent_create_wrap(
             IC_PATH.as_ptr() as *const c_char,

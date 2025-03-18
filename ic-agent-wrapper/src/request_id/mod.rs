@@ -14,7 +14,7 @@
 *  limitations under the License.
 ********************************************************************************/
 use cty::c_int;
-use ic_agent::request_id::RequestId;
+use ic_agent::RequestId;
 use crate::CText;
 
 /// @brief Creates a new RequestId from a SHA-256 hash.
